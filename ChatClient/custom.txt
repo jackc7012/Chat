@@ -1,0 +1,2 @@
+[2020-10-08 09:26:56 970]: [ChatClientDlg.cpp]	 [207][debug] register aa succeed
+[2020-10-08 09:30:31 603]: [ChatClientDlg.cpp]	 [216][debug] register aa failed , description user name is already have

@@ -1,0 +1,50 @@
+[2020-10-08 09:26:10 513]: [ChatServiceDlg.cpp]	 [196][info] 服务器开启监听，端口号为：6000
+[2020-10-08 09:26:56 866]: [ChatServiceDlg.cpp]	 [233][info] ip = 127.0.0.1 connect
+[2020-10-08 09:26:56 898]: [ChatServiceDlg.cpp]	 [248][info] recv message from 0, message content = {"communication_type":"register","customer":"aa","password":"aa"}
+
+[2020-10-08 09:26:56 933]: [ChatServiceDlg.cpp]	 [347][info] customer aa register result succeed
+[2020-10-08 09:26:56 964]: [ChatServiceDlg.cpp]	 [351][info] send message :{"communication_type":"registerbacksucceed","customer":"aa","register_result":"succeed"}
+
+[2020-10-08 09:27:34 984]: [ChatServiceDlg.cpp]	 [196][info] 服务器监听关闭
+[2020-10-08 09:30:08 518]: [ChatServiceDlg.cpp]	 [196][info] 服务器开启监听，端口号为：6000
+[2020-10-08 09:30:22 370]: [ChatServiceDlg.cpp]	 [233][info] ip = 127.0.0.1 connect
+[2020-10-08 09:30:22 411]: [ChatServiceDlg.cpp]	 [248][info] recv message from 0, message content = {"communication_type":"login","customer":"aa","password":"aa"}
+
+[2020-10-08 09:30:22 456]: [ChatServiceDlg.cpp]	 [386][info] customer aa login result succeed
+[2020-10-08 09:30:22 500]: [ChatServiceDlg.cpp]	 [399][info] send message :{"communication_type":"loginbacksucceed","customer":"aa","login_result":"succeed"}
+
+[2020-10-08 09:30:22 546]: [ChatServiceDlg.cpp]	 [411][info] send message for all :{"communication_type":"showlogin","customer":"aa","customer_num":1}
+
+[2020-10-08 09:30:25 353]: [ChatServiceDlg.cpp]	 [248][info] recv message from 0, message content = {"communication_type":"deletecustomer","del_customer":"aa"}
+
+[2020-10-08 09:30:25 397]: [ChatServiceDlg.cpp]	 [428][info] delete customer aa succeed
+[2020-10-08 09:30:26 474]: [ChatServiceDlg.cpp]	 [233][info] ip = 127.0.0.1 connect
+[2020-10-08 09:30:26 554]: [ChatServiceDlg.cpp]	 [248][info] recv message from 1, message content = {"communication_type":"login","customer":"aa","password":"aa"}
+
+[2020-10-08 09:30:26 607]: [ChatServiceDlg.cpp]	 [386][info] customer aa login result succeed
+[2020-10-08 09:30:26 649]: [ChatServiceDlg.cpp]	 [399][info] send message :{"communication_type":"loginbacksucceed","customer":"aa","login_result":"succeed"}
+
+[2020-10-08 09:30:26 694]: [ChatServiceDlg.cpp]	 [411][info] send message for all :{"communication_type":"showlogin","customer":"aa","customer_num":1}
+
+[2020-10-08 09:30:27 664]: [ChatServiceDlg.cpp]	 [248][info] recv message from 1, message content = {"communication_type":"deletecustomer","del_customer":"aa"}
+
+[2020-10-08 09:30:27 715]: [ChatServiceDlg.cpp]	 [428][info] delete customer aa succeed
+[2020-10-08 09:30:29 972]: [ChatServiceDlg.cpp]	 [233][info] ip = 127.0.0.1 connect
+[2020-10-08 09:30:30 022]: [ChatServiceDlg.cpp]	 [248][info] recv message from 2, message content = {"communication_type":"register","customer":"aa","password":"aa"}
+
+[2020-10-08 09:30:30 068]: [ChatServiceDlg.cpp]	 [340][error] customer aa register result failed description is user name is already have
+[2020-10-08 09:30:30 112]: [ChatServiceDlg.cpp]	 [351][info] send message :{"communication_type":"registerbackfailed","customer":"aa","description":"user name is already have","register_result":"failed"}
+
+[2020-10-08 09:30:47 625]: [ChatServiceDlg.cpp]	 [196][info] 服务器监听关闭
+[2020-10-08 09:30:49 353]: [ChatServiceDlg.cpp]	 [196][info] 服务器开启监听，端口号为：6000
+[2020-10-08 09:31:02 639]: [ChatServiceDlg.cpp]	 [233][info] ip = 127.0.0.1 connect
+[2020-10-08 09:31:02 676]: [ChatServiceDlg.cpp]	 [248][info] recv message from 3, message content = {"communication_type":"login","customer":"aa","password":"aa"}
+
+[2020-10-08 09:31:02 722]: [ChatServiceDlg.cpp]	 [386][info] customer aa login result succeed
+[2020-10-08 09:31:02 765]: [ChatServiceDlg.cpp]	 [399][info] send message :{"communication_type":"loginbacksucceed","customer":"aa","login_result":"succeed"}
+
+[2020-10-08 09:31:02 810]: [ChatServiceDlg.cpp]	 [411][info] send message for all :{"communication_type":"showlogin","customer":"aa","customer_num":1}
+
+[2020-10-08 09:31:10 256]: [ChatServiceDlg.cpp]	 [248][info] recv message from 3, message content = {"communication_type":"deletecustomer","del_customer":"aa"}
+
+[2020-10-08 09:31:10 302]: [ChatServiceDlg.cpp]	 [428][info] delete customer aa succeed
