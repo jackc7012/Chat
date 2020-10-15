@@ -196,6 +196,7 @@
   <ItemGroup>
     <ClInclude Include="..\public\CLog.h" />
     <ClInclude Include="..\public\public.h" />
+    <ClInclude Include="CDataBase.h" />
     <ClInclude Include="ChatService.h" />
     <ClInclude Include="ChatServiceDlg.h" />
     <ClInclude Include="Resource.h" />
@@ -210,6 +211,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="CDataBase.cpp" />
     <ClCompile Include="ChatService.cpp" />
     <ClCompile Include="ChatServiceDlg.cpp" />
     <ClCompile Include="stdafx.cpp">
