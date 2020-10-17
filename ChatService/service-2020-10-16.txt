@@ -1,0 +1,10 @@
+[2020-10-16 11:51:48 209]: [ChatServiceDlg.cpp]	 [196][info] 服务器开启监听，端口号为：6000
+[2020-10-16 11:52:28 786]: [ChatServiceDlg.cpp]	 [233][info] ip = 127.0.0.1 connect
+[2020-10-16 11:52:28 815]: [ChatServiceDlg.cpp]	 [248][info] recv message from 0, message content = {"communication_type":"login","customer":"aa","password":"aa"}
+
+[2020-10-16 11:52:28 850]: [ChatServiceDlg.cpp]	 [386][info] customer aa login result succeed
+[2020-10-16 11:52:28 882]: [ChatServiceDlg.cpp]	 [399][info] send message :{"communication_type":"loginbacksucceed","customer":"aa","login_result":"succeed"}
+
+[2020-10-16 11:52:28 916]: [ChatServiceDlg.cpp]	 [411][info] send message for all :{"communication_type":"showlogin","customer":"aa","customer_num":1}
+
+[2020-10-16 11:53:00 667]: [ChatServiceDlg.cpp]	 [196][info] 服务器开启监听，端口号为：6000
