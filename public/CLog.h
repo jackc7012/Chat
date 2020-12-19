@@ -25,14 +25,14 @@ namespace mychat {
 
     class CLog {
     public:
-        static CLog* CreateInstance();
+        CLog();
+
+        ~CLog();
 
         void InitLog(const std::string& path, const Log_Level log_level = DEFAULT_LEVEL, const int file_size = 50, 
                      bool auto_flush = true);
 
         void UnitLog();
-
-        ~CLog();
 
         void PrintlogInfo(const std::string& file_name, const int file_line);
 
@@ -57,7 +57,6 @@ namespace mychat {
         }
 
     private:
-        CLog() {};
         CLog(CLog&) = delete;
         CLog& operator=(CLog&) = delete;
 
@@ -70,7 +69,6 @@ namespace mychat {
         void WriteFile(const std::string& content);
 
     private:
-        static CLog* log;
         std::mutex mt_write_file;
         std::string str_return;
         std::string str_return_one_line;

@@ -1,16 +1,13 @@
 #include "CLog.h"
 using namespace mychat;
 
-CLog* CLog::log = nullptr;
+CLog::CLog() {
 
-CLog* mychat::CLog::CreateInstance()
-{
-    if (log == nullptr) {
-        log = new CLog;
-    }
-    return log;
 }
 
+CLog::~CLog() {
+    UnitLog();
+}
 void CLog::InitLog(const std::string &path, const Log_Level log_level, const int file_size, bool auto_flush) {
     this->file_path = AssembleFilePath(path);
     this->log_level = log_level;
@@ -22,10 +19,6 @@ void CLog::UnitLog() {
     if (auto_flush == false) {
         WriteFile(str_return);
     }
-}
-
-CLog::~CLog() {
-    UnitLog();
 }
 
 void CLog::PrintlogInfo(const std::string& file_name, const int file_line) {
