@@ -1,0 +1,29 @@
+[2020-12-18 14:55:20 035]: [ChatServiceDlg.cpp]	 [183][info] 服务器开启监听，端口号为：6000
+[2020-12-18 14:56:05 663]: [ChatServiceDlg.cpp]	 [194][info] ip = 127.0.0.1 connect
+[2020-12-18 14:56:05 710]: [ChatServiceDlg.cpp]	 [209][info] recv message from 0, message content = {"communication_type":"register","customer":"cc","password":"cc"}
+
+[2020-12-18 14:56:05 741]: [ChatServiceDlg.cpp]	 [265][info] customer cc registere result succeed
+[2020-12-18 14:56:05 773]: [ChatServiceDlg.cpp]	 [269][info] send message :{"communication_type":"registerbacksucceed","customer":"cc","register_result":"succeed"}
+
+[2020-12-18 14:56:12 050]: [ChatServiceDlg.cpp]	 [209][info] recv message from 0, message content = {"communication_type":"login","customer":"cc","password":"cc"}
+
+[2020-12-18 14:56:12 087]: [ChatServiceDlg.cpp]	 [303][info] customer cc login result succeed
+[2020-12-18 14:56:12 120]: [ChatServiceDlg.cpp]	 [316][info] send message :{"communication_type":"loginbacksucceed","customer":"cc","login_result":"succeed"}
+
+[2020-12-18 14:56:12 154]: [ChatServiceDlg.cpp]	 [336][info] send message for all :{"communication_type":"showlogin","customer":"cc","customer_num":1}
+
+[2020-12-18 14:56:45 629]: [ChatServiceDlg.cpp]	 [194][info] ip = 127.0.0.1 connect
+[2020-12-18 14:56:45 660]: [ChatServiceDlg.cpp]	 [209][info] recv message from 1, message content = {"communication_type":"register","customer":"dd","password":"dd"}
+
+[2020-12-18 14:56:45 691]: [ChatServiceDlg.cpp]	 [265][info] customer dd registere result succeed
+[2020-12-18 14:56:45 738]: [ChatServiceDlg.cpp]	 [269][info] send message :{"communication_type":"registerbacksucceed","customer":"dd","register_result":"succeed"}
+
+[2020-12-18 14:56:46 561]: [ChatServiceDlg.cpp]	 [209][info] recv message from 1, message content = {"communication_type":"login","customer":"dd","password":"dd"}
+
+[2020-12-18 14:56:46 593]: [ChatServiceDlg.cpp]	 [303][info] customer dd login result succeed
+[2020-12-18 14:56:46 626]: [ChatServiceDlg.cpp]	 [316][info] send message :{"communication_type":"loginbacksucceed","customer":"dd","login_result":"succeed"}
+
+[2020-12-18 14:56:46 660]: [ChatServiceDlg.cpp]	 [336][info] send message for all :{"communication_type":"showlogin","customer":"cc|dd","customer_num":2}
+
+[2020-12-18 14:56:57 137]: [ChatServiceDlg.cpp]	 [209][info] recv message from 0, message content = {"communication_type":"chat","content":"dfdsf","source":"cc","target":"dd"}
+

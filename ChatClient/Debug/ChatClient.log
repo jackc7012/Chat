@@ -1,0 +1,15 @@
+﻿  stdafx.cpp
+  CLog.cpp
+  _WIN32_WINNT not defined. Defaulting to _WIN32_WINNT_MAXVER (see WinSDKVer.h)
+  public.cpp
+  正在生成代码...
+  ChatClient.cpp
+  ChatClientDlg.cpp
+I:\study\my_code\Chat\ChatClient\ChatClientDlg.cpp(663,148): warning C4244: “参数”: 从“__int64”转换到“UINT”，可能丢失数据
+I:\study\my_code\Chat\ChatClient\ChatClientDlg.cpp(700,146): warning C4244: “参数”: 从“__int64”转换到“UINT”，可能丢失数据
+  CMessage.cpp
+  正在生成代码...
+json_vc71_libmtd.lib(json_reader.obj) : warning LNK4099: 未找到 PDB“lib_json.pdb”(使用“json_vc71_libmtd.lib(json_reader.obj)”或在“I:\study\my_code\Chat\Debug\lib_json.pdb”中寻找)；正在链接对象，如同没有调试信息一样
+json_vc71_libmtd.lib(json_value.obj) : warning LNK4099: 未找到 PDB“lib_json.pdb”(使用“json_vc71_libmtd.lib(json_value.obj)”或在“I:\study\my_code\Chat\Debug\lib_json.pdb”中寻找)；正在链接对象，如同没有调试信息一样
+json_vc71_libmtd.lib(json_writer.obj) : warning LNK4099: 未找到 PDB“lib_json.pdb”(使用“json_vc71_libmtd.lib(json_writer.obj)”或在“I:\study\my_code\Chat\Debug\lib_json.pdb”中寻找)；正在链接对象，如同没有调试信息一样
+  ChatClient.vcxproj -> I:\study\my_code\Chat\Debug\ChatClient.exe

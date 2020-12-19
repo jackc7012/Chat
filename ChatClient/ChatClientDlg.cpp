@@ -13,7 +13,7 @@
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
-static const char *s_verify_code = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789";
+static const char *s_verify_code = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 class CAboutDlg : public CDialogEx {
   public:
@@ -64,8 +64,6 @@ BEGIN_MESSAGE_MAP(CChatClientDlg, CDialogEx)
     ON_BN_CLICKED(IDC_REGISTER, &CChatClientDlg::OnBnClickedRegister)
     ON_BN_CLICKED(IDC_TRANSFERFILE, &CChatClientDlg::OnBnClickedTransferfile)
     ON_MESSAGE(WM_TRANSFERFILEACCEPT, OnTransferFileAccept)
-    ON_WM_DESTROY()
-    ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 // CChatClientDlg 消息处理程序
@@ -96,49 +94,7 @@ BOOL CChatClientDlg::OnInitDialog() {
     SetIcon(m_hIcon, TRUE);			// 设置大图标
     SetIcon(m_hIcon, FALSE);		// 设置小图标
 
-    // 设置随机数种子
-    srand((unsigned int)time(NULL));
-
-    // 设置字体
-    InitFont();
-
-    // 禁用聊天组框
-    EnableWindowChat(FALSE);
-
-    GetDlgItem(IDC_REQUESTFILENAME)->ShowWindow(SW_HIDE);
-
-    SetDlgItemText(IDC_IP, _T("127.0.0.1"));
-
-    SetVerify();
-
-    return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
-}
-
-void CChatClientDlg::ConnectServer(const std::string & ip/* = "127.0.0.1"*/) {
-    socket_client = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (INVALID_SOCKET == socket_client) {
-        MessageBox(_T("创建服务失败,请重试！"), _T("错误"), MB_ICONERROR);
-        return;
-    }
-
-    addr.sin_family = AF_INET;
-    addr.sin_port = ntohs(SOCKET_PORT);
-    addr.sin_addr.S_un.S_addr = inet_addr(ip.c_str());
-
-    SetDlgItemText(IDC_TEXT, _T("正在连接服务器.......\r\n"));
-    UpdateWindow();
-
-    if (0 != ::connect(socket_client, (SOCKADDR *)&addr, sizeof(addr))) {
-        MessageBox(_T("连接失败，请重试！"), _T("错误"), MB_ICONERROR);
-        return;
-    }
-    ::WSAAsyncSelect(socket_client, this->m_hWnd, WM_SOCKET, FD_READ);
-    is_service_open = true;
-
-    return;
-}
-
-void CChatClientDlg::InitFont() {
+    // TODO: 在此添加额外的初始化代码
     CFont font;
     font.CreatePointFont(150, _T("宋体"), NULL);
     // 组框
@@ -147,6 +103,8 @@ void CChatClientDlg::InitFont() {
     // 登录信息
     GetDlgItem(IDC_STATICIP)->SetFont(&font);
     GetDlgItem(IDC_IP)->SetFont(&font);
+    GetDlgItem(IDC_STATICPORT)->SetFont(&font);
+    GetDlgItem(IDC_PORT)->SetFont(&font);
     GetDlgItem(IDC_STATICNAME)->SetFont(&font);
     GetDlgItem(IDC_NAME)->SetFont(&font);
     GetDlgItem(IDC_STATICPASSWORD)->SetFont(&font);
@@ -163,148 +121,26 @@ void CChatClientDlg::InitFont() {
     GetDlgItem(IDC_SEND)->SetFont(&font);
     GetDlgItem(IDC_FILENAME)->SetFont(&font);
     GetDlgItem(IDC_TRANSFERFILE)->SetFont(&font);
+    GetDlgItem(IDC_SENDTEXT)->EnableWindow(FALSE);
+    GetDlgItem(IDC_SEND)->EnableWindow(FALSE);
+    GetDlgItem(IDC_FILENAME)->EnableWindow(FALSE);
+    GetDlgItem(IDC_TRANSFERFILE)->EnableWindow(FALSE);
 
-    return;
-}
+    GetDlgItem(IDC_REQUESTFILENAME)->ShowWindow(SW_HIDE);
 
-void CChatClientDlg::EnableWindowInfo(const BOOL flag/* = TRUE*/) {
-    GetDlgItem(IDC_IP)->EnableWindow(flag);
-    GetDlgItem(IDC_NAME)->EnableWindow(flag);
-    GetDlgItem(IDC_PASSWORD)->EnableWindow(flag);
-    GetDlgItem(IDC_CODE)->EnableWindow(flag);
-    GetDlgItem(IDC_CODE_VERIFY)->EnableWindow(flag);
-}
+    SetDlgItemText(IDC_IP, _T("127.0.0.1"));
+    SetDlgItemText(IDC_PORT, _T("6000"));
 
-void CChatClientDlg::EnableWindowChat(const BOOL flag/* = TRUE*/) {
-    GetDlgItem(IDC_SENDTEXT)->EnableWindow(flag);
-    GetDlgItem(IDC_SEND)->EnableWindow(flag);
-    GetDlgItem(IDC_FILENAME)->EnableWindow(flag);
-    GetDlgItem(IDC_TRANSFERFILE)->EnableWindow(flag);
-}
-
-void CChatClientDlg::SetVerify() {
+    srand((unsigned int)time(NULL));
     int code_rand = 0;
     std::string verify_code("");
     for (int i = 0; i < 4; ++i) {
-        code_rand = rand() % strlen(s_verify_code);
+        code_rand = rand() % 62;
         verify_code += s_verify_code[code_rand];
     }
     SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
-}
 
-void CChatClientDlg::HandleRegister(const int flag, const s_HandleRecv & handle_recv) {
-    CString str_text;
-    switch (flag) {
-    case 0: {
-        GetDlgItemText(IDC_TEXT, str_text);
-        if (str_text.IsEmpty()) {
-            str_text += "注册成功！";
-        } else {
-            str_text += "\r\n注册成功！";
-        }
-        SetDlgItemText(IDC_TEXT, str_text);
-        g_log << "register " << handle_recv.Param.RegisterBack.customer << " succeed";
-        g_log.PrintlogCustom(FILE_FORMAT);
-        delete[]handle_recv.Param.RegisterBack.customer;
-        delete[]handle_recv.Param.RegisterBack.register_result;
-    }
-    break;
-
-    case 1: {
-        MessageBox(handle_recv.Param.RegisterBack.description, _T("错误"), MB_ICONERROR);
-        g_log << "register " << handle_recv.Param.RegisterBack.customer << " failed , description " << handle_recv.Param.RegisterBack.description;
-        g_log.PrintlogCustom(FILE_FORMAT);
-        delete[]handle_recv.Param.RegisterBack.customer;
-        delete[]handle_recv.Param.RegisterBack.register_result;
-        delete[]handle_recv.Param.RegisterBack.description;
-    }
-    break;
-
-    default:
-        break;
-    }
-	::closesocket(socket_client);
-
-    return;
-}
-
-void CChatClientDlg::HandleLogin(const int flag, const s_HandleRecv & handle_recv) {
-    CString str_text;
-    switch (flag) {
-    case 0: {
-        if (0 == nick_name.compare(handle_recv.Param.LoginBack.customer)) {
-            GetDlgItemText(IDC_TEXT, str_text);
-            if (str_text.IsEmpty()) {
-                str_text += "连接服务器成功！";
-            } else {
-                str_text += "\r\n连接服务器成功！";
-            }
-            EnableWindowInfo(FALSE);
-            EnableWindowChat(TRUE);
-            SetDlgItemText(IDC_TEXT, str_text);
-            SetDlgItemText(IDC_CONNECT, _T("断开"));
-        }
-        delete[]handle_recv.Param.LoginBack.customer;
-        delete[]handle_recv.Param.LoginBack.login_result;
-    }
-    break;
-
-    case 1: {
-        if (0 == nick_name.compare(handle_recv.Param.LoginBack.customer)) {
-            MessageBox(handle_recv.Param.LoginBack.description, _T("错误"), MB_ICONERROR);
-        }
-        delete[]handle_recv.Param.LoginBack.customer;
-        delete[]handle_recv.Param.LoginBack.login_result;
-        delete[]handle_recv.Param.LoginBack.description;
-    }
-    break;
-
-    default:
-        break;
-    }
-
-    return;
-}
-
-void CChatClientDlg::HandleDeleteCustomer(const s_HandleRecv & handle_recv) {
-    CString str_text;
-    int del_index = m_list_login_people.FindString(0, handle_recv.Param.DelCustomer.customer);
-    m_list_login_people.DeleteString(del_index);
-    GetDlgItemText(IDC_TEXT, str_text);
-    char content[50] = { 0 };
-    sprintf_s(content, 50, "\r\n%s已退出", handle_recv.Param.DelCustomer.customer);
-    str_text += content;
-    SetDlgItemText(IDC_TEXT, str_text);
-
-    return;
-}
-
-void CChatClientDlg::HandleShowLogin(const s_HandleRecv & handle_recv) {
-    for (unsigned int i = 0; i < handle_recv.Param.ShowLogin.customer_num; ++i) {
-        if (nick_name.compare(handle_recv.Param.ShowLogin.customer[i]) != 0) {
-            m_list_login_people.AddString(handle_recv.Param.ShowLogin.customer[i]);
-        }
-        delete[]handle_recv.Param.ShowLogin.customer[i];
-    }
-    delete[]handle_recv.Param.ShowLogin.customer;
-}
-
-void CChatClientDlg::HandleChat(const s_HandleRecv & handle_recv) {
-    CString str_text;
-    if (nick_name.compare(handle_recv.Param.Chat.target) == 0) {
-        GetDlgItemText(IDC_TEXT, str_text);
-        str_text += "\r\n";
-        char content[DATA_LENGTH + 10] = { 0 };
-        sprintf_s(content, DATA_LENGTH + 10, "%s说：%s", handle_recv.Param.Chat.source, handle_recv.Param.Chat.content);
-        str_text += content;
-        SetDlgItemText(IDC_TEXT, str_text);
-    }
-    delete[]handle_recv.Param.Chat.content;
-    delete[]handle_recv.Param.Chat.source;
-    delete[]handle_recv.Param.Chat.target;
-}
-
-void CChatClientDlg::HandleTransferfile(const int flag, const s_HandleRecv & handle_recv) {
+    return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
 void CChatClientDlg::OnSysCommand(UINT nID, LPARAM lParam) {
@@ -348,105 +184,172 @@ HCURSOR CChatClientDlg::OnQueryDragIcon() {
 }
 
 void CChatClientDlg::OnBnClickedRegister() {
-    CString str_ip, str_name, str_password, str_code, str_code_verify;
+    // TODO: 在此添加控件通知处理程序代码
+    CString str_ip, str_port, str_name, str_password, str_code, str_code_verify;
     GetDlgItemText(IDC_IP, str_ip);
+    GetDlgItemText(IDC_PORT, str_port);
     GetDlgItemText(IDC_NAME, str_name);
     GetDlgItemText(IDC_PASSWORD, str_password);
     GetDlgItemText(IDC_CODE, str_code);
     GetDlgItemText(IDC_CODE_VERIFY, str_code_verify);
-    if ("" == str_ip) {
-        MessageBox(_T("IP不能为空"), _T("错误"), MB_ICONERROR);
-    } else if ("" == str_name) {
+    if (str_ip == "" || str_port == "") {
+        MessageBox(_T("IP或端口号不能为空"), _T("错误"), MB_ICONERROR);
+    } else if (str_name == "") {
         MessageBox(_T("昵称不能为空"), _T("错误"), MB_ICONERROR);
-    } /*else if ("" == str_code) {
-        MessageBox(_T("请输入验证码"), _T("错误"), MB_ICONERROR);
-    } else if (!VerifyCode(str_code, str_code_verify)) {
+    } else if (!VerifyCode(str_code.GetBuffer(0), str_code_verify.GetBuffer(0))) {
         MessageBox(_T("验证码错误"), _T("错误"), MB_ICONERROR);
-        SetVerify();
-    }*/ else {
-        s_HandleRecv to_send;
-        const char *ip = str_ip.GetBuffer();
-        const char *name = str_name.GetBuffer();
-        const char *password = str_password.GetBuffer();
-        if (!is_service_open) {
-            ConnectServer(ip);
+
+        int code_rand = 0;
+        std::string verify_code("");
+        for (int i = 0; i < 4; ++i) {
+            code_rand = rand() % 62;
+            verify_code += s_verify_code[code_rand];
         }
+
+        SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
+    } else {
+        s_HandleRecv to_send;
+        int port = atoi(str_port.GetBuffer(0));
+        const char *ip = str_ip.GetBuffer(0);
+        const char *name = str_name.GetBuffer(0);
+        const char *password = str_password.GetBuffer(0);
+        if (!is_service_open) {
+            socket_client = ::socket(AF_INET, SOCK_STREAM, 0);
+            if (INVALID_SOCKET == socket_client) {
+                MessageBox(_T("创建服务失败,请重试！"), _T("错误"), MB_ICONERROR);
+                return;
+            }
+
+            addr.sin_family = AF_INET;
+            addr.sin_port = ntohs(port);
+            addr.sin_addr.S_un.S_addr = inet_addr(ip);
+
+            if (connect(socket_client, (SOCKADDR *)&addr, sizeof(addr)) != 0) {
+                MessageBox(_T("连接失败，请重试！"), _T("错误"), MB_ICONERROR);
+                return;
+            }
+            ::WSAAsyncSelect(socket_client, this->m_hWnd, WM_SOCKET, FD_READ);
+            is_service_open = true;
+        }
+
         //std::string encry_psd = Encryption(password);
         to_send.Param.Register.customer = const_cast<char *>(name);
         to_send.Param.Register.password = const_cast<char *>(password);
         std::string send_data = EncodeJson(REGISTER, to_send);
         ::send(socket_client, send_data.c_str(), send_data.length(), 0);
     }
+    str_port.ReleaseBuffer();
     str_ip.ReleaseBuffer();
     str_name.ReleaseBuffer();
     str_password.ReleaseBuffer();
     str_code.ReleaseBuffer();
     str_code_verify.ReleaseBuffer();
+    int code_rand = 0;
+    std::string verify_code("");
+    for (int i = 0; i < 4; ++i) {
+        code_rand = rand() % 62;
+        verify_code += s_verify_code[code_rand];
+    }
 
-    return;
+    SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
 }
 
 void CChatClientDlg::OnBnClickedConnect() {
-    CString str_ip, str_name, str_password, str_code, str_code_verify, str_connect, str_text;
+    // TODO: 在此添加控件通知处理程序代码
+    CString str_ip, str_port, str_name, str_password, str_code, str_code_verify, str_connect, str_text;
     GetDlgItemText(IDC_IP, str_ip);
+    GetDlgItemText(IDC_PORT, str_port);
     GetDlgItemText(IDC_NAME, str_name);
     GetDlgItemText(IDC_PASSWORD, str_password);
     GetDlgItemText(IDC_CODE, str_code);
     GetDlgItemText(IDC_CODE_VERIFY, str_code_verify);
     GetDlgItemText(IDC_CONNECT, str_connect);
-    s_HandleRecv to_send;
-    if ("连接" == str_connect) {
-        if ("" == str_ip) {
-            MessageBox(_T("IP不能为空"), _T("错误"), MB_ICONERROR);
-        } else if ("" == str_name) {
+    if (str_connect == "连接") {
+        if (str_ip == "" || str_port == "") {
+            MessageBox(_T("IP或端口号不能为空"), _T("错误"), MB_ICONERROR);
+        } else if (str_name == "") {
             MessageBox(_T("昵称不能为空"), _T("错误"), MB_ICONERROR);
-        } /*else if ("" == str_code) {
-            MessageBox(_T("请输入验证码"), _T("错误"), MB_ICONERROR);
-        } else if (!VerifyCode(str_code, str_code_verify)) {
+        } /*else if (!VerifyCode(str_code.GetBuffer(0), str_code_verify.GetBuffer(0))) {
             MessageBox(_T("验证码错误"), _T("错误"), MB_ICONERROR);
-            SetVerify();
-        }*/ else {
-            const char *ip = str_ip.GetBuffer();
-            const char *name = str_name.GetBuffer();
-            const char *password = str_password.GetBuffer();
-            if (!is_service_open) {
-                ConnectServer(ip);
+            int code_rand = 0;
+            std::string verify_code("");
+            for (int i = 0; i < 4; ++i) {
+                code_rand = rand() % 62;
+                verify_code += s_verify_code[code_rand];
             }
+
+            SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
+        }*/ else {
+            s_HandleRecv to_send;
+            int port = atoi(str_port.GetBuffer(0));
+            const char *ip = str_ip.GetBuffer(0);
+            const char *name = str_name.GetBuffer(0);
+            const char *password = str_password.GetBuffer(0);
+            if (!is_service_open) {
+                socket_client = ::socket(AF_INET, SOCK_STREAM, 0);
+                if (INVALID_SOCKET == socket_client) {
+                    MessageBox(_T("创建服务失败,请重试！"), _T("错误"), MB_ICONERROR);
+                    return;
+                }
+
+                addr.sin_family = AF_INET;
+                addr.sin_port = ntohs(port);
+                addr.sin_addr.S_un.S_addr = inet_addr(ip);
+
+                SetDlgItemText(IDC_TEXT, _T("正在连接服务器.......\r\n"));
+                UpdateWindow();
+
+                if(connect(socket_client, (SOCKADDR *)&addr, sizeof(addr)) != 0) {
+                    MessageBox(_T("连接失败，请重试！"), _T("错误"), MB_ICONERROR);
+                    return;
+                }
+                ::WSAAsyncSelect(socket_client, this->m_hWnd, WM_SOCKET, FD_READ);
+                is_service_open = true;
+            }
+
             //std::string encry_psd = Encryption(password);
             to_send.Param.Login.customer = const_cast<char *>(name);
             to_send.Param.Login.password = const_cast<char *>(password);
             std::string send_data = EncodeJson(LOGIN, to_send);
             ::send(socket_client, send_data.c_str(), send_data.length(), 0);
-            nick_name = str_name;
+            nick_name = str_name.GetBuffer(0);
         }
+        str_port.ReleaseBuffer();
+        str_ip.ReleaseBuffer();
+        str_name.ReleaseBuffer();
+        str_password.ReleaseBuffer();
+        str_code.ReleaseBuffer();
+        str_code_verify.ReleaseBuffer();
         char file_path[256] = { 0 };
-        sprintf_s(file_path, 256, "./%s", nick_name.c_str());
-        g_log.InitLog(file_path, DEBUG_LEVEL, true);
-    } else if ("断开" == str_connect) {
-        to_send.Param.DelCustomer.customer = const_cast<char *>(nick_name.c_str());
-        std::string send_data = EncodeJson(DELETECUSTOMER, to_send);
-        ::send(socket_client, send_data.c_str(), send_data.length(), 0);
-        ::closesocket(socket_client);
-        EnableWindowInfo(TRUE);
-        EnableWindowChat(FALSE);
+        sprintf_s(file_path, 256, "./%s.txt", nick_name.c_str());
+        g_log.InitLog(file_path, DEBUG_LEVEL, 10);
+    } else if (str_connect == "断开") {
+        closesocket(socket_client);
+        GetDlgItem(IDC_IP)->EnableWindow(TRUE);
+        GetDlgItem(IDC_PORT)->EnableWindow(TRUE);
+        GetDlgItem(IDC_NAME)->EnableWindow(TRUE);
+        GetDlgItem(IDC_PASSWORD)->EnableWindow(TRUE);
+        GetDlgItem(IDC_CODE)->EnableWindow(TRUE);
+        GetDlgItem(IDC_CODE_VERIFY)->EnableWindow(TRUE);
+        GetDlgItem(IDC_SENDTEXT)->EnableWindow(FALSE);
+        GetDlgItem(IDC_SEND)->EnableWindow(FALSE);
         SetDlgItemText(IDC_CONNECT, _T("连接"));
-        nick_name = "";
         is_service_open = false;
-        SetVerify();
+        int code_rand = 0;
+        std::string verify_code("");
+        for (int i = 0; i < 4; ++i) {
+            code_rand = rand() % 62;
+            verify_code += s_verify_code[code_rand];
+        }
+
+        SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
 
         g_log.UnitLog();
     }
-    str_ip.ReleaseBuffer();
-    str_name.ReleaseBuffer();
-    str_password.ReleaseBuffer();
-    str_code.ReleaseBuffer();
-    str_code_verify.ReleaseBuffer();
-	SetDlgItemText(IDC_SENDTEXT, "");
-
-    return;
 }
 
 void CChatClientDlg::OnBnClickedSend() {
+    // TODO: 在此添加控件通知处理程序代码
     CString str_text, str_send, str_send_target;
     s_HandleRecv to_send;
     GetDlgItemText(IDC_SENDTEXT, str_send);
@@ -455,10 +358,10 @@ void CChatClientDlg::OnBnClickedSend() {
         MessageBox(_T("请选择一个用户！"), _T("错误"), MB_ICONERROR);
     } else {
         m_list_login_people.GetText(cur_sel, str_send_target);
-        if ("" == str_send) {
+        if (str_send == "") {
             MessageBox(_T("发送内容不能为空...."), _T("错误"), MB_ICONERROR);
         } else {
-            to_send.Param.Chat.content = str_send.GetBuffer();
+            to_send.Param.Chat.content = str_send.GetBuffer(0);
             to_send.Param.Chat.source = const_cast<char *>(nick_name.c_str());
             to_send.Param.Chat.target = str_send_target.GetBuffer(0);
             std::string js_str_send = EncodeJson(CHAT, to_send);
@@ -470,14 +373,14 @@ void CChatClientDlg::OnBnClickedSend() {
             str_text += str_send;
             SetDlgItemText(IDC_TEXT, str_text);
             SetDlgItemText(IDC_SENDTEXT, "");
+            str_send.ReleaseBuffer();
             str_send_target.ReleaseBuffer();
         }
     }
-
-    return;
 }
 
 void CChatClientDlg::OnBnClickedTransferfile() {
+    // TODO: 在此添加控件通知处理程序代码
     CString str_text, str_send_target;
     int cur_sel = m_list_login_people.GetCurSel();
     if (cur_sel == CB_ERR) {
@@ -512,66 +415,122 @@ void CChatClientDlg::OnBnClickedTransferfile() {
 }
 
 void CChatClientDlg::OnOK() {
+    // TODO: 在此添加专用代码和/或调用基类
     OnBnClickedSend();
 }
 
 LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
-    char *str_recv = new char[DATA_LENGTH];
+    char *str_recv = new char[data_length];
     CString str_text;
-    memset(str_recv, 0, DATA_LENGTH);
+    memset(str_recv, 0, data_length);
     if (lParam == FD_READ) {
         UpdateData(TRUE);
-        ::recv(socket_client, str_recv, DATA_LENGTH, 0);
+        GetDlgItemText(IDC_TEXT, str_text);
+        ::recv(socket_client, str_recv, data_length, 0);
         s_HandleRecv handle_recv, to_send;
         DecodeJson(str_recv, handle_recv);
         switch (handle_recv.type) {
         case NULLCOMMUNICATION:
             break;
 
-        case ERRORCOMMUNICATION:
+        case  ERRORCOMMUNICATION:
             break;
 
         case REGISTERBACKSUCCEED: {
-            HandleRegister(0, handle_recv);
+            if (nick_name.compare(handle_recv.Param.RegisterBack.customer) == 0) {
+                GetDlgItemText(IDC_TEXT, str_text);
+                if (str_text.IsEmpty()) {
+                    str_text += "注册成功！";
+                } else {
+                    str_text += "\r\n注册成功！";
+                }
+                SetDlgItemText(IDC_TEXT, str_text);
+            }
+            delete[]handle_recv.Param.RegisterBack.register_result;
         }
         break;
 
         case REGISTERBACKFAILED: {
-            HandleRegister(1, handle_recv);
+            if (nick_name.compare(handle_recv.Param.RegisterBack.customer) == 0) {
+                MessageBox(handle_recv.Param.RegisterBack.description, _T("错误"), MB_ICONERROR);
+            }
+            delete[]handle_recv.Param.RegisterBack.register_result;
+            delete[]handle_recv.Param.RegisterBack.description;
         }
         break;
 
         case LOGINBACKSUCCEED: {
-            HandleLogin(0, handle_recv);
+            if (nick_name.compare(handle_recv.Param.LoginBack.customer) == 0) {
+                GetDlgItemText(IDC_TEXT, str_text);
+                if (str_text.IsEmpty()) {
+                    str_text += "连接服务器成功！";
+                } else {
+                    str_text += "\r\n连接服务器成功！";
+                }
+                GetDlgItem(IDC_IP)->EnableWindow(FALSE);
+                GetDlgItem(IDC_PORT)->EnableWindow(FALSE);
+                GetDlgItem(IDC_NAME)->EnableWindow(FALSE);
+                GetDlgItem(IDC_PASSWORD)->EnableWindow(FALSE);
+                GetDlgItem(IDC_CODE)->EnableWindow(FALSE);
+                GetDlgItem(IDC_CODE_VERIFY)->EnableWindow(FALSE);
+                GetDlgItem(IDC_SENDTEXT)->EnableWindow(TRUE);
+                GetDlgItem(IDC_SEND)->EnableWindow(TRUE);
+                SetDlgItemText(IDC_TEXT, str_text);
+                GetDlgItem(IDC_SENDTEXT)->EnableWindow(TRUE);
+                GetDlgItem(IDC_SEND)->EnableWindow(TRUE);
+                GetDlgItem(IDC_FILENAME)->EnableWindow(TRUE);
+                GetDlgItem(IDC_TRANSFERFILE)->EnableWindow(TRUE);
+                SetDlgItemText(IDC_CONNECT, _T("断开"));
+            }
+            delete[]handle_recv.Param.LoginBack.login_result;
         }
         break;
 
         case LOGINBACKFAILED: {
-            HandleLogin(1, handle_recv);
+            if (nick_name.compare(handle_recv.Param.LoginBack.customer) == 0) {
+                MessageBox(handle_recv.Param.LoginBack.description, _T("错误"), MB_ICONERROR);
+            }
+            delete[]handle_recv.Param.LoginBack.login_result;
+            delete[]handle_recv.Param.LoginBack.description;
         }
         break;
 
         case DELETECUSTOMER: {
-            HandleDeleteCustomer(handle_recv);
-
+            int del_index = m_list_login_people.FindString(0, handle_recv.Param.DelCustomer.customer);
+            m_list_login_people.DeleteString(del_index);
         }
         break;
 
         case SHOWLOGIN: {
-            HandleShowLogin(handle_recv);
+            for (unsigned int i = 0; i < handle_recv.Param.ShowLogin.customer_num; ++i) {
+                if (nick_name.compare(handle_recv.Param.ShowLogin.customer[i]) != 0) {
+                    m_list_login_people.AddString(handle_recv.Param.ShowLogin.customer[i]);
+                }
+                delete[]handle_recv.Param.ShowLogin.customer[i];
+            }
+            delete[]handle_recv.Param.ShowLogin.customer;
         }
         break;
 
         case CHAT: {
-            HandleChat(handle_recv);
+            if (nick_name.compare(handle_recv.Param.Chat.target) == 0) {
+                str_text += "\r\n";
+                char content[data_length + 10] = { 0 };
+                sprintf_s(content, data_length + 10, "%s说：%s", handle_recv.Param.Chat.source, handle_recv.Param.Chat.content);
+                str_text += content;
+                SetDlgItemText(IDC_TEXT, str_text);
+            }
+            delete[]handle_recv.Param.Chat.content;
+            delete[]handle_recv.Param.Chat.source;
+            delete[]handle_recv.Param.Chat.target;
         }
         break;
 
         case TRANSFERFILEREQUEST: {
             if (nick_name.compare(handle_recv.Param.TransferFileRequest.target) == 0) {
                 CMessage m_dlg;
-                char temp[DATA_LENGTH] = { 0 };
-                sprintf_s(temp, DATA_LENGTH, "%s向你发送%s文件，大小为%s字节，\r\n是否接受？",
+                char temp[data_length] = { 0 };
+                sprintf_s(temp, data_length, "%s向你发送%s文件，大小为%s字节，\r\n是否接受？",
                           handle_recv.Param.TransferFileRequest.source,handle_recv.Param.TransferFileRequest.file_name, handle_recv.Param.TransferFileRequest.file_length);
                 m_dlg.message = temp;
                 int i_return = m_dlg.DoModal();
@@ -599,7 +558,7 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
                     can_transfer_file = false;
                 }
                 std::string js_str_send = EncodeJson(TRANSFERFILERESPOND, to_send);
-                ::send(socket_client, js_str_send.c_str(), js_str_send.length(), 0);
+                int c = ::send(socket_client, js_str_send.c_str(), js_str_send.length(), 0);
             }
             delete[]handle_recv.Param.TransferFileRequest.target;
             delete[]handle_recv.Param.TransferFileRequest.source;
@@ -650,7 +609,6 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
         UpdateData(FALSE);
     }
     delete []str_recv;
-
     return 0;
 }
 
@@ -662,25 +620,25 @@ int CChatClientDlg::thread_TransferFile(const HWND & hwnd, const std::string & f
     unsigned int now_block = 1;
     char c_file_length[256] = { 0 };
     sprintf_s(c_file_length, 256, "%lld", (long long)len);
-    char *getStr = new char[DATA_LENGTH];
+    char *getStr = new char[data_length];
     to_send.Param.TransferFile.file_name = const_cast<char *>(file_name.c_str());
     to_send.Param.TransferFile.file_length = c_file_length;
     to_send.Param.TransferFile.source = const_cast<char *>(nick_name.c_str());
     to_send.Param.TransferFile.target = const_cast<char *>(target.c_str());
-    to_send.Param.TransferFile.file_block = (unsigned int)ceil((double)((float)len / DATA_LENGTH));
+    to_send.Param.TransferFile.file_block = (unsigned int)ceil((double)((float)len / data_length));
     while (now_block <= to_send.Param.TransferFile.file_block) {
-        memset(getStr, 0, DATA_LENGTH);
-        m_file.Read(getStr, DATA_LENGTH);
+        memset(getStr, 0, data_length);
+        m_file.Read(getStr, data_length);
         to_send.Param.TransferFile.file_content = getStr;
         to_send.Param.TransferFile.current_block = now_block++;
         std::string js_str_send = EncodeJson(TRANSFERFILE, to_send);
         ::send(socket_client, js_str_send.c_str(), js_str_send.length(), 0);
-        m_file.Seek(DATA_LENGTH * to_send.Param.TransferFile.current_block, CFile::begin);
+        m_file.Seek(data_length * to_send.Param.TransferFile.current_block, CFile::begin);
     }
     delete[]getStr;
     m_file.Close();
-    char str_text[DATA_LENGTH] = { 0 };
-    ::GetDlgItemText(hwnd, IDC_TEXT, str_text, DATA_LENGTH);
+    char str_text[data_length] = { 0 };
+    ::GetDlgItemText(hwnd, IDC_TEXT, str_text, data_length);
     strcat_s(str_text, "\r\n传输完成！");
     ::SetDlgItemText(hwnd, IDC_TEXT, str_text);
 
@@ -698,15 +656,15 @@ int CChatClientDlg::thread_TransferFileAccept(const HWND & hwnd, const std::stri
                 file_accept.Open(file_name.c_str(), CFile::modeWrite | CFile::modeCreate | CFile::typeBinary);
             }
             if (transfer_file_accept.Param.TransferFile.current_block != transfer_file_accept.Param.TransferFile.file_block) {
-                file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, DATA_LENGTH);
+                file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, data_length);
                 file_accept.Flush();
-                file_accept.Seek(DATA_LENGTH * transfer_file_accept.Param.TransferFile.current_block, CFile::begin);
+                file_accept.Seek(data_length * transfer_file_accept.Param.TransferFile.current_block, CFile::begin);
             } else if (transfer_file_accept.Param.TransferFile.current_block == transfer_file_accept.Param.TransferFile.file_block) {
-                file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, atoll(transfer_file_accept.Param.TransferFile.file_length) - (transfer_file_accept.Param.TransferFile.file_block - 1) * DATA_LENGTH);
+                file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, atoll(transfer_file_accept.Param.TransferFile.file_length) - (transfer_file_accept.Param.TransferFile.file_block - 1) * data_length);
                 file_accept.Close();
                 can_transfer_file = false;
-                char str_text[DATA_LENGTH] = { 0 };
-                ::GetDlgItemText(hwnd, IDC_TEXT, str_text, DATA_LENGTH);
+                char str_text[data_length] = { 0 };
+                ::GetDlgItemText(hwnd, IDC_TEXT, str_text, data_length);
                 strcat_s(str_text, "\r\n接收完成！");
                 ::SetDlgItemText(hwnd, IDC_TEXT, str_text);
                 break;
@@ -735,11 +693,11 @@ LRESULT CChatClientDlg::OnTransferFileAccept(WPARAM wParam, LPARAM lParam) {
             file_accept.Open(cstr_file_name, CFile::modeWrite | CFile::modeCreate | CFile::typeBinary);
         }
         if (transfer_file_accept->Param.TransferFile.current_block != transfer_file_accept->Param.TransferFile.file_block) {
-            file_accept.Write(transfer_file_accept->Param.TransferFile.file_content, DATA_LENGTH);
+            file_accept.Write(transfer_file_accept->Param.TransferFile.file_content, data_length);
             file_accept.Flush();
-            file_accept.Seek(DATA_LENGTH * transfer_file_accept->Param.TransferFile.current_block, CFile::begin);
+            file_accept.Seek(data_length * transfer_file_accept->Param.TransferFile.current_block, CFile::begin);
         } else if (transfer_file_accept->Param.TransferFile.current_block == transfer_file_accept->Param.TransferFile.file_block) {
-            file_accept.Write(transfer_file_accept->Param.TransferFile.file_content, atoll(transfer_file_accept->Param.TransferFile.file_length) - (transfer_file_accept->Param.TransferFile.file_block - 1) * DATA_LENGTH);
+            file_accept.Write(transfer_file_accept->Param.TransferFile.file_content, atoll(transfer_file_accept->Param.TransferFile.file_length) - (transfer_file_accept->Param.TransferFile.file_block - 1) * data_length);
             file_accept.Close();
             can_transfer_file = false;
             GetDlgItemText(IDC_TEXT, str_text);
@@ -749,10 +707,4 @@ LRESULT CChatClientDlg::OnTransferFileAccept(WPARAM wParam, LPARAM lParam) {
     }
 
     return 0;
-}
-
-
-void CChatClientDlg::OnDestroy() {
-    CDialogEx::OnDestroy();
-    WSACleanup();
 }

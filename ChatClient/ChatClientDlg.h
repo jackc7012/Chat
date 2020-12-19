@@ -62,16 +62,4 @@ class CChatClientDlg : public CDialogEx {
     std::mutex mt_read_file;
     std::queue<s_HandleRecv> q_transfer_file;
     CLog g_log;
-    void ConnectServer(const std::string &ip = "127.0.0.1");
-    void InitFont();
-    void EnableWindowInfo(const BOOL flag = TRUE);
-    void EnableWindowChat(const BOOL flag = TRUE);
-    void SetVerify();
-    void HandleRegister(const int flag, const s_HandleRecv &handle_recv);
-    void HandleLogin(const int flag, const s_HandleRecv &handle_recv);
-    void HandleDeleteCustomer(const s_HandleRecv &handle_recv);
-    void HandleShowLogin(const s_HandleRecv &handle_recv);
-    void HandleChat(const s_HandleRecv &handle_recv);
-    void HandleTransferfile(const int flag, const s_HandleRecv &handle_recv);
-    afx_msg void OnDestroy();
 };

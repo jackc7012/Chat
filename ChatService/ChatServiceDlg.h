@@ -4,6 +4,8 @@
 
 #pragma once
 
+#define LISTEN_PORT              6000
+
 #define WM_SOCKET                (WM_USER + 1000)
 
 #include <vector>
@@ -44,27 +46,21 @@ class CChatServiceDlg : public CDialogEx {
     SOCKET socket_service;
     SOCKADDR_IN addr_service, addr_accept;
     std::vector<SOCKET> socket_accept;
+    std::string ip;
     DWORD accpet_count{ 0 };
     afx_msg LRESULT OnSocket(WPARAM wParam, LPARAM lParam);
     CListBox m_list_login_people;
-    std::map<std::string, SOCKET> name_to_socket_accept;
+    std::multimap<std::string, SOCKET> name_to_socket_accept;
+    std::multimap<std::string, std::string> name_to_ip;
     void HandleRecv(const s_HandleRecv &handle_recv);
-    void HandleRecvRegister(const s_HandleRecv &handle_recv);
-    void HandleRecvLogin(const s_HandleRecv &handle_recv);
-    void HandleRecvDeleteCustomer(const s_HandleRecv &handle_recv);
-    void HandleRecvChat(const s_HandleRecv &handle_recv);
-    void HandleRecvTransferFileRequest(const s_HandleRecv &handle_recv);
-    void HandleRecvTransferFileRespond(const s_HandleRecv &handle_recv);
-    void HandleRecvTransferFile(const s_HandleRecv &handle_recv);
+    std::vector<std::string> ve_accept_name;
     std::mutex mt_server_handle;
     afx_msg void OnBnClickedKick();
     std::queue<std::string> task_queue;
     CLog g_log;
-    void InitFont();
     /*int thread1();
     int thread2();
     int thread3();
     int thread4();
     int thread5();*/
-    afx_msg void OnDestroy();
 };

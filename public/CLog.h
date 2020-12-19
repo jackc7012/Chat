@@ -5,16 +5,17 @@
 #include <string>
 #include <mutex>
 
-namespace mywork {
+#include "public.h"
+
+#ifdef _DEBUG
+#define DEFAULT_LEVEL     Log_Level::DEBUG_LEVEL
+#else
+#define DEFAULT_LEVEL     Log_Level::ERROR_LEVEL
+#endif
+
 #define FILE_FORMAT                __FILE__ ,__LINE__
-
-#define endli                     "info"
-#define endld                     "debug"
-#define endlw                     "warn"
-#define endle                     "error"
-#define endlf                     "fatal"
-
-    enum Log_Level {
+namespace mychat {
+    enum class Log_Level {
         INFO_LEVEL = 0,
         DEBUG_LEVEL,
         WARN_LEVEL,
@@ -24,17 +25,14 @@ namespace mywork {
 
     class CLog {
     public:
-        CLog();
+        static CLog* CreateInstance();
 
-        CLog(const std::string& path, const Log_Level log_level, bool auto_flush = false);
-
-        void InitLog(const std::string& path, const Log_Level log_level, bool auto_flush = false);
+        void InitLog(const std::string& path, const Log_Level log_level = DEFAULT_LEVEL, const int file_size = 50, 
+                     bool auto_flush = true);
 
         void UnitLog();
 
         ~CLog();
-
-        void PrintlogCustom(const std::string& file_name, const int file_line, const std::string& file_path = "./custom.txt");
 
         void PrintlogInfo(const std::string& file_name, const int file_line);
 
@@ -46,32 +44,42 @@ namespace mywork {
 
         void PrintlogFatal(const std::string& file_name, const int file_line);
 
-        friend CLog& operator<<(CLog& log_, const std::string& a);
+        friend CLog& operator<<(CLog& log, const std::string& a) {
+            log.str_return_one_line += a;
+            return log;
+        }
 
-        friend CLog& operator<<(CLog& log_, const long long a);
+        friend CLog& operator<<(CLog& log, const long long a) {
+            char temp[50] = { 0 };
+            sprintf_s(temp, 50, "%lld", (long long)a);
+            log.str_return_one_line += temp;
+            return log;
+        }
 
     private:
+        CLog() {};
+        CLog(CLog&) = delete;
+        CLog& operator=(CLog&) = delete;
+
         std::string AssembleFilePath(const std::string& file_path);
 
         std::string AssembleString(const std::string& file_name, const int file_line, const std::string& type);
-
-        void GetTime(SYSTEMTIME& st);
 
         void SplitFileName(std::string& file_name);
 
         void WriteFile(const std::string& content);
 
-        void WriteFileCustom(const std::string& content, const std::string& file_path);
-
     private:
+        static CLog* log;
         std::mutex mt_write_file;
         std::string str_return;
         std::string str_return_one_line;
         std::string file_path;
-        Log_Level log_level;
-        bool auto_flush;
-        CFile log_file;
+        Log_Level log_level{DEFAULT_LEVEL};
+        int file_size{0};
+        bool auto_flush{false};
+        FILE* log_file{nullptr};
     };
-}
 
+}
 #endif  //__MY_LOG_H__
