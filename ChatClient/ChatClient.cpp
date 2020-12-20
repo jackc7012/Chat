@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "ChatClient.h"
 #include "ChatClientDlg.h"
+#include "CLoginDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -73,7 +74,7 @@ BOOL CChatClientApp::InitInstance() {
     // 例如修改为公司或组织名
     SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
 
-    CChatClientDlg dlg;
+    CLoginDialog dlg;
     m_pMainWnd = &dlg;
     INT_PTR nResponse = dlg.DoModal();
     if (nResponse == IDOK) {

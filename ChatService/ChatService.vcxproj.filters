@@ -39,6 +39,12 @@
     <ClInclude Include="..\public\CLog.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\public\CNetWorkHandle.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\public\CDataBase.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChatService.cpp">
@@ -54,6 +60,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\public\CLog.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\public\CNetWorkHandle.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\public\CDataBase.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

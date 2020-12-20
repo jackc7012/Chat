@@ -103,16 +103,10 @@ BOOL CChatClientDlg::OnInitDialog() {
     // 登录信息
     GetDlgItem(IDC_STATICIP)->SetFont(&font);
     GetDlgItem(IDC_IP)->SetFont(&font);
-    GetDlgItem(IDC_STATICPORT)->SetFont(&font);
-    GetDlgItem(IDC_PORT)->SetFont(&font);
     GetDlgItem(IDC_STATICNAME)->SetFont(&font);
     GetDlgItem(IDC_NAME)->SetFont(&font);
     GetDlgItem(IDC_STATICPASSWORD)->SetFont(&font);
     GetDlgItem(IDC_PASSWORD)->SetFont(&font);
-    GetDlgItem(IDC_STATICCODE)->SetFont(&font);
-    GetDlgItem(IDC_CODE)->SetFont(&font);
-    GetDlgItem(IDC_CODE_VERIFY)->SetFont(&font);
-    GetDlgItem(IDC_REGISTER)->SetFont(&font);
     GetDlgItem(IDC_CONNECT)->SetFont(&font);
     GetDlgItem(IDC_LOGIN_PEOPLE)->SetFont(&font);
     // 聊天
@@ -322,7 +316,7 @@ void CChatClientDlg::OnBnClickedConnect() {
         str_code_verify.ReleaseBuffer();
         char file_path[256] = { 0 };
         sprintf_s(file_path, 256, "./%s.txt", nick_name.c_str());
-        g_log.InitLog(file_path, DEBUG_LEVEL, 10);
+        g_log.InitLog(file_path);
     } else if (str_connect == "断开") {
         closesocket(socket_client);
         GetDlgItem(IDC_IP)->EnableWindow(TRUE);
@@ -420,13 +414,13 @@ void CChatClientDlg::OnOK() {
 }
 
 LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
-    char *str_recv = new char[data_length];
+    char *str_recv = new char[DATA_LENGTH];
     CString str_text;
-    memset(str_recv, 0, data_length);
+    memset(str_recv, 0, DATA_LENGTH);
     if (lParam == FD_READ) {
         UpdateData(TRUE);
         GetDlgItemText(IDC_TEXT, str_text);
-        ::recv(socket_client, str_recv, data_length, 0);
+        ::recv(socket_client, str_recv, DATA_LENGTH, 0);
         s_HandleRecv handle_recv, to_send;
         DecodeJson(str_recv, handle_recv);
         switch (handle_recv.type) {
@@ -515,8 +509,8 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
         case CHAT: {
             if (nick_name.compare(handle_recv.Param.Chat.target) == 0) {
                 str_text += "\r\n";
-                char content[data_length + 10] = { 0 };
-                sprintf_s(content, data_length + 10, "%s说：%s", handle_recv.Param.Chat.source, handle_recv.Param.Chat.content);
+                char content[DATA_LENGTH + 10] = { 0 };
+                sprintf_s(content, DATA_LENGTH + 10, "%s说：%s", handle_recv.Param.Chat.source, handle_recv.Param.Chat.content);
                 str_text += content;
                 SetDlgItemText(IDC_TEXT, str_text);
             }
@@ -529,8 +523,8 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
         case TRANSFERFILEREQUEST: {
             if (nick_name.compare(handle_recv.Param.TransferFileRequest.target) == 0) {
                 CMessage m_dlg;
-                char temp[data_length] = { 0 };
-                sprintf_s(temp, data_length, "%s向你发送%s文件，大小为%s字节，\r\n是否接受？",
+                char temp[DATA_LENGTH] = { 0 };
+                sprintf_s(temp, DATA_LENGTH, "%s向你发送%s文件，大小为%s字节，\r\n是否接受？",
                           handle_recv.Param.TransferFileRequest.source,handle_recv.Param.TransferFileRequest.file_name, handle_recv.Param.TransferFileRequest.file_length);
                 m_dlg.message = temp;
                 int i_return = m_dlg.DoModal();
@@ -620,25 +614,25 @@ int CChatClientDlg::thread_TransferFile(const HWND & hwnd, const std::string & f
     unsigned int now_block = 1;
     char c_file_length[256] = { 0 };
     sprintf_s(c_file_length, 256, "%lld", (long long)len);
-    char *getStr = new char[data_length];
+    char *getStr = new char[DATA_LENGTH];
     to_send.Param.TransferFile.file_name = const_cast<char *>(file_name.c_str());
     to_send.Param.TransferFile.file_length = c_file_length;
     to_send.Param.TransferFile.source = const_cast<char *>(nick_name.c_str());
     to_send.Param.TransferFile.target = const_cast<char *>(target.c_str());
-    to_send.Param.TransferFile.file_block = (unsigned int)ceil((double)((float)len / data_length));
+    to_send.Param.TransferFile.file_block = (unsigned int)ceil((double)((float)len / DATA_LENGTH));
     while (now_block <= to_send.Param.TransferFile.file_block) {
-        memset(getStr, 0, data_length);
-        m_file.Read(getStr, data_length);
+        memset(getStr, 0, DATA_LENGTH);
+        m_file.Read(getStr, DATA_LENGTH);
         to_send.Param.TransferFile.file_content = getStr;
         to_send.Param.TransferFile.current_block = now_block++;
         std::string js_str_send = EncodeJson(TRANSFERFILE, to_send);
         ::send(socket_client, js_str_send.c_str(), js_str_send.length(), 0);
-        m_file.Seek(data_length * to_send.Param.TransferFile.current_block, CFile::begin);
+        m_file.Seek(DATA_LENGTH * to_send.Param.TransferFile.current_block, CFile::begin);
     }
     delete[]getStr;
     m_file.Close();
-    char str_text[data_length] = { 0 };
-    ::GetDlgItemText(hwnd, IDC_TEXT, str_text, data_length);
+    char str_text[DATA_LENGTH] = { 0 };
+    ::GetDlgItemText(hwnd, IDC_TEXT, str_text, DATA_LENGTH);
     strcat_s(str_text, "\r\n传输完成！");
     ::SetDlgItemText(hwnd, IDC_TEXT, str_text);
 
@@ -656,15 +650,15 @@ int CChatClientDlg::thread_TransferFileAccept(const HWND & hwnd, const std::stri
                 file_accept.Open(file_name.c_str(), CFile::modeWrite | CFile::modeCreate | CFile::typeBinary);
             }
             if (transfer_file_accept.Param.TransferFile.current_block != transfer_file_accept.Param.TransferFile.file_block) {
-                file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, data_length);
+                file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, DATA_LENGTH);
                 file_accept.Flush();
-                file_accept.Seek(data_length * transfer_file_accept.Param.TransferFile.current_block, CFile::begin);
+                file_accept.Seek(DATA_LENGTH * transfer_file_accept.Param.TransferFile.current_block, CFile::begin);
             } else if (transfer_file_accept.Param.TransferFile.current_block == transfer_file_accept.Param.TransferFile.file_block) {
-                file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, atoll(transfer_file_accept.Param.TransferFile.file_length) - (transfer_file_accept.Param.TransferFile.file_block - 1) * data_length);
+                file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, atoll(transfer_file_accept.Param.TransferFile.file_length) - (transfer_file_accept.Param.TransferFile.file_block - 1) * DATA_LENGTH);
                 file_accept.Close();
                 can_transfer_file = false;
-                char str_text[data_length] = { 0 };
-                ::GetDlgItemText(hwnd, IDC_TEXT, str_text, data_length);
+                char str_text[DATA_LENGTH] = { 0 };
+                ::GetDlgItemText(hwnd, IDC_TEXT, str_text, DATA_LENGTH);
                 strcat_s(str_text, "\r\n接收完成！");
                 ::SetDlgItemText(hwnd, IDC_TEXT, str_text);
                 break;
@@ -693,11 +687,11 @@ LRESULT CChatClientDlg::OnTransferFileAccept(WPARAM wParam, LPARAM lParam) {
             file_accept.Open(cstr_file_name, CFile::modeWrite | CFile::modeCreate | CFile::typeBinary);
         }
         if (transfer_file_accept->Param.TransferFile.current_block != transfer_file_accept->Param.TransferFile.file_block) {
-            file_accept.Write(transfer_file_accept->Param.TransferFile.file_content, data_length);
+            file_accept.Write(transfer_file_accept->Param.TransferFile.file_content, DATA_LENGTH);
             file_accept.Flush();
-            file_accept.Seek(data_length * transfer_file_accept->Param.TransferFile.current_block, CFile::begin);
+            file_accept.Seek(DATA_LENGTH * transfer_file_accept->Param.TransferFile.current_block, CFile::begin);
         } else if (transfer_file_accept->Param.TransferFile.current_block == transfer_file_accept->Param.TransferFile.file_block) {
-            file_accept.Write(transfer_file_accept->Param.TransferFile.file_content, atoll(transfer_file_accept->Param.TransferFile.file_length) - (transfer_file_accept->Param.TransferFile.file_block - 1) * data_length);
+            file_accept.Write(transfer_file_accept->Param.TransferFile.file_content, atoll(transfer_file_accept->Param.TransferFile.file_length) - (transfer_file_accept->Param.TransferFile.file_block - 1) * DATA_LENGTH);
             file_accept.Close();
             can_transfer_file = false;
             GetDlgItemText(IDC_TEXT, str_text);
@@ -708,3 +702,4 @@ LRESULT CChatClientDlg::OnTransferFileAccept(WPARAM wParam, LPARAM lParam) {
 
     return 0;
 }
+

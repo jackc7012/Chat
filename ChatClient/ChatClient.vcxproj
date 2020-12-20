@@ -94,6 +94,7 @@
       <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>../public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>6031</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -194,10 +195,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\public\CLog.h" />
+    <ClInclude Include="..\public\CNetWorkHandle.h" />
     <ClInclude Include="..\public\public.h" />
     <ClInclude Include="ChatClient.h" />
     <ClInclude Include="ChatClientDlg.h" />
+    <ClInclude Include="CLoginDialog.h" />
+    <ClInclude Include="CLoginWait.h" />
     <ClInclude Include="CMessage.h" />
+    <ClInclude Include="CRegisterDialog.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -206,12 +211,18 @@
     <ClCompile Include="..\public\CLog.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\public\CNetWorkHandle.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\public\public.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="ChatClient.cpp" />
     <ClCompile Include="ChatClientDlg.cpp" />
+    <ClCompile Include="CLoginDialog.cpp" />
+    <ClCompile Include="CLoginWait.cpp" />
     <ClCompile Include="CMessage.cpp" />
+    <ClCompile Include="CRegisterDialog.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

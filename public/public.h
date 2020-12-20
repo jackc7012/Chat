@@ -5,7 +5,9 @@
 #include <windows.h>
 #include <vector>
 
-const int data_length = 1024 * 10;
+const int DATA_LENGTH = 1024 * 10;
+
+static std::string nick_name;
 
 inline void HANDLE_MESSAGE(char **type, const unsigned int length, const std::string &message) {
     *type = new char[length + 1];

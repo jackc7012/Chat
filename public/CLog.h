@@ -1,21 +1,22 @@
 #ifndef __MY_LOG_H__
 #define __MY_LOG_H__
 
-#include <windows.h>
+#include <io.h>
+#include <direct.h>
 #include <string>
 #include <mutex>
 
 #include "public.h"
 
 #ifdef _DEBUG
-#define DEFAULT_LEVEL     Log_Level::DEBUG_LEVEL
+#define DEFAULT_LEVEL     LogLevel::DEBUG_LEVEL
 #else
 #define DEFAULT_LEVEL     Log_Level::ERROR_LEVEL
 #endif
 
 #define FILE_FORMAT                __FILE__ ,__LINE__
 namespace mychat {
-    enum class Log_Level {
+    enum class LogLevel {
         INFO_LEVEL = 0,
         DEBUG_LEVEL,
         WARN_LEVEL,
@@ -25,11 +26,13 @@ namespace mychat {
 
     class CLog {
     public:
-        CLog();
+        CLog() {};
+
+        CLog(const std::string& path);
 
         ~CLog();
 
-        void InitLog(const std::string& path, const Log_Level log_level = DEFAULT_LEVEL, const int file_size = 50, 
+        void InitLog(const std::string& path, const LogLevel log_level = DEFAULT_LEVEL, const int file_size = 50, 
                      bool auto_flush = true);
 
         void UnitLog();
@@ -45,14 +48,14 @@ namespace mychat {
         void PrintlogFatal(const std::string& file_name, const int file_line);
 
         friend CLog& operator<<(CLog& log, const std::string& a) {
-            log.str_return_one_line += a;
+            log.strReturnOneLine += a;
             return log;
         }
 
         friend CLog& operator<<(CLog& log, const long long a) {
             char temp[50] = { 0 };
             sprintf_s(temp, 50, "%lld", (long long)a);
-            log.str_return_one_line += temp;
+            log.strReturnOneLine += temp;
             return log;
         }
 
@@ -60,7 +63,7 @@ namespace mychat {
         CLog(CLog&) = delete;
         CLog& operator=(CLog&) = delete;
 
-        std::string AssembleFilePath(const std::string& file_path);
+        std::string AssembleFilePath(std::string& file_path);
 
         std::string AssembleString(const std::string& file_name, const int file_line, const std::string& type);
 
@@ -68,16 +71,23 @@ namespace mychat {
 
         void WriteFile(const std::string& content);
 
-    private:
-        std::mutex mt_write_file;
-        std::string str_return;
-        std::string str_return_one_line;
-        std::string file_path;
-        Log_Level log_level{DEFAULT_LEVEL};
-        int file_size{0};
-        bool auto_flush{false};
-        FILE* log_file{nullptr};
-    };
+        std::string GetPath(std::string& filePath);
 
+        std::string GetServicePath(std::string& filePath);
+
+        std::string GetClientPath(std::string& filePath);
+
+    private:
+        std::mutex mtWriteFile;
+        std::string strReturn;
+        std::string strReturnOneLine;
+        std::string filePath;
+        LogLevel logLevel{DEFAULT_LEVEL};
+        int fileSize{0};
+        bool autoFlush{false};
+        FILE* logFile{nullptr};
+    };
 }
+
+static mychat::CLog logClient;
 #endif  //__MY_LOG_H__

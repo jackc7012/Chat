@@ -61,5 +61,5 @@ class CChatClientDlg : public CDialogEx {
     int thread_TransferFileAccept(const HWND &hwnd, const std::string &file_name, const s_HandleRecv &handle_recv);
     std::mutex mt_read_file;
     std::queue<s_HandleRecv> q_transfer_file;
-    CLog g_log;
+    mychat::CLog g_log;
 };

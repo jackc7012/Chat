@@ -4,8 +4,6 @@
 
 #pragma once
 
-#define LISTEN_PORT              6000
-
 #define WM_SOCKET                (WM_USER + 1000)
 
 #include <vector>
@@ -15,6 +13,7 @@
 
 #include "public.h"
 #include "CLog.h"
+#include "CNetWorkHandle.h"
 
 // CChatServiceDlg ¶Ô»°¿ò
 class CChatServiceDlg : public CDialogEx {
@@ -43,8 +42,8 @@ class CChatServiceDlg : public CDialogEx {
     DECLARE_MESSAGE_MAP()
   public:
     afx_msg void OnBnClickedStart();
-    SOCKET socket_service;
-    SOCKADDR_IN addr_service, addr_accept;
+    SOCKET socketServiceTcp{ 0 }, socketServiceUdp{ 0 };
+    SOCKADDR_IN addrServiceTcp{ 0 }, addr_accept{ 0 }, addrServiceUdp{ 0 };
     std::vector<SOCKET> socket_accept;
     std::string ip;
     DWORD accpet_count{ 0 };
@@ -57,10 +56,8 @@ class CChatServiceDlg : public CDialogEx {
     std::mutex mt_server_handle;
     afx_msg void OnBnClickedKick();
     std::queue<std::string> task_queue;
-    CLog g_log;
-    /*int thread1();
-    int thread2();
-    int thread3();
-    int thread4();
-    int thread5();*/
+    mychat::CLog logService;
+    mychat::CNetWorkHandle netWorkHandle;
+    bool StartTcp();
+    bool StartUdp();
 };
