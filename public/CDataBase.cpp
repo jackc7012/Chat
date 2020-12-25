@@ -6,6 +6,15 @@ CDataBase::CDataBase()
 	logDataBase.InitLog("../{time}/database");
 }
 
+CDataBase* CDataBase::CreateInstance()
+{
+	static CDataBase* ptr = nullptr;
+	if (ptr == nullptr) {
+		ptr = new CDataBase();
+	}
+	return ptr;
+}
+
 CDataBase::~CDataBase()
 {
 }

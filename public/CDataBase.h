@@ -12,15 +12,21 @@ namespace mychat {
 	class CDataBase
 	{
 	public:
-		CDataBase();
+		static CDataBase* CreateInstance();
 
 		~CDataBase();
 
-		int InitDataBase(const std::string &dataBaseName);
+		int InitDataBase(const std::string& dataBaseName);
 
-		int SearchDataBaseLogin(const std::string &loginName, const std::string &loginPassword);
+		int SearchDataBaseLogin(const std::string& loginName, const std::string& loginPassword);
+
 	private:
-		HRESULT dataBaseResult;
+		CDataBase();
+
+		CDataBase(const CDataBase&) = delete;
+		CDataBase operator=(const CDataBase&) = delete;
+
+	private:
 		_ConnectionPtr pMyConnect{ nullptr };
 		_RecordsetPtr pRecordset{ nullptr };
 		CLog logDataBase;

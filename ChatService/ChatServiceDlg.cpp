@@ -6,6 +6,7 @@
 #include "ChatService.h"
 #include "ChatServiceDlg.h"
 #include "afxdialogex.h"
+using namespace mychat;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -57,7 +58,8 @@ BEGIN_MESSAGE_MAP(CChatServiceDlg, CDialogEx)
     ON_WM_PAINT()
     ON_WM_QUERYDRAGICON()
     ON_BN_CLICKED(IDC_START, &CChatServiceDlg::OnBnClickedStart)
-    ON_MESSAGE(WM_SOCKET, OnSocket)
+    ON_MESSAGE(WM_SOCKET_TCP, OnSocketTcp)
+    ON_MESSAGE(WM_SOCKET_UDP, OnSocketUdp)
     ON_BN_CLICKED(IDC_KICK, &CChatServiceDlg::OnBnClickedKick)
 END_MESSAGE_MAP()
 
@@ -99,6 +101,8 @@ BOOL CChatServiceDlg::OnInitDialog() {
     GetDlgItem(IDC_LIST_LOGIN_PEOPLE)->SetFont(&font);
 
     logService.InitLog("../{time}/service");
+    dataBase = mychat::CDataBase::CreateInstance();
+    netWorkHandle = mychat::CNetWorkHandle::CreateInstance();
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -151,55 +155,82 @@ void CChatServiceDlg::OnBnClickedStart() {
         if (StartTcp() && StartUdp()) {
             SetDlgItemText(IDC_STATUS, _T("服务器监听已经启动。。。"));
             SetDlgItemText(IDC_START, _T("停止"));
-        }  
+        }
     } else if (str == "停止") {
-        closesocket(socketServiceTcp);
+        ::closesocket(socketServiceTcp);
+        ::closesocket(socketServiceUdp);
         SetDlgItemText(IDC_STATUS, _T("服务器未启动监听。。。"));
         SetDlgItemText(IDC_START, _T("启动"));
         logService << "服务器监听关闭";
+        logService.PrintlogInfo(FILE_FORMAT);
     }
-    logService.PrintlogInfo(FILE_FORMAT);
 }
 
-LRESULT CChatServiceDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
+LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
     CString str_text;
     switch (lParam) {
     case FD_ACCEPT: {
-        int addr_len = sizeof(addr_accept);
-        socket_accept.push_back(::accept(socketServiceTcp, (SOCKADDR *)&addr_accept, &addr_len));
-        ip = ::inet_ntoa(addr_accept.sin_addr);
+        int addr_len = sizeof(addrAccept);
+        SOCKET addrClient = ::accept(socketServiceTcp, (SOCKADDR*)&addrAccept, &addr_len);
+        socketAccept.push_back(addrClient);
+        std::string ip = ::inet_ntoa(addrAccept.sin_addr);
+        socketToIpName.insert(std::pair<SOCKET, IpName>(addrClient, IpName(ip, "")));
         logService << "ip = " << ip << " connect";
         logService.PrintlogInfo(FILE_FORMAT);
-        ++accpet_count;
+        ++accpetCount;
     }
     break;
 
     case FD_READ: {
-        char *str_recv = new char[DATA_LENGTH];
-        memset(str_recv, 0, DATA_LENGTH);
-        unsigned int i = 0;
-        for (; i < socket_accept.size(); ++i) {
-            int i_return = ::recv(socket_accept[i], str_recv, DATA_LENGTH, 0);
-            if(i_return > 0)
+        char *strRecv = new char[DATA_LENGTH];
+        memset(strRecv, 0, DATA_LENGTH);
+        unsigned int i = socketAccept.size() - 1;
+        SOCKADDR_IN addrClient = { 0 };
+        int addr_len = sizeof(SOCKADDR);
+        for (; i > 0; --i) {
+            int nRet = ::recv(socketAccept[i], strRecv, DATA_LENGTH, 0);
+            if (nRet > 0)
                 break;
         }
-        logService << "recv message from " << i << ", message content = " << str_recv;
-        logService.PrintlogInfo(FILE_FORMAT);
-        s_HandleRecv handle_recv;
-        DecodeJson(str_recv, handle_recv);
-        handle_recv.socket_accept = socket_accept[i];
-        HandleRecv(handle_recv);
-        delete []str_recv;
+        s_HandleRecv handleRecv;
+        handleRecv.connectionType = ConnectionType::TCP;
+        handleRecv.socket.socket_accept_tcp = socketAccept[i];
+        netWorkHandle->HandleRecv(::inet_ntoa(addrClient.sin_addr), strRecv, handleRecv);
+        delete []strRecv;
     }
     break;
 
     case FD_CLOSE: {
         GetDlgItemText(IDC_TEXT, str_text);
         str_text += "\r\n";
-        str_text += ::inet_ntoa(addr_accept.sin_addr);
+        str_text += ::inet_ntoa(addrAccept.sin_addr);
         str_text += "已断开";
         SetDlgItemText(IDC_TEXT, str_text);
         //m_list_login_people.DeleteString(del_index);
+    }
+    break;
+
+    default:
+        break;
+    }
+    return 0;
+}
+
+LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
+{
+    switch (lParam) {
+    case FD_READ: {
+        char* strRecv = new char[DATA_LENGTH];
+        memset(strRecv, 0, DATA_LENGTH);
+        SOCKADDR_IN addrClient = { 0 };
+        int addrLen = sizeof(SOCKADDR);
+        ::recvfrom(socketServiceUdp, strRecv, DATA_LENGTH, 0, (SOCKADDR*)&addrClient, &addrLen);
+        s_HandleRecv handleRecv;
+        handleRecv.connectionType = ConnectionType::UDP;
+        handleRecv.socket.addr_client_udp = addrClient;
+        handleRecv.ip = ::inet_ntoa(addrClient.sin_addr);
+        netWorkHandle->HandleRecv(, strRecv, handleRecv);
+        delete[]strRecv;
     }
     break;
 
@@ -225,100 +256,100 @@ void CChatServiceDlg::HandleRecv(const s_HandleRecv & handle_recv) {
 
     case REGISTER: {
         char password[MAX_PATH] = { 0 };
-        GetPrivateProfileString(_T("login_info"), handle_recv.Param.Register.customer, "", password, MAX_PATH, _T("./login.ini"));
-        logService << "customer " << handle_recv.Param.Register.customer << " registere ";
+        GetPrivateProfileString(_T("login_info"), handle_recv.param.Register.customer, "", password, MAX_PATH, _T("./login.ini"));
+        logService << "customer " << handle_recv.param.Register.customer << " registere ";
         if (strcmp(password, "") != 0) {
-            to_send.Param.RegisterBack.customer = handle_recv.Param.Register.customer;
-            to_send.Param.RegisterBack.register_result = "failed";
-            to_send.Param.RegisterBack.description = "user name is already have";
+            to_send.param.RegisterBack.customer = handle_recv.param.Register.customer;
+            to_send.param.RegisterBack.register_result = "failed";
+            to_send.param.RegisterBack.description = "user name is already have";
             js_str_send = EncodeJson(REGISTERBACKFAILED, to_send);
-            logService << "result failed description is " << to_send.Param.RegisterBack.description;
+            logService << "result failed description is " << to_send.param.RegisterBack.description;
             logService.PrintlogError(FILE_FORMAT);
         } else {
-            to_send.Param.RegisterBack.customer = handle_recv.Param.Register.customer;
-            to_send.Param.RegisterBack.register_result = "succeed";
-            WritePrivateProfileString(_T("login_info"), handle_recv.Param.Register.customer, handle_recv.Param.Register.password, ("./login.ini"));
+            to_send.param.RegisterBack.customer = handle_recv.param.Register.customer;
+            to_send.param.RegisterBack.register_result = "succeed";
+            WritePrivateProfileString(_T("login_info"), handle_recv.param.Register.customer, handle_recv.param.Register.password, ("./login.ini"));
             js_str_send = EncodeJson(REGISTERBACKSUCCEED, to_send);
             logService << "result succeed";
             logService.PrintlogInfo(FILE_FORMAT);
         }
-        ::send(handle_recv.socket_accept, js_str_send.c_str(), js_str_send.length(), 0);
+        ::send(handle_recv.socket.socket_accept_tcp, js_str_send.c_str(), js_str_send.length(), 0);
         logService << "send message :" << js_str_send;
         logService.PrintlogInfo(FILE_FORMAT);
-        delete[]handle_recv.Param.Register.customer;
-        delete[]handle_recv.Param.Register.password;
+        delete[]handle_recv.param.Register.customer;
+        delete[]handle_recv.param.Register.password;
     }
     break;
 
     case LOGIN: {
         char password[MAX_PATH] = { 0 };
         bool is_succeed = false;
-        logService << "customer " << handle_recv.Param.Login.customer << " login ";
-        if (m_list_login_people.FindString(0, handle_recv.Param.Login.customer) != LB_ERR) {
-            to_send.Param.LoginBack.customer = handle_recv.Param.Login.customer;
-            to_send.Param.LoginBack.login_result = "failed";
-            to_send.Param.LoginBack.description = "this people has already login";
+        logService << "customer " << handle_recv.param.Login.customer << " login ";
+        if (m_list_login_people.FindString(0, handle_recv.param.Login.customer) != LB_ERR) {
+            to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
+            to_send.param.LoginBack.login_result = "failed";
+            to_send.param.LoginBack.description = "this people has already login";
             js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
-            logService << "result failed description is " << to_send.Param.LoginBack.description;
+            logService << "result failed description is " << to_send.param.LoginBack.description;
             logService.PrintlogError(FILE_FORMAT);
         } else {
-            GetPrivateProfileString(_T("login_info"), handle_recv.Param.Login.customer, "", password, MAX_PATH, _T("./login.ini"));
+            GetPrivateProfileString(_T("login_info"), handle_recv.param.Login.customer, "", password, MAX_PATH, _T("./login.ini"));
             if (strcmp(password, "") == 0) {
-                to_send.Param.LoginBack.customer = handle_recv.Param.Login.customer;
-                to_send.Param.LoginBack.login_result = "failed";
-                to_send.Param.LoginBack.description = "no such people";
+                to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
+                to_send.param.LoginBack.login_result = "failed";
+                to_send.param.LoginBack.description = "no such people";
                 js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
-                logService << "result failed description is " << to_send.Param.LoginBack.description;
+                logService << "result failed description is " << to_send.param.LoginBack.description;
                 logService.PrintlogError(FILE_FORMAT);
             } else {
                 //std::string decry_password = Decryption(password), decry_handle_recv = Decryption(handle_recv.Param.Login.password);
-                if (/*decry_password.compare(decry_handle_recv)*/strcmp(password, handle_recv.Param.Login.password) == 0) {
-                    to_send.Param.LoginBack.customer = handle_recv.Param.Login.customer;
-                    to_send.Param.LoginBack.login_result = "succeed";
+                if (/*decry_password.compare(decry_handle_recv)*/strcmp(password, handle_recv.param.Login.password) == 0) {
+                    to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
+                    to_send.param.LoginBack.login_result = "succeed";
                     js_str_send = EncodeJson(LOGINBACKSUCCEED, to_send);
                     is_succeed = true;
                     logService << "result succeed";
                     logService.PrintlogInfo(FILE_FORMAT);
                 } else {
-                    to_send.Param.LoginBack.customer = handle_recv.Param.Login.customer;
-                    to_send.Param.LoginBack.login_result = "failed";
-                    to_send.Param.LoginBack.description = "password error";
+                    to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
+                    to_send.param.LoginBack.login_result = "failed";
+                    to_send.param.LoginBack.description = "password error";
                     js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
-                    logService << "result failed description is " << to_send.Param.LoginBack.description;
+                    logService << "result failed description is " << to_send.param.LoginBack.description;
                     logService.PrintlogError(FILE_FORMAT);
                 }
             }
         }
-        ::send(handle_recv.socket_accept, js_str_send.c_str(), js_str_send.length(), 0);
+        ::send(handle_recv.socket.socket_accept_tcp, js_str_send.c_str(), js_str_send.length(), 0);
         logService << "send message :" << js_str_send;
         logService.PrintlogInfo(FILE_FORMAT);
         if (is_succeed) {
-            m_list_login_people.AddString(handle_recv.Param.Login.customer);
-            name_to_socket_accept.insert(std::pair<std::string, SOCKET>(handle_recv.Param.Login.customer, handle_recv.socket_accept));
-            name_to_ip.insert(std::pair<std::string, std::string>(handle_recv.Param.Login.customer, ip));
-            ve_accept_name.push_back(handle_recv.Param.Login.customer);
+            m_list_login_people.AddString(handle_recv.param.Login.customer);
+            name_to_socket_accept.insert(std::pair<std::string, SOCKET>(handle_recv.param.Login.customer, handle_recv.socket.socket_accept_tcp));
+            name_to_ip.insert(std::pair<std::string, std::string>(handle_recv.param.Login.customer, ip));
+            ve_accept_name.push_back(handle_recv.param.Login.customer);
             GetDlgItemText(IDC_TEXT, str_text);
-            if (accpet_count != 1) {
+            if (accpetCount != 1) {
                 str_text += "\r\n";
             }
-            str_text += handle_recv.Param.Login.customer;
+            str_text += handle_recv.param.Login.customer;
             str_text += "登录";
             SetDlgItemText(IDC_TEXT, str_text);
-            to_send.Param.ShowLogin.customer = new char *[ve_accept_name.size()];
+            to_send.param.ShowLogin.customer = new char *[ve_accept_name.size()];
             for (unsigned int i = 0; i < ve_accept_name.size(); ++i) {
-                to_send.Param.ShowLogin.customer[i] = const_cast<char *>(ve_accept_name[i].c_str());
+                to_send.param.ShowLogin.customer[i] = const_cast<char *>(ve_accept_name[i].c_str());
             }
-            to_send.Param.ShowLogin.customer_num = ve_accept_name.size();
+            to_send.param.ShowLogin.customer_num = ve_accept_name.size();
             js_str_send = EncodeJson(SHOWLOGIN, to_send);
             logService << "send message for all :" << js_str_send;
             logService.PrintlogInfo(FILE_FORMAT);
-            delete[]to_send.Param.ShowLogin.customer;
+            delete[]to_send.param.ShowLogin.customer;
             for (auto itor = name_to_socket_accept.cbegin(); itor != name_to_socket_accept.cend(); ++itor) {
                 ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
             }
         }
-        delete[]handle_recv.Param.Login.customer;
-        delete[]handle_recv.Param.Login.password;
+        delete[]handle_recv.param.Login.customer;
+        delete[]handle_recv.param.Login.password;
     }
     break;
 
@@ -338,7 +369,7 @@ void CChatServiceDlg::HandleRecv(const s_HandleRecv & handle_recv) {
     }
     break;
 
-    case CHAT: {
+    /*case CHAT: {
         auto itor = name_to_socket_accept.find(handle_recv.Param.Chat.target);
         to_send.Param.Chat.source = handle_recv.Param.Chat.source;
         to_send.Param.Chat.target = handle_recv.Param.Chat.target;
@@ -398,7 +429,7 @@ void CChatServiceDlg::HandleRecv(const s_HandleRecv & handle_recv) {
         delete[]handle_recv.Param.TransferFile.file_content;
         delete[]handle_recv.Param.TransferFile.file_length;
     }
-    break;
+    break;*/
 
     default:
         break;
@@ -426,7 +457,7 @@ bool CChatServiceDlg::StartTcp()
         addrServiceTcp.sin_addr.S_un.S_addr = INADDR_ANY;
         ::bind(socketServiceTcp, (sockaddr*)&addrServiceTcp, sizeof(addrServiceTcp));
         ::listen(socketServiceTcp, SOMAXCONN);      
-        ::WSAAsyncSelect(socketServiceTcp, this->m_hWnd, WM_SOCKET, FD_ACCEPT | FD_READ | FD_CLOSE);
+        ::WSAAsyncSelect(socketServiceTcp, this->m_hWnd, WM_SOCKET_TCP, FD_ACCEPT | FD_READ | FD_CLOSE);
         logService << "服务器TCP开启监听，端口号为：" << mychat::TCP_PORT;
     }
     logService.PrintlogInfo(FILE_FORMAT);
@@ -445,7 +476,7 @@ bool CChatServiceDlg::StartUdp()
         addrServiceUdp.sin_port = htons(mychat::UDP_PORT);
         addrServiceUdp.sin_addr.S_un.S_addr = INADDR_ANY;
         ::bind(socketServiceUdp, (sockaddr*)&addrServiceUdp, sizeof(addrServiceUdp));
-        ::WSAAsyncSelect(socketServiceUdp, this->m_hWnd, WM_SOCKET, FD_ACCEPT | FD_READ | FD_CLOSE);
+        ::WSAAsyncSelect(socketServiceUdp, this->m_hWnd, WM_SOCKET_UDP, FD_READ);
         logService << "服务器UDP开启监听，端口号为：" << mychat::UDP_PORT;
     }
     logService.PrintlogInfo(FILE_FORMAT);

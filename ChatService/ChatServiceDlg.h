@@ -4,7 +4,8 @@
 
 #pragma once
 
-#define WM_SOCKET                (WM_USER + 1000)
+#define WM_SOCKET_TCP               (WM_USER + 1000)
+#define WM_SOCKET_UDP               (WM_USER + 1001)
 
 #include <vector>
 #include <map>
@@ -13,7 +14,10 @@
 
 #include "public.h"
 #include "CLog.h"
+#include "CDataBase.h"
 #include "CNetWorkHandle.h"
+
+using IpName = std::pair<std::string, std::string>;
 
 // CChatServiceDlg ¶Ô»°¿ò
 class CChatServiceDlg : public CDialogEx {
@@ -43,21 +47,23 @@ class CChatServiceDlg : public CDialogEx {
   public:
     afx_msg void OnBnClickedStart();
     SOCKET socketServiceTcp{ 0 }, socketServiceUdp{ 0 };
-    SOCKADDR_IN addrServiceTcp{ 0 }, addr_accept{ 0 }, addrServiceUdp{ 0 };
-    std::vector<SOCKET> socket_accept;
-    std::string ip;
-    DWORD accpet_count{ 0 };
-    afx_msg LRESULT OnSocket(WPARAM wParam, LPARAM lParam);
+    SOCKADDR_IN addrServiceTcp{ 0 }, addrAccept{ 0 }, addrServiceUdp{ 0 };
+    std::vector<SOCKET> socketAccept;
+    DWORD accpetCount{ 0 };
+    afx_msg LRESULT OnSocketTcp(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnSocketUdp(WPARAM wParam, LPARAM lParam);
     CListBox m_list_login_people;
     std::multimap<std::string, SOCKET> name_to_socket_accept;
     std::multimap<std::string, std::string> name_to_ip;
-    void HandleRecv(const s_HandleRecv &handle_recv);
+    std::multimap<SOCKET, IpName> socketToIpName;
+    void HandleRecv(const mychat::s_HandleRecv &handle_recv);
     std::vector<std::string> ve_accept_name;
     std::mutex mt_server_handle;
     afx_msg void OnBnClickedKick();
     std::queue<std::string> task_queue;
     mychat::CLog logService;
-    mychat::CNetWorkHandle netWorkHandle;
+    mychat::CDataBase* dataBase;
+    mychat::CNetWorkHandle* netWorkHandle;
     bool StartTcp();
     bool StartUdp();
 };
