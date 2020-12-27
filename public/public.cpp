@@ -1,12 +1,10 @@
 #include "public.h"
-using namespace mychat;
 
-std::string EncodeJson(const CommunicationType type, const s_HandleRecv& param) {
-    Json::Value js_value;
-    Json::FastWriter js_write;
-    std::string str_json("");
+std::string mychat::EncodeJson(const CommunicationType type, const s_HandleRecv& param) {
+    CHandleJson* handleJson = CHandleJson::CreateInstance();
+    handleJson->ClearJson();
     switch (type) {
-    case CommunicationType::REGISTER: {
+    /*case CommunicationType::REGISTER: {
         js_value["communication_type"] = "register";
         js_value["customer"]           = param.param.Register.customer;
         js_value["password"]           = param.param.Register.password;
@@ -26,31 +24,24 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& param) 
         js_value["register_result"]    = param.param.RegisterBack.register_result;
         js_value["description"]        = param.param.RegisterBack.description;
     }
-    break;
+    break;*/
 
     case CommunicationType::LOGIN: {
-        js_value["communication_type"] = "login";
-        js_value["customer"]           = param.param.Login.customer;
-        js_value["password"]           = param.param.Login.password;
+        handleJson->SetJsonValue("communication_type", "login");
+        handleJson->SetJsonValue("customer", param.param.Login.customer);
+        handleJson->SetJsonValue("password", param.param.Login.password);
     }
     break;
 
-    case CommunicationType::LOGINBACKSUCCEED: {
-        js_value["communication_type"] = "loginbacksucceed";
-        js_value["customer"]           = param.param.LoginBack.customer;
-        js_value["login_result"]       = param.param.LoginBack.login_result;
+    case CommunicationType::LOGINBACK: {
+        handleJson->SetJsonValue("communication_type", "loginback");
+        handleJson->SetJsonValue("customer", param.param.LoginBack.customer);
+        handleJson->SetJsonValue("login_result", param.param.LoginBack.login_result);
+        handleJson->SetJsonValue("description", param.param.LoginBack.description);
     }
     break;
 
-    case CommunicationType::LOGINBACKFAILED: {
-        js_value["communication_type"] = "loginbackfailed";
-        js_value["customer"]           = param.param.LoginBack.customer;
-        js_value["login_result"]       = param.param.LoginBack.login_result;
-        js_value["description"]        = param.param.LoginBack.description;
-    }
-    break;
-
-    case CommunicationType::SHOWLOGIN: {
+    /*case CommunicationType::SHOWLOGIN: {
         js_value["communication_type"] = "showlogin";
         std::string temp = mychat::CombineString(param.param.ShowLogin.customer, param.param.ShowLogin.customer_num);
         js_value["customer"]           = temp.c_str();
@@ -101,118 +92,133 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& param) 
         js_value["target"]             = param.param.TransferFile.target;
         js_value["source"]             = param.param.TransferFile.source;
     }
-    break;
-
-    default:
-        break;
+    break;*/
     }
 
-    str_json = js_write.write(js_value);
-
-    return str_json;
+    return handleJson->GetJsonBack();
 }
 
-bool DecodeJson(const std::string &value, s_HandleRecv &lReturn) {
-    Json::Value js_value;
-    Json::Reader js_reader;
-    js_reader.parse(value, js_value);
-
-    if (js_value["communication_type"].asString() == "register") { // register
-        std::string customer = js_value["customer"].asString(), password = js_value["password"].asString();
+bool mychat::DecodeJson(const std::string& message, s_HandleRecv &lReturn) {
+    CHandleJson* handleJson = CHandleJson::CreateInstance();
+    handleJson->ClearJson();
+    handleJson->InitJson(message);
+    if (handleJson->GetJsonValue("communication_type") == "register") { // register
+        std::string customer = handleJson->GetJsonValue("customer"),
+            password = handleJson->GetJsonValue("password");
         HANDLE_MESSAGE(&lReturn.param.Register.customer, customer.length(), customer.c_str());
         HANDLE_MESSAGE(&lReturn.param.Register.password, password.length(), password.c_str());
-        lReturn.type = REGISTER;
-    } else if (js_value["communication_type"].asString() == "registerbacksucceed") { // register_succeed
-        std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString();
-        HANDLE_MESSAGE(&lReturn.param.RegisterBack.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&lReturn.param.RegisterBack.register_result, register_result.length(), register_result.c_str());
-        lReturn.type = REGISTERBACKSUCCEED;
-    } else if (js_value["communication_type"].asString() == "registerbackfailed") { // register_failed
-        std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString(),
-                    description = js_value["description"].asString();
-        HANDLE_MESSAGE(&lReturn.param.RegisterBack.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&lReturn.param.RegisterBack.register_result, register_result.length(), register_result.c_str());
-        HANDLE_MESSAGE(&lReturn.param.RegisterBack.description, description.length(), description.c_str());
-        lReturn.type = REGISTERBACKFAILED;
-    } else if (js_value["communication_type"].asString() == "login") { // login
-        std::string customer = js_value["customer"].asString(), password = js_value["password"].asString();
+        lReturn.type = CommunicationType::REGISTER;
+    } 
+    //else if (handleJson->GetJsonValue("communication_type") == "registerbacksucceed") { // register_succeed
+    //    std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString();
+    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.customer, customer.length(), customer.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.register_result, register_result.length(), register_result.c_str());
+    //    lReturn.type = CommunicationType::REGISTERBACKSUCCEED;
+    //} 
+    //else if (handleJson->GetJsonValue("communication_type") == "registerbackfailed") { // register_failed
+    //    std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString(),
+    //                description = js_value["description"].asString();
+    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.customer, customer.length(), customer.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.register_result, register_result.length(), register_result.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.description, description.length(), description.c_str());
+    //    lReturn.type = CommunicationType::REGISTERBACKFAILED;
+    //} 
+    else if (handleJson->GetJsonValue("communication_type") == "login") { // login
+        std::string customer = handleJson->GetJsonValue("customer"),
+                    password = handleJson->GetJsonValue("password");
         HANDLE_MESSAGE(&lReturn.param.Login.customer, customer.length(), customer.c_str());
         HANDLE_MESSAGE(&lReturn.param.Login.password, password.length(), password.c_str());
-        lReturn.type = LOGIN;
-    } else if (js_value["communication_type"].asString() == "loginbacksucceed") { // login_succeed
-        std::string customer = js_value["customer"].asString(), login_result = js_value["login_result"].asString();
-        HANDLE_MESSAGE(&lReturn.param.LoginBack.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&lReturn.param.LoginBack.login_result, login_result.length(), login_result.c_str());
-        lReturn.type = LOGINBACKSUCCEED;
-    } else if (js_value["communication_type"].asString() == "loginbackfailed") { // login_faileds
-        std::string customer = js_value["customer"].asString(), login_result = js_value["login_result"].asString(),
-                    description = js_value["description"].asString();
+        lReturn.type = CommunicationType::LOGIN;
+    } 
+    else if (handleJson->GetJsonValue("communication_type") == "loginback") { // login_back
+        std::string customer = handleJson->GetJsonValue("customer"), 
+                    login_result = handleJson->GetJsonValue("login_result"),
+                    description = handleJson->GetJsonValue("description");
         HANDLE_MESSAGE(&lReturn.param.LoginBack.customer, customer.length(), customer.c_str());
         HANDLE_MESSAGE(&lReturn.param.LoginBack.login_result, login_result.length(), login_result.c_str());
         HANDLE_MESSAGE(&lReturn.param.LoginBack.description, description.length(), description.c_str());
-        lReturn.type = LOGINBACKFAILED;
-    } else if (js_value["communication_type"].asString() == "showlogin") { // show_login
-        std::string customer = js_value["customer"].asString();
-        int size = 0;
-        lReturn.param.ShowLogin.customer = new char *[js_value["customer_num"].asInt()];
-        lReturn.param.ShowLogin.customer_num = js_value["customer_num"].asInt();
-        SplitString(customer.c_str(), '|', lReturn.param.ShowLogin.customer, size);
-        if (size != js_value["customer_num"].asInt()) {
-            lReturn.type = ERRORCOMMUNICATION;
-            for (int i = 0; i < size; ++i) {
-                delete[]lReturn.param.ShowLogin.customer[i];
-            }
-            delete[]lReturn.param.ShowLogin.customer;
-        } else {
-            lReturn.type = SHOWLOGIN;
-        }
-    } else if (js_value["communication_type"].asString() == "delcustomer") { // delete_customer
-        std::string customer = js_value["customer"].asString(), source = js_value["source"].asString();
-        HANDLE_MESSAGE(&lReturn.param.DelCustomer.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&lReturn.param.DelCustomer.source, source.length(), source.c_str());
-        lReturn.type = DELETECUSTOMER;
-    } else if (js_value["communication_type"].asString() == "chat") { // chat
-        std::string content = js_value["content"].asString(), source = js_value["source"].asString(),
-                    target = js_value["target"].asString();
-        HANDLE_MESSAGE(&lReturn.param.Chat.content, content.length(), content.c_str());
-        HANDLE_MESSAGE(&lReturn.param.Chat.source, source.length(), source.c_str());
-        HANDLE_MESSAGE(&lReturn.param.Chat.target, target.length(), target.c_str());
-        lReturn.type = CHAT;
-    } else if (js_value["communication_type"].asString() == "transferfilerequest") { // transfer_filequest
-        std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
-                    target = js_value["target"].asString(), file_length = js_value["file_length"].asString();
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.file_name, file_name.length(), file_name.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.source, source.length(), source.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.target, target.length(), target.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.file_length, file_length.length(), file_length.c_str());
-        lReturn.type = TRANSFERFILEREQUEST;
-    } else if (js_value["communication_type"].asString() == "transferfilerespond") { // transfer_filerespond
-        std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
-                    target = js_value["target"].asString(), transfer_result = js_value["transfer_result"].asString();
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRespond.file_name, file_name.length(), file_name.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRespond.source, source.length(), source.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRespond.target, target.length(), target.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRespond.transfer_result, transfer_result.length(), transfer_result.c_str());
-        lReturn.type = TRANSFERFILERESPOND;
-    } else if (js_value["communication_type"].asString() == "transferfile") { // transfer_file
-        std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
-                    target = js_value["target"].asString(), file_content = js_value["file_content"].asString(),
-                    file_length = js_value["file_length"].asString();
-        HANDLE_MESSAGE(&lReturn.param.TransferFile.file_name, file_name.length(), file_name.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFile.source, source.length(), source.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFile.target, target.length(), target.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.file_length, file_length.length(), file_length.c_str());
-        HANDLE_MESSAGE(&lReturn.param.TransferFile.file_content, file_content.length(), file_content.c_str());
-        lReturn.param.TransferFile.file_block = js_value["file_block"].asUInt();
-        lReturn.param.TransferFile.current_block = js_value["current_block"].asUInt();
-        lReturn.type = TRANSFERFILE;
-    } else { // other
-        lReturn.type = NULLCOMMUNICATION;
+        lReturn.type = CommunicationType::LOGINBACK;
+    } 
+    //else if (handleJson->GetJsonValue("communication_type") == "showlogin") { // show_login
+    //    std::string customer = js_value["customer"].asString();
+    //    int size = 0;
+    //    lReturn.param.ShowLogin.customer = new char *[js_value["customer_num"].asInt()];
+    //    lReturn.param.ShowLogin.customer_num = js_value["customer_num"].asInt();
+    //    SplitString(customer.c_str(), '|', lReturn.param.ShowLogin.customer, size);
+    //    if (size != js_value["customer_num"].asInt()) {
+    //        lReturn.type = CommunicationType::ERRORCOMMUNICATION;
+    //        for (int i = 0; i < size; ++i) {
+    //            delete[]lReturn.param.ShowLogin.customer[i];
+    //        }
+    //        delete[]lReturn.param.ShowLogin.customer;
+    //    } else {
+    //        lReturn.type = CommunicationType::SHOWLOGIN;
+    //    }
+    //} 
+    //else if (handleJson->GetJsonValue("communication_type") == "delcustomer") { // delete_customer
+    //    std::string customer = js_value["customer"].asString(), source = js_value["source"].asString();
+    //    HANDLE_MESSAGE(&lReturn.param.DelCustomer.customer, customer.length(), customer.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.DelCustomer.source, source.length(), source.c_str());
+    //    lReturn.type = CommunicationType::DELETECUSTOMER;
+    //} 
+    //else if (handleJson->GetJsonValue("communication_type") == "chat") { // chat
+    //    std::string content = js_value["content"].asString(), source = js_value["source"].asString(),
+    //                target = js_value["target"].asString();
+    //    HANDLE_MESSAGE(&lReturn.param.Chat.content, content.length(), content.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.Chat.source, source.length(), source.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.Chat.target, target.length(), target.c_str());
+    //    lReturn.type = CommunicationType::CHAT;
+    //} 
+    //else if (handleJson->GetJsonValue("communication_type") == "transferfilerequest") { // transfer_filequest
+    //    std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
+    //                target = js_value["target"].asString(), file_length = js_value["file_length"].asString();
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.file_name, file_name.length(), file_name.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.source, source.length(), source.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.target, target.length(), target.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.file_length, file_length.length(), file_length.c_str());
+    //    lReturn.type = CommunicationType::TRANSFERFILEREQUEST;
+    //} 
+    //else if (handleJson->GetJsonValue("communication_type") == "transferfilerespond") { // transfer_filerespond
+    //    std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
+    //                target = js_value["target"].asString(), transfer_result = js_value["transfer_result"].asString();
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRespond.file_name, file_name.length(), file_name.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRespond.source, source.length(), source.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRespond.target, target.length(), target.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRespond.transfer_result, transfer_result.length(), transfer_result.c_str());
+    //    lReturn.type = CommunicationType::TRANSFERFILERESPOND;
+    //} 
+    //else if (handleJson->GetJsonValue("communication_type") == "transferfile") { // transfer_file
+    //    std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
+    //                target = js_value["target"].asString(), file_content = js_value["file_content"].asString(),
+    //                file_length = js_value["file_length"].asString();
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFile.file_name, file_name.length(), file_name.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFile.source, source.length(), source.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFile.target, target.length(), target.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFileRequest.file_length, file_length.length(), file_length.c_str());
+    //    HANDLE_MESSAGE(&lReturn.param.TransferFile.file_content, file_content.length(), file_content.c_str());
+    //    lReturn.param.TransferFile.file_block = js_value["file_block"].asUInt();
+    //    lReturn.param.TransferFile.current_block = js_value["current_block"].asUInt();
+    //    lReturn.type = CommunicationType::TRANSFERFILE;
+    //} 
+    else { // other
+        lReturn.type = CommunicationType::NULLCOMMUNICATION;
     }
     return true;
 }
 
-std::string Encryption(const std::string & param) {
+void mychat::DeleteMemory(const CommunicationType type, s_HandleRecv& s_param)
+{
+    switch (type)
+    {
+    case CommunicationType::LOGIN: {
+        delete[]s_param.param.Login.customer;
+        delete[]s_param.param.Login.password;
+    }
+        break;
+    }
+}
+
+std::string mychat::Encryption(const std::string& param) {
     std::string str_return;
 
     unsigned int len = param.length();
@@ -222,7 +228,7 @@ std::string Encryption(const std::string & param) {
     return str_return;
 }
 
-std::string Decryption(const std::string & param) {
+std::string mychat::Decryption(const std::string& param) {
     std::string str_return;
 
     unsigned int len = param.length();
@@ -232,7 +238,7 @@ std::string Decryption(const std::string & param) {
     return str_return;
 }
 
-bool VerifyCode(const std::string & code, const std::string & code_verify) {
+bool mychat::VerifyCode(const std::string& code, const std::string& code_verify) {
     std::string temp1(code), temp2(code_verify);
     mychat::ToLow(temp1), mychat::ToLow(temp2);
     if (temp1.compare(temp2) == 0) {
@@ -242,7 +248,7 @@ bool VerifyCode(const std::string & code, const std::string & code_verify) {
     }
 }
 
-void ToLow(std::string & code) {
+void mychat::ToLow(std::string& code) {
     int len = code.length();
     std::string temp("");
     char low = 0;
@@ -255,7 +261,7 @@ void ToLow(std::string & code) {
     return;
 }
 
-std::string CombineString(char** be_combined, const int size) {
+std::string mychat::CombineString(char** be_combined, const int size) {
     std::string s_return("");
     for (int i = 0; i < size; ++i) {
         s_return += be_combined[i];
@@ -264,7 +270,7 @@ std::string CombineString(char** be_combined, const int size) {
     return s_return.substr(0, s_return.length() - 1);
 }
 
-void SplitString(const std::string & be_converted, const char separator, std::vector<std::string>& dest) {
+void mychat::SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest) {
     int pos = -1, old_pos = 0;
     pos = be_converted.find(separator, pos + 1);
     while (pos != be_converted.npos) {
@@ -277,7 +283,7 @@ void SplitString(const std::string & be_converted, const char separator, std::ve
     return;
 }
 
-void SplitString(const char * be_converted, const char separator, char **dest, int & size) {
+void mychat::SplitString(const char * be_converted, const char separator, char **dest, int & size) {
     int pos = -1, old_pos = 0, i = 0;
     std::string temp(be_converted);
     pos = temp.find(separator, pos + 1);
@@ -303,4 +309,45 @@ void SplitString(const char * be_converted, const char separator, char **dest, i
     size = i;
 
     return;
+}
+
+mychat::CHandleJson* mychat::CHandleJson::CreateInstance()
+{
+    static CHandleJson* ptr = nullptr;
+    if (ptr == nullptr) {
+        ptr = new CHandleJson();
+    }
+    return ptr;
+}
+
+void mychat::CHandleJson::InitJson(const std::string& message)
+{
+    strJsonRead = message;
+}
+
+void mychat::CHandleJson::ClearJson()
+{
+    strJsonRead = "";
+    strJsonWrite = "";
+}
+
+std::string mychat::CHandleJson::GetJsonValue(const std::string& key) const
+{
+    std::string result = "";
+    int pos = strJsonRead.find(key + "\":");
+    if (pos != std::string::npos) {
+        int pos1 = strJsonRead.find_first_of("\",", pos + 1);
+        result = strJsonRead.substr(pos + key.length() + 3, pos1 - pos - key.length() - 1);
+    }
+    return result;
+}
+
+void mychat::CHandleJson::SetJsonValue(const std::string& key, const std::string& value)
+{
+    strJsonWrite += "\"" + key + "\":\"" + value + "\",";
+}
+
+std::string mychat::CHandleJson::GetJsonBack() const
+{
+    return strJsonWrite;
 }

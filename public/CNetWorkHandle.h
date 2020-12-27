@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <string>
 
+#include "CDataBase.h"
 #include "CLog.h"
 
 namespace mychat {
@@ -15,7 +16,8 @@ namespace mychat {
 	public:
 		static CNetWorkHandle* CreateInstance();
 
-		int HandleRecv(const std::string& ip, const std::string& message, const s_HandleRecv& handleRecv);
+		CommunicationType HandleRecv(const std::string& message, s_HandleRecv& handleRecv, 
+			                         std::string& strToSend);
 
 		~CNetWorkHandle();
 
@@ -25,12 +27,9 @@ namespace mychat {
 		CNetWorkHandle(const CNetWorkHandle&) = delete;
 		CNetWorkHandle operator=(const CNetWorkHandle&) = delete;
 
-		int HandleRecvTcp(const s_HandleRecv& handleRecv);
-
-		int HandleRecvUdp(const s_HandleRecv& handleRecv);
-
 	private:
 		CLog logNetWork;
+		CDataBase* dataBase;
 	};
 }
 #endif // !__NET_WORK_HANDLE_H__

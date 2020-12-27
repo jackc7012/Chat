@@ -18,7 +18,9 @@ namespace mychat {
 
 		int InitDataBase(const std::string& dataBaseName);
 
-		int SearchDataBaseLogin(const std::string& loginName, const std::string& loginPassword);
+		int SearchDataBaseLogin(const std::string& loginName, std::string& ip, char *password, int loginStatus);
+
+		int UpdateLoginStatus(const std::string& loginName, const int type);
 
 	private:
 		CDataBase();

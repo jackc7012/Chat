@@ -101,8 +101,12 @@ BOOL CChatServiceDlg::OnInitDialog() {
     GetDlgItem(IDC_LIST_LOGIN_PEOPLE)->SetFont(&font);
 
     logService.InitLog("../{time}/service");
-    dataBase = mychat::CDataBase::CreateInstance();
     netWorkHandle = mychat::CNetWorkHandle::CreateInstance();
+
+    for (int i = 0; i < THREAD_NUM; ++i) {
+        myHandleThread[i] = std::thread(&CChatServiceDlg::threadTask, this, i);
+        myHandleThread[i].join();
+    }
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -172,6 +176,9 @@ LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
     case FD_ACCEPT: {
         int addr_len = sizeof(addrAccept);
         SOCKET addrClient = ::accept(socketServiceTcp, (SOCKADDR*)&addrAccept, &addr_len);
+        if (addrClient == INVALID_SOCKET) {
+            break;
+        }
         socketAccept.push_back(addrClient);
         std::string ip = ::inet_ntoa(addrAccept.sin_addr);
         socketToIpName.insert(std::pair<SOCKET, IpName>(addrClient, IpName(ip, "")));
@@ -195,7 +202,8 @@ LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
         s_HandleRecv handleRecv;
         handleRecv.connectionType = ConnectionType::TCP;
         handleRecv.socket.socket_accept_tcp = socketAccept[i];
-        netWorkHandle->HandleRecv(::inet_ntoa(addrClient.sin_addr), strRecv, handleRecv);
+        handleRecv.ip = ::inet_ntoa(addrClient.sin_addr);
+        taskQueue.push(s_TaskQueue(handleRecv, strRecv));
         delete []strRecv;
     }
     break;
@@ -229,7 +237,7 @@ LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
         handleRecv.connectionType = ConnectionType::UDP;
         handleRecv.socket.addr_client_udp = addrClient;
         handleRecv.ip = ::inet_ntoa(addrClient.sin_addr);
-        netWorkHandle->HandleRecv(, strRecv, handleRecv);
+        taskQueue.push(s_TaskQueue(handleRecv, strRecv));
         delete[]strRecv;
     }
     break;
@@ -239,206 +247,205 @@ LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
-
-void CChatServiceDlg::HandleRecv(const s_HandleRecv & handle_recv) {
-    //服务器处理事件
-    UpdateData(TRUE);
-    std::lock_guard<std::mutex> mt(mt_server_handle);
-    CString str_text;
-    std::string js_str_send;
-    s_HandleRecv to_send;
-    switch (handle_recv.type) {
-    case NULLCOMMUNICATION:
-        break;
-
-    case ERRORCOMMUNICATION:
-        break;
-
-    case REGISTER: {
-        char password[MAX_PATH] = { 0 };
-        GetPrivateProfileString(_T("login_info"), handle_recv.param.Register.customer, "", password, MAX_PATH, _T("./login.ini"));
-        logService << "customer " << handle_recv.param.Register.customer << " registere ";
-        if (strcmp(password, "") != 0) {
-            to_send.param.RegisterBack.customer = handle_recv.param.Register.customer;
-            to_send.param.RegisterBack.register_result = "failed";
-            to_send.param.RegisterBack.description = "user name is already have";
-            js_str_send = EncodeJson(REGISTERBACKFAILED, to_send);
-            logService << "result failed description is " << to_send.param.RegisterBack.description;
-            logService.PrintlogError(FILE_FORMAT);
-        } else {
-            to_send.param.RegisterBack.customer = handle_recv.param.Register.customer;
-            to_send.param.RegisterBack.register_result = "succeed";
-            WritePrivateProfileString(_T("login_info"), handle_recv.param.Register.customer, handle_recv.param.Register.password, ("./login.ini"));
-            js_str_send = EncodeJson(REGISTERBACKSUCCEED, to_send);
-            logService << "result succeed";
-            logService.PrintlogInfo(FILE_FORMAT);
-        }
-        ::send(handle_recv.socket.socket_accept_tcp, js_str_send.c_str(), js_str_send.length(), 0);
-        logService << "send message :" << js_str_send;
-        logService.PrintlogInfo(FILE_FORMAT);
-        delete[]handle_recv.param.Register.customer;
-        delete[]handle_recv.param.Register.password;
-    }
-    break;
-
-    case LOGIN: {
-        char password[MAX_PATH] = { 0 };
-        bool is_succeed = false;
-        logService << "customer " << handle_recv.param.Login.customer << " login ";
-        if (m_list_login_people.FindString(0, handle_recv.param.Login.customer) != LB_ERR) {
-            to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
-            to_send.param.LoginBack.login_result = "failed";
-            to_send.param.LoginBack.description = "this people has already login";
-            js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
-            logService << "result failed description is " << to_send.param.LoginBack.description;
-            logService.PrintlogError(FILE_FORMAT);
-        } else {
-            GetPrivateProfileString(_T("login_info"), handle_recv.param.Login.customer, "", password, MAX_PATH, _T("./login.ini"));
-            if (strcmp(password, "") == 0) {
-                to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
-                to_send.param.LoginBack.login_result = "failed";
-                to_send.param.LoginBack.description = "no such people";
-                js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
-                logService << "result failed description is " << to_send.param.LoginBack.description;
-                logService.PrintlogError(FILE_FORMAT);
-            } else {
-                //std::string decry_password = Decryption(password), decry_handle_recv = Decryption(handle_recv.Param.Login.password);
-                if (/*decry_password.compare(decry_handle_recv)*/strcmp(password, handle_recv.param.Login.password) == 0) {
-                    to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
-                    to_send.param.LoginBack.login_result = "succeed";
-                    js_str_send = EncodeJson(LOGINBACKSUCCEED, to_send);
-                    is_succeed = true;
-                    logService << "result succeed";
-                    logService.PrintlogInfo(FILE_FORMAT);
-                } else {
-                    to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
-                    to_send.param.LoginBack.login_result = "failed";
-                    to_send.param.LoginBack.description = "password error";
-                    js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
-                    logService << "result failed description is " << to_send.param.LoginBack.description;
-                    logService.PrintlogError(FILE_FORMAT);
-                }
-            }
-        }
-        ::send(handle_recv.socket.socket_accept_tcp, js_str_send.c_str(), js_str_send.length(), 0);
-        logService << "send message :" << js_str_send;
-        logService.PrintlogInfo(FILE_FORMAT);
-        if (is_succeed) {
-            m_list_login_people.AddString(handle_recv.param.Login.customer);
-            name_to_socket_accept.insert(std::pair<std::string, SOCKET>(handle_recv.param.Login.customer, handle_recv.socket.socket_accept_tcp));
-            name_to_ip.insert(std::pair<std::string, std::string>(handle_recv.param.Login.customer, ip));
-            ve_accept_name.push_back(handle_recv.param.Login.customer);
-            GetDlgItemText(IDC_TEXT, str_text);
-            if (accpetCount != 1) {
-                str_text += "\r\n";
-            }
-            str_text += handle_recv.param.Login.customer;
-            str_text += "登录";
-            SetDlgItemText(IDC_TEXT, str_text);
-            to_send.param.ShowLogin.customer = new char *[ve_accept_name.size()];
-            for (unsigned int i = 0; i < ve_accept_name.size(); ++i) {
-                to_send.param.ShowLogin.customer[i] = const_cast<char *>(ve_accept_name[i].c_str());
-            }
-            to_send.param.ShowLogin.customer_num = ve_accept_name.size();
-            js_str_send = EncodeJson(SHOWLOGIN, to_send);
-            logService << "send message for all :" << js_str_send;
-            logService.PrintlogInfo(FILE_FORMAT);
-            delete[]to_send.param.ShowLogin.customer;
-            for (auto itor = name_to_socket_accept.cbegin(); itor != name_to_socket_accept.cend(); ++itor) {
-                ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
-            }
-        }
-        delete[]handle_recv.param.Login.customer;
-        delete[]handle_recv.param.Login.password;
-    }
-    break;
-
-    case DELETECUSTOMER: {
-        //int del_index = m_list_login_people.FindString(0, handle_recv.Param.DelCustomer.customer);
-        //m_list_login_people.DeleteString(del_index);
-        //name_to_socket_accept.erase(handle_recv.Param.DelCustomer.customer);
-        ////ip_to_name.erase()
-        //str_send = EncodeJson(DELETECUSTOMER, handle_recv.Param.DelCustomer.customer);
-        //for (auto itor = name_to_socket_accept.cbegin(); itor != name_to_socket_accept.cend(); ++itor)
-        //{
-        //	if (itor->first.compare(handle_recv.Param.DelCustomer.customer) != 0)
-        //	{
-        //		::send(itor->second, str_send.c_str(), str_send.length(), 0);
-        //	}
-        //}
-    }
-    break;
-
-    /*case CHAT: {
-        auto itor = name_to_socket_accept.find(handle_recv.Param.Chat.target);
-        to_send.Param.Chat.source = handle_recv.Param.Chat.source;
-        to_send.Param.Chat.target = handle_recv.Param.Chat.target;
-        to_send.Param.Chat.content = handle_recv.Param.Chat.content;
-        js_str_send = EncodeJson(CHAT, to_send);
-        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
-        delete[]handle_recv.Param.Chat.source;
-        delete[]handle_recv.Param.Chat.target;
-        delete[]handle_recv.Param.Chat.content;
-    }
-    break;
-
-    case TRANSFERFILEREQUEST: {
-        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFileRequest.target);
-        to_send.Param.TransferFileRequest.source = handle_recv.Param.TransferFileRequest.source;
-        to_send.Param.TransferFileRequest.target = handle_recv.Param.TransferFileRequest.target;
-        to_send.Param.TransferFileRequest.file_name = handle_recv.Param.TransferFileRequest.file_name;
-        to_send.Param.TransferFileRequest.file_length = handle_recv.Param.TransferFileRequest.file_length;
-        js_str_send = EncodeJson(TRANSFERFILEREQUEST, to_send);
-        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
-        delete[]handle_recv.Param.TransferFileRequest.source;
-        delete[]handle_recv.Param.TransferFileRequest.target;
-        delete[]handle_recv.Param.TransferFileRequest.file_name;
-        delete[]handle_recv.Param.TransferFileRequest.file_length;
-    }
-    break;
-
-    case TRANSFERFILERESPOND: {
-        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFileRespond.target);
-        to_send.Param.TransferFileRespond.source = handle_recv.Param.TransferFileRespond.source;
-        to_send.Param.TransferFileRespond.target = handle_recv.Param.TransferFileRespond.target;
-        to_send.Param.TransferFileRespond.file_name = handle_recv.Param.TransferFileRespond.file_name;
-        to_send.Param.TransferFileRespond.transfer_result = handle_recv.Param.TransferFileRespond.transfer_result;
-        js_str_send = EncodeJson(TRANSFERFILERESPOND, to_send);
-        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
-        delete[]handle_recv.Param.TransferFileRespond.source;
-        delete[]handle_recv.Param.TransferFileRespond.target;
-        delete[]handle_recv.Param.TransferFileRespond.file_name;
-        delete[]handle_recv.Param.TransferFileRespond.transfer_result;
-    }
-    break;
-
-    case TRANSFERFILE: {
-        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFile.target);
-        to_send.Param.TransferFile.source = handle_recv.Param.TransferFile.source;
-        to_send.Param.TransferFile.target = handle_recv.Param.TransferFile.target;
-        to_send.Param.TransferFile.file_name = handle_recv.Param.TransferFile.file_name;
-        to_send.Param.TransferFile.file_length = handle_recv.Param.TransferFile.file_length;
-        to_send.Param.TransferFile.file_block = handle_recv.Param.TransferFile.file_block;
-        to_send.Param.TransferFile.file_content = handle_recv.Param.TransferFile.file_content;
-        to_send.Param.TransferFile.current_block = handle_recv.Param.TransferFile.current_block;
-        js_str_send = EncodeJson(TRANSFERFILE, to_send);
-        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
-        delete[]handle_recv.Param.TransferFile.source;
-        delete[]handle_recv.Param.TransferFile.target;
-        delete[]handle_recv.Param.TransferFile.file_name;
-        delete[]handle_recv.Param.TransferFile.file_content;
-        delete[]handle_recv.Param.TransferFile.file_length;
-    }
-    break;*/
-
-    default:
-        break;
-    }
-    UpdateData(FALSE);
-
-    return;
-}
-
+//
+//void CChatServiceDlg::HandleRecv(const s_HandleRecv & handle_recv) {
+//    //服务器处理事件
+//    UpdateData(TRUE);
+//    std::lock_guard<std::mutex> mt(mt_server_handle);
+//    CString str_text;
+//    std::string js_str_send;
+//    s_HandleRecv to_send;
+//    switch (handle_recv.type) {
+//    case NULLCOMMUNICATION:
+//        break;
+//
+//    case ERRORCOMMUNICATION:
+//        break;
+//
+//    case REGISTER: {
+//        char password[MAX_PATH] = { 0 };
+//        GetPrivateProfileString(_T("login_info"), handle_recv.param.Register.customer, "", password, MAX_PATH, _T("./login.ini"));
+//        logService << "customer " << handle_recv.param.Register.customer << " registere ";
+//        if (strcmp(password, "") != 0) {
+//            to_send.param.RegisterBack.customer = handle_recv.param.Register.customer;
+//            to_send.param.RegisterBack.register_result = "failed";
+//            to_send.param.RegisterBack.description = "user name is already have";
+//            js_str_send = EncodeJson(REGISTERBACKFAILED, to_send);
+//            logService << "result failed description is " << to_send.param.RegisterBack.description;
+//            logService.PrintlogError(FILE_FORMAT);
+//        } else {
+//            to_send.param.RegisterBack.customer = handle_recv.param.Register.customer;
+//            to_send.param.RegisterBack.register_result = "succeed";
+//            WritePrivateProfileString(_T("login_info"), handle_recv.param.Register.customer, handle_recv.param.Register.password, ("./login.ini"));
+//            js_str_send = EncodeJson(REGISTERBACKSUCCEED, to_send);
+//            logService << "result succeed";
+//            logService.PrintlogInfo(FILE_FORMAT);
+//        }
+//        ::send(handle_recv.socket.socket_accept_tcp, js_str_send.c_str(), js_str_send.length(), 0);
+//        logService << "send message :" << js_str_send;
+//        logService.PrintlogInfo(FILE_FORMAT);
+//        delete[]handle_recv.param.Register.customer;
+//        delete[]handle_recv.param.Register.password;
+//    }
+//    break;
+//
+//    case LOGIN: {
+//        char password[MAX_PATH] = { 0 };
+//        bool is_succeed = false;
+//        logService << "customer " << handle_recv.param.Login.customer << " login ";
+//        if (m_list_login_people.FindString(0, handle_recv.param.Login.customer) != LB_ERR) {
+//            to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
+//            to_send.param.LoginBack.login_result = "failed";
+//            to_send.param.LoginBack.description = "this people has already login";
+//            js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
+//            logService << "result failed description is " << to_send.param.LoginBack.description;
+//            logService.PrintlogError(FILE_FORMAT);
+//        } else {
+//            GetPrivateProfileString(_T("login_info"), handle_recv.param.Login.customer, "", password, MAX_PATH, _T("./login.ini"));
+//            if (strcmp(password, "") == 0) {
+//                to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
+//                to_send.param.LoginBack.login_result = "failed";
+//                to_send.param.LoginBack.description = "no such people";
+//                js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
+//                logService << "result failed description is " << to_send.param.LoginBack.description;
+//                logService.PrintlogError(FILE_FORMAT);
+//            } else {
+//                //std::string decry_password = Decryption(password), decry_handle_recv = Decryption(handle_recv.Param.Login.password);
+//                if (/*decry_password.compare(decry_handle_recv)*/strcmp(password, handle_recv.param.Login.password) == 0) {
+//                    to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
+//                    to_send.param.LoginBack.login_result = "succeed";
+//                    js_str_send = EncodeJson(LOGINBACKSUCCEED, to_send);
+//                    is_succeed = true;
+//                    logService << "result succeed";
+//                    logService.PrintlogInfo(FILE_FORMAT);
+//                } else {
+//                    to_send.param.LoginBack.customer = handle_recv.param.Login.customer;
+//                    to_send.param.LoginBack.login_result = "failed";
+//                    to_send.param.LoginBack.description = "password error";
+//                    js_str_send = EncodeJson(LOGINBACKFAILED, to_send);
+//                    logService << "result failed description is " << to_send.param.LoginBack.description;
+//                    logService.PrintlogError(FILE_FORMAT);
+//                }
+//            }
+//        }
+//        ::send(handle_recv.socket.socket_accept_tcp, js_str_send.c_str(), js_str_send.length(), 0);
+//        logService << "send message :" << js_str_send;
+//        logService.PrintlogInfo(FILE_FORMAT);
+//        if (is_succeed) {
+//            m_list_login_people.AddString(handle_recv.param.Login.customer);
+//            name_to_socket_accept.insert(std::pair<std::string, SOCKET>(handle_recv.param.Login.customer, handle_recv.socket.socket_accept_tcp));
+//            name_to_ip.insert(std::pair<std::string, std::string>(handle_recv.param.Login.customer, ip));
+//            ve_accept_name.push_back(handle_recv.param.Login.customer);
+//            GetDlgItemText(IDC_TEXT, str_text);
+//            if (accpetCount != 1) {
+//                str_text += "\r\n";
+//            }
+//            str_text += handle_recv.param.Login.customer;
+//            str_text += "登录";
+//            SetDlgItemText(IDC_TEXT, str_text);
+//            to_send.param.ShowLogin.customer = new char *[ve_accept_name.size()];
+//            for (unsigned int i = 0; i < ve_accept_name.size(); ++i) {
+//                to_send.param.ShowLogin.customer[i] = const_cast<char *>(ve_accept_name[i].c_str());
+//            }
+//            to_send.param.ShowLogin.customer_num = ve_accept_name.size();
+//            js_str_send = EncodeJson(SHOWLOGIN, to_send);
+//            logService << "send message for all :" << js_str_send;
+//            logService.PrintlogInfo(FILE_FORMAT);
+//            delete[]to_send.param.ShowLogin.customer;
+//            for (auto itor = name_to_socket_accept.cbegin(); itor != name_to_socket_accept.cend(); ++itor) {
+//                ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
+//            }
+//        }
+//        delete[]handle_recv.param.Login.customer;
+//        delete[]handle_recv.param.Login.password;
+//    }
+//    break;
+//
+//    case DELETECUSTOMER: {
+//        //int del_index = m_list_login_people.FindString(0, handle_recv.Param.DelCustomer.customer);
+//        //m_list_login_people.DeleteString(del_index);
+//        //name_to_socket_accept.erase(handle_recv.Param.DelCustomer.customer);
+//        ////ip_to_name.erase()
+//        //str_send = EncodeJson(DELETECUSTOMER, handle_recv.Param.DelCustomer.customer);
+//        //for (auto itor = name_to_socket_accept.cbegin(); itor != name_to_socket_accept.cend(); ++itor)
+//        //{
+//        //	if (itor->first.compare(handle_recv.Param.DelCustomer.customer) != 0)
+//        //	{
+//        //		::send(itor->second, str_send.c_str(), str_send.length(), 0);
+//        //	}
+//        //}
+//    }
+//    break;
+//
+//    /*case CHAT: {
+//        auto itor = name_to_socket_accept.find(handle_recv.Param.Chat.target);
+//        to_send.Param.Chat.source = handle_recv.Param.Chat.source;
+//        to_send.Param.Chat.target = handle_recv.Param.Chat.target;
+//        to_send.Param.Chat.content = handle_recv.Param.Chat.content;
+//        js_str_send = EncodeJson(CHAT, to_send);
+//        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
+//        delete[]handle_recv.Param.Chat.source;
+//        delete[]handle_recv.Param.Chat.target;
+//        delete[]handle_recv.Param.Chat.content;
+//    }
+//    break;
+//
+//    case TRANSFERFILEREQUEST: {
+//        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFileRequest.target);
+//        to_send.Param.TransferFileRequest.source = handle_recv.Param.TransferFileRequest.source;
+//        to_send.Param.TransferFileRequest.target = handle_recv.Param.TransferFileRequest.target;
+//        to_send.Param.TransferFileRequest.file_name = handle_recv.Param.TransferFileRequest.file_name;
+//        to_send.Param.TransferFileRequest.file_length = handle_recv.Param.TransferFileRequest.file_length;
+//        js_str_send = EncodeJson(TRANSFERFILEREQUEST, to_send);
+//        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
+//        delete[]handle_recv.Param.TransferFileRequest.source;
+//        delete[]handle_recv.Param.TransferFileRequest.target;
+//        delete[]handle_recv.Param.TransferFileRequest.file_name;
+//        delete[]handle_recv.Param.TransferFileRequest.file_length;
+//    }
+//    break;
+//
+//    case TRANSFERFILERESPOND: {
+//        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFileRespond.target);
+//        to_send.Param.TransferFileRespond.source = handle_recv.Param.TransferFileRespond.source;
+//        to_send.Param.TransferFileRespond.target = handle_recv.Param.TransferFileRespond.target;
+//        to_send.Param.TransferFileRespond.file_name = handle_recv.Param.TransferFileRespond.file_name;
+//        to_send.Param.TransferFileRespond.transfer_result = handle_recv.Param.TransferFileRespond.transfer_result;
+//        js_str_send = EncodeJson(TRANSFERFILERESPOND, to_send);
+//        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
+//        delete[]handle_recv.Param.TransferFileRespond.source;
+//        delete[]handle_recv.Param.TransferFileRespond.target;
+//        delete[]handle_recv.Param.TransferFileRespond.file_name;
+//        delete[]handle_recv.Param.TransferFileRespond.transfer_result;
+//    }
+//    break;
+//
+//    case TRANSFERFILE: {
+//        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFile.target);
+//        to_send.Param.TransferFile.source = handle_recv.Param.TransferFile.source;
+//        to_send.Param.TransferFile.target = handle_recv.Param.TransferFile.target;
+//        to_send.Param.TransferFile.file_name = handle_recv.Param.TransferFile.file_name;
+//        to_send.Param.TransferFile.file_length = handle_recv.Param.TransferFile.file_length;
+//        to_send.Param.TransferFile.file_block = handle_recv.Param.TransferFile.file_block;
+//        to_send.Param.TransferFile.file_content = handle_recv.Param.TransferFile.file_content;
+//        to_send.Param.TransferFile.current_block = handle_recv.Param.TransferFile.current_block;
+//        js_str_send = EncodeJson(TRANSFERFILE, to_send);
+//        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
+//        delete[]handle_recv.Param.TransferFile.source;
+//        delete[]handle_recv.Param.TransferFile.target;
+//        delete[]handle_recv.Param.TransferFile.file_name;
+//        delete[]handle_recv.Param.TransferFile.file_content;
+//        delete[]handle_recv.Param.TransferFile.file_length;
+//    }
+//    break;*/
+//
+//    default:
+//        break;
+//    }
+//    UpdateData(FALSE);
+//
+//    return;
+//}
 
 void CChatServiceDlg::OnBnClickedKick() {
     // TODO: 在此添加控件通知处理程序代码
@@ -481,4 +488,35 @@ bool CChatServiceDlg::StartUdp()
     }
     logService.PrintlogInfo(FILE_FORMAT);
     return true;
+}
+
+void CChatServiceDlg::threadTask(int taskNum)
+{
+    s_HandleRecv temp;
+    std::string message;
+    CommunicationType type = CommunicationType::NULLCOMMUNICATION;
+    std::string result_message;
+    while (1) {
+        {
+            if (!taskQueue.empty()) {
+                std::lock_guard<std::mutex> lg(mtServerHandle);
+                temp.connectionType = taskQueue.front().handleRecv.connectionType;
+                temp.ip = taskQueue.front().handleRecv.ip;
+                temp.socket = taskQueue.front().handleRecv.socket;
+                message = taskQueue.front().message;
+                taskQueue.pop();
+            }
+            logService << "thread " << taskNum << "start to handle message";
+            logService.PrintlogDebug(FILE_FORMAT);
+            type = netWorkHandle->HandleRecv(message, temp, result_message);
+            if (temp.connectionType == ConnectionType::TCP) {
+                ::send(temp.socket.socket_accept_tcp, result_message.c_str(), result_message.length(), 0);
+            }
+            else if(temp.connectionType == ConnectionType::UDP){
+                int addrLen = sizeof(SOCKADDR);
+                ::sendto(socketServiceUdp, result_message.c_str(), result_message.length(), 0, 
+                         (SOCKADDR*)&temp.socket.addr_client_udp, addrLen);
+            }
+        }
+    }
 }

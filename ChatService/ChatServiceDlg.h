@@ -11,13 +11,15 @@
 #include <map>
 #include <mutex>
 #include <queue>
+#include <thread>
 
 #include "public.h"
 #include "CLog.h"
-#include "CDataBase.h"
 #include "CNetWorkHandle.h"
 
 using IpName = std::pair<std::string, std::string>;
+
+const int THREAD_NUM = 5;
 
 // CChatServiceDlg ¶Ô»°¿ò
 class CChatServiceDlg : public CDialogEx {
@@ -56,14 +58,14 @@ class CChatServiceDlg : public CDialogEx {
     std::multimap<std::string, SOCKET> name_to_socket_accept;
     std::multimap<std::string, std::string> name_to_ip;
     std::multimap<SOCKET, IpName> socketToIpName;
-    void HandleRecv(const mychat::s_HandleRecv &handle_recv);
     std::vector<std::string> ve_accept_name;
-    std::mutex mt_server_handle;
+    std::mutex mtServerHandle;
     afx_msg void OnBnClickedKick();
-    std::queue<std::string> task_queue;
+    std::queue<mychat::s_TaskQueue> taskQueue;
     mychat::CLog logService;
-    mychat::CDataBase* dataBase;
     mychat::CNetWorkHandle* netWorkHandle;
     bool StartTcp();
     bool StartUdp();
+    std::thread myHandleThread[THREAD_NUM];
+    void threadTask(int taskNum);
 };

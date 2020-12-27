@@ -12,8 +12,10 @@ namespace mychat {
 
     inline void HANDLE_MESSAGE(char** type, const unsigned int length, const std::string& message) {
         *type = new char[length + 1];
-        memset(*type, 0, length + 1);
-        memcpy_s(*type, length, message.c_str(), length);
+        if (*type != nullptr) {
+            memset(*type, 0, length + 1);
+            memcpy_s(*type, length, message.c_str(), length);
+        }    
     }
 
     enum class ConnectionType {
@@ -50,15 +52,9 @@ namespace mychat {
           , "customer" : "aaa"
           , "password" : "******"} // ¼ÓÃÜ
         */
-        LOGINBACKSUCCEED,
+        LOGINBACK,
         /*
-          { "communication_type":"loginbacksucceed"
-          , "customer" : "aaa"
-          , "login_result" : "succeed"}
-        */
-        LOGINBACKFAILED,
-        /*
-          { "communication_type":"loginbackfailed"
+          { "communication_type":"loginback"
           , "customer" : "aaa"
           , "login_result" : "failed"
           , "description" : "password error"}
@@ -120,6 +116,17 @@ namespace mychat {
         s_HandleRecv() {
             type = CommunicationType::NULLCOMMUNICATION;
             connectionType = ConnectionType::UNKNOWN;
+        }
+        s_HandleRecv(const s_HandleRecv& other) {
+            connectionType = other.connectionType;
+            ip = other.ip;
+            socket = other.socket;
+        }
+        s_HandleRecv operator=(const s_HandleRecv& other) {
+            connectionType = other.connectionType;
+            ip = other.ip;
+            socket = other.socket;
+            return *this;
         }
         CommunicationType type;
         ConnectionType connectionType;
@@ -208,9 +215,20 @@ namespace mychat {
         } param;
     };
 
+    struct s_TaskQueue {
+        s_TaskQueue(const s_HandleRecv& handleRecv, const std::string message) {
+            this->handleRecv = handleRecv;
+            this->message = message;
+        }
+        s_HandleRecv handleRecv;
+        std::string message;
+    };
+
     std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param);
 
-    bool DecodeJson(const std::string& value, s_HandleRecv& s_return);
+    bool DecodeJson(const std::string& message, s_HandleRecv& lReturn);
+
+    void DeleteMemory(const CommunicationType type, s_HandleRecv& s_param);
 
     std::string Encryption(const std::string& param);
 
@@ -225,5 +243,33 @@ namespace mychat {
     void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest);
 
     void SplitString(const char* be_converted, const char separator, char** dest, int& size);
+
+    class CHandleJson {
+    public:
+        static CHandleJson* CreateInstance();
+
+        ~CHandleJson(){}
+
+    public:
+        void InitJson(const std::string& message);
+
+        void ClearJson();
+
+        std::string GetJsonValue(const std::string& key) const;
+
+        void SetJsonValue(const std::string& key, const std::string& value);
+
+        std::string GetJsonBack() const;
+
+    private:
+        CHandleJson();
+
+        CHandleJson(const CHandleJson&) = delete;
+        CHandleJson operator=(const CHandleJson&) = delete;
+
+    private:
+        std::string strJsonRead;
+        std::string strJsonWrite;
+    };
 }
 #endif  //__PUBLIC_H__

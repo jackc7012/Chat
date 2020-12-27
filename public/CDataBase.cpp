@@ -41,21 +41,42 @@ int CDataBase::InitDataBase(const std::string& dataBaseName)
 	return 0;
 }
 
-int CDataBase::SearchDataBaseLogin(const std::string& loginName, const std::string& loginPassword)
+int CDataBase::SearchDataBaseLogin(const std::string& loginName, std::string& ip, char* password, int loginStatus)
 {
 	int result = 0;
 	char sql[100] = { 0 };
-	sprintf_s(sql, 100, "select Password from tb_info where Name = '%s'", loginName.c_str());
+	sprintf_s(sql, 100, "select Password, Ip, IsLogin from tb_info where Name = '%s'", loginName.c_str());
 	try
 	{
 		pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
-		pRecordset->MoveFirst();
-		_variant_t t = pRecordset->GetFields()->GetItem((long)0)->GetValue();
-		std::string ss = (std::string)(_bstr_t)t;
+		_variant_t sqlPassword = pRecordset->GetFields()->GetItem((long)0)->GetValue();
+		_variant_t sqlIp = pRecordset->GetFields()->GetItem((long)1)->GetValue();
+		_variant_t sqlIsLogin = pRecordset->GetFields()->GetItem((long)2)->GetValue();
+		memcpy_s(password, 50, (char*)(_bstr_t)&sqlPassword, strlen((_bstr_t)&sqlPassword) + 1);
+		ip = (std::string)(_bstr_t)&sqlIp;
+		loginStatus = (int)&sqlIsLogin;
 	}
 	catch (_com_error e)
 	{
 		logDataBase << "searchdatabaselogin failed descripton :" << (std::string)e.Description();
+		logDataBase.PrintlogError(FILE_FORMAT);
+		result = -1;
+	}
+	return result;
+}
+
+int CDataBase::UpdateLoginStatus(const std::string& loginName, const int type)
+{
+	int result = 0;
+	char sql[100] = { 0 };
+	sprintf_s(sql, 100, "update tb_info set IsLogin = %d where Name = %s", type, loginName.c_str());
+	try
+	{
+		pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
+	}
+	catch (_com_error e)
+	{
+		logDataBase << "updateloginstatus " << type << " failed descripton :" << (std::string)e.Description();
 		logDataBase.PrintlogError(FILE_FORMAT);
 		result = -1;
 	}
