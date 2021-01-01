@@ -6,14 +6,13 @@
 #include "ChatClient.h"
 #include "ChatClientDlg.h"
 #include "afxdialogex.h"
+using namespace cwy;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
-
-static const char *s_verify_code = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 class CAboutDlg : public CDialogEx {
   public:
@@ -122,7 +121,7 @@ BOOL CChatClientDlg::OnInitDialog() {
 
     GetDlgItem(IDC_REQUESTFILENAME)->ShowWindow(SW_HIDE);
 
-    SetDlgItemText(IDC_IP, _T("127.0.0.1"));
+    SetDlgItemText(IDC_IP, cwy::SERVER_IP.c_str());
     SetDlgItemText(IDC_PORT, _T("6000"));
 
     srand((unsigned int)time(NULL));
@@ -130,7 +129,7 @@ BOOL CChatClientDlg::OnInitDialog() {
     std::string verify_code("");
     for (int i = 0; i < 4; ++i) {
         code_rand = rand() % 62;
-        verify_code += s_verify_code[code_rand];
+        verify_code += VERIFY_CODE[code_rand];
     }
     SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
 
@@ -190,19 +189,19 @@ void CChatClientDlg::OnBnClickedRegister() {
         MessageBox(_T("IP或端口号不能为空"), _T("错误"), MB_ICONERROR);
     } else if (str_name == "") {
         MessageBox(_T("昵称不能为空"), _T("错误"), MB_ICONERROR);
-    } else if (!VerifyCode(str_code.GetBuffer(0), str_code_verify.GetBuffer(0))) {
+    } else if (!cwy::VerifyCode(str_code.GetBuffer(0), str_code_verify.GetBuffer(0))) {
         MessageBox(_T("验证码错误"), _T("错误"), MB_ICONERROR);
 
         int code_rand = 0;
         std::string verify_code("");
         for (int i = 0; i < 4; ++i) {
             code_rand = rand() % 62;
-            verify_code += s_verify_code[code_rand];
+            verify_code += cwy::VERIFY_CODE[code_rand];
         }
 
         SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
     } else {
-        s_HandleRecv to_send;
+        cwy::s_HandleRecv to_send;
         int port = atoi(str_port.GetBuffer(0));
         const char *ip = str_ip.GetBuffer(0);
         const char *name = str_name.GetBuffer(0);
@@ -227,9 +226,9 @@ void CChatClientDlg::OnBnClickedRegister() {
         }
 
         //std::string encry_psd = Encryption(password);
-        to_send.Param.Register.customer = const_cast<char *>(name);
-        to_send.Param.Register.password = const_cast<char *>(password);
-        std::string send_data = EncodeJson(REGISTER, to_send);
+        to_send.param.Register.customer = const_cast<char *>(name);
+        to_send.param.Register.password = const_cast<char *>(password);
+        std::string send_data = EncodeJson(CommunicationType::REGISTER, to_send);
         ::send(socket_client, send_data.c_str(), send_data.length(), 0);
     }
     str_port.ReleaseBuffer();
@@ -242,7 +241,7 @@ void CChatClientDlg::OnBnClickedRegister() {
     std::string verify_code("");
     for (int i = 0; i < 4; ++i) {
         code_rand = rand() % 62;
-        verify_code += s_verify_code[code_rand];
+        verify_code += cwy::VERIFY_CODE[code_rand];
     }
 
     SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
@@ -302,9 +301,9 @@ void CChatClientDlg::OnBnClickedConnect() {
             }
 
             //std::string encry_psd = Encryption(password);
-            to_send.Param.Login.customer = const_cast<char *>(name);
-            to_send.Param.Login.password = const_cast<char *>(password);
-            std::string send_data = EncodeJson(LOGIN, to_send);
+            to_send.param.Login.customer = const_cast<char *>(name);
+            to_send.param.Login.password = const_cast<char *>(password);
+            std::string send_data = EncodeJson(CommunicationType::LOGIN, to_send);
             ::send(socket_client, send_data.c_str(), send_data.length(), 0);
             nick_name = str_name.GetBuffer(0);
         }
@@ -333,7 +332,7 @@ void CChatClientDlg::OnBnClickedConnect() {
         std::string verify_code("");
         for (int i = 0; i < 4; ++i) {
             code_rand = rand() % 62;
-            verify_code += s_verify_code[code_rand];
+            verify_code += VERIFY_CODE[code_rand];
         }
 
         SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
@@ -344,7 +343,7 @@ void CChatClientDlg::OnBnClickedConnect() {
 
 void CChatClientDlg::OnBnClickedSend() {
     // TODO: 在此添加控件通知处理程序代码
-    CString str_text, str_send, str_send_target;
+    /*CString str_text, str_send, str_send_target;
     s_HandleRecv to_send;
     GetDlgItemText(IDC_SENDTEXT, str_send);
     int cur_sel = m_list_login_people.GetCurSel();
@@ -370,12 +369,12 @@ void CChatClientDlg::OnBnClickedSend() {
             str_send.ReleaseBuffer();
             str_send_target.ReleaseBuffer();
         }
-    }
+    }*/
 }
 
 void CChatClientDlg::OnBnClickedTransferfile() {
     // TODO: 在此添加控件通知处理程序代码
-    CString str_text, str_send_target;
+    /*CString str_text, str_send_target;
     int cur_sel = m_list_login_people.GetCurSel();
     if (cur_sel == CB_ERR) {
         MessageBox(_T("请选择一个用户！"), _T("错误"), MB_ICONERROR);
@@ -405,7 +404,7 @@ void CChatClientDlg::OnBnClickedTransferfile() {
         str_send_target.ReleaseBuffer();
         filename.ReleaseBuffer(0);
         m_file.Close();
-    }
+    }*/
 }
 
 void CChatClientDlg::OnOK() {
@@ -414,7 +413,7 @@ void CChatClientDlg::OnOK() {
 }
 
 LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
-    char *str_recv = new char[DATA_LENGTH];
+    /*char *str_recv = new char[DATA_LENGTH];
     CString str_text;
     memset(str_recv, 0, DATA_LENGTH);
     if (lParam == FD_READ) {
@@ -602,12 +601,12 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
         }
         UpdateData(FALSE);
     }
-    delete []str_recv;
+    delete []str_recv;*/
     return 0;
 }
 
 int CChatClientDlg::thread_TransferFile(const HWND & hwnd, const std::string & file_name, const std::string & target) {
-    s_HandleRecv to_send;
+    /*s_HandleRecv to_send;
     CFile m_file;
     m_file.Open(file_name.c_str(), CFile::modeRead | CFile::typeBinary);
     unsigned long long len = m_file.GetLength();
@@ -634,13 +633,13 @@ int CChatClientDlg::thread_TransferFile(const HWND & hwnd, const std::string & f
     char str_text[DATA_LENGTH] = { 0 };
     ::GetDlgItemText(hwnd, IDC_TEXT, str_text, DATA_LENGTH);
     strcat_s(str_text, "\r\n传输完成！");
-    ::SetDlgItemText(hwnd, IDC_TEXT, str_text);
+    ::SetDlgItemText(hwnd, IDC_TEXT, str_text);*/
 
     return 0;
 }
 
 int CChatClientDlg::thread_TransferFileAccept(const HWND & hwnd, const std::string & file_name, const s_HandleRecv & handle_recv) {
-    CFile file_accept;
+    /*CFile file_accept;
     s_HandleRecv transfer_file_accept;
     while (1) {
         if (q_transfer_file.size()) {
@@ -664,13 +663,13 @@ int CChatClientDlg::thread_TransferFileAccept(const HWND & hwnd, const std::stri
                 break;
             }
         }
-    }
+    }*/
 
     return 0;
 }
 
 LRESULT CChatClientDlg::OnTransferFileAccept(WPARAM wParam, LPARAM lParam) {
-    s_HandleRecv *transfer_file_accept = (s_HandleRecv*)wParam;
+    /*s_HandleRecv *transfer_file_accept = (s_HandleRecv*)wParam;
     CFile file_accept;
     CString cstr_file_name, str_text;
     GetDlgItemText(IDC_REQUESTFILENAME, cstr_file_name);
@@ -698,7 +697,7 @@ LRESULT CChatClientDlg::OnTransferFileAccept(WPARAM wParam, LPARAM lParam) {
             str_text += "\r\n接收完成！";
             SetDlgItemText(IDC_TEXT, str_text);
         }
-    }
+    }*/
 
     return 0;
 }

@@ -5,7 +5,7 @@
 #include "ChatClient.h"
 #include "CLoginWait.h"
 #include "afxdialogex.h"
-
+using namespace cwy;
 
 // CLoginWait 对话框
 
@@ -45,6 +45,7 @@ BOOL CLoginWait::OnInitDialog()
     GetDlgItem(IDC_LOGIN_TIME_OUT)->SetFont(&font);
     GetDlgItem(IDC_LOGIN)->SetFont(&font);
 
+    threadWait = std::thread(&CLoginWait::socketRecvThread, this);
     SetDlgItemInt(IDC_LOGIN_TIME_OUT, 30);
     SetTimer(1, 1000, nullptr);
     SetTimer(2, 50, nullptr);
@@ -57,20 +58,29 @@ void CLoginWait::OnTimer(UINT_PTR nIDEvent)
     switch (nIDEvent) {
     case 1: {
         int time = GetDlgItemInt(IDC_LOGIN_TIME_OUT);
-        --time;
-        if (time == 0) {
-            EndDialog(-1);
-        }
-        SetDlgItemInt(IDC_LOGIN_TIME_OUT, time);
+        if (time > 0) {
+            --time;
+            SetDlgItemInt(IDC_LOGIN_TIME_OUT, time);
+        }   
     }
           break;
 
     case 2: {
         if (flag == 1) {
+            threadWait.join();
             EndDialog(1);
         }
         else if (flag == 2) {
+            threadWait.join();
             EndDialog(2);
+        }
+        else if (flag == 3) {
+            threadWait.join();
+            EndDialog(3);
+        }
+        else if (flag == -1) {
+            threadWait.join();
+            EndDialog(-1);
         }
     }
           break;
@@ -81,23 +91,29 @@ void CLoginWait::OnTimer(UINT_PTR nIDEvent)
     CDialogEx::OnTimer(nIDEvent);
 }
 
-void CLoginWait::socketRecvThread(void* lParam)
+void CLoginWait::socketRecvThread()
 {
-    while (1) {
-        CLoginWait* pThis = (CLoginWait*)lParam;
-        char* buf = new char[DATA_LENGTH];
-        memset(buf, 0, DATA_LENGTH);
-        ::recv(pThis->socketClient, buf, DATA_LENGTH, 0);
-        if (buf != '\0') {
-            s_HandleRecv rt;
-            DecodeJson(buf, rt);
-            if (rt.type == CommunicationType::LOGINBACKSUCCEED) {
-                pThis->flag = 1;
-            }
-            else if (rt.type == CommunicationType::LOGINBACKFAILED) {
-                pThis->flag = 2;
-            }
+    char* buf = new char[DATA_LENGTH];
+    memset(buf, 0, DATA_LENGTH);
+    int nNetTimeout = 30000;
+    ::setsockopt(socketClient, SOL_SOCKET, SO_RCVTIMEO, (char*)&nNetTimeout, sizeof(int));
+    ::recv(socketClient, buf, DATA_LENGTH, 0);
+    if (buf[0] != '\0') {
+        s_HandleRecv rt;
+        DecodeJson(buf, rt);
+        if (strcmp(rt.param.LoginBack.login_result, "succeed") == 0) {
+            flag = 1;
         }
-        delete[]buf;
+        else if (strcmp(rt.param.LoginBack.login_result, "failed") == 0) {
+            flag = 2;
+        }
+        else if (strcmp(rt.param.LoginBack.login_result, "isLogin") == 0) {
+            flag = 3;
+        }
+        DeleteMemory(CommunicationType::LOGINBACK,  rt);
     }
+    else {
+        flag = -1;
+    }
+    delete[]buf;
 }

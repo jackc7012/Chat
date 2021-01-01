@@ -4,9 +4,15 @@
 #include "../json/json.h"
 #include <windows.h>
 #include <vector>
+#include <unordered_map>
+#include <sstream>
 
-namespace mychat {
+namespace cwy {
     const int DATA_LENGTH = 1024 * 10;
+
+    const std::string SERVER_IP = "192.168.1.3";
+
+    static const char* VERIFY_CODE = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     static std::string nick_name;
 
@@ -33,18 +39,12 @@ namespace mychat {
           , "customer" : "aaa"
           , "password" : "******"} // º”√‹
         */
-        REGISTERBACKSUCCEED,
+        REGISTERBACK,
         /*
-          { "communication_type":"registerbacksucceed"
+          { "communication_type":"registerback"
           , "customer" : "aaa"
-          , "register_result" : "succeed"}
-        */
-        REGISTERBACKFAILED,
-        /*
-          { "communication_type":"registerbackfailed"
-          , "customer" : "aaa"
-          , "register_result" : "failed"
-          , "description" : "user name is already have"}
+          , "register_result" : "succeed"
+          , "id" : "516401043"}
         */
         LOGIN,
         /*
@@ -56,7 +56,7 @@ namespace mychat {
         /*
           { "communication_type":"loginback"
           , "customer" : "aaa"
-          , "login_result" : "failed"
+          , "login_result" : "succeed/failed"
           , "description" : "password error"}
         */
         SHOWLOGIN,
@@ -145,7 +145,7 @@ namespace mychat {
             struct RegisterBackType {
                 char* customer;
                 char* register_result;
-                char* description;
+                long long id;
             };
             // ”√ªßµ«¬º
             struct LoginType {
@@ -226,7 +226,7 @@ namespace mychat {
 
     std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param);
 
-    bool DecodeJson(const std::string& message, s_HandleRecv& lReturn);
+    bool DecodeJson(const std::string& message, s_HandleRecv& s_param);
 
     void DeleteMemory(const CommunicationType type, s_HandleRecv& s_param);
 
@@ -246,30 +246,49 @@ namespace mychat {
 
     class CHandleJson {
     public:
-        static CHandleJson* CreateInstance();
+        CHandleJson(const std::string& message);
 
-        ~CHandleJson(){}
+        ~CHandleJson() {};
 
     public:
         void InitJson(const std::string& message);
 
         void ClearJson();
 
-        std::string GetJsonValue(const std::string& key) const;
+        std::string GetJsonValueString(const std::string& key) const;
+
+        long long GetJsonValueNum(const std::string& key) const;
 
         void SetJsonValue(const std::string& key, const std::string& value);
 
-        std::string GetJsonBack() const;
+        void SetJsonValue(const std::string& key, const long long value);
+
+        std::string GetJsonBack();
 
     private:
-        CHandleJson();
-
         CHandleJson(const CHandleJson&) = delete;
         CHandleJson operator=(const CHandleJson&) = delete;
 
     private:
         std::string strJsonRead;
         std::string strJsonWrite;
+    };
+
+    class CHandleIni {
+    public:
+        CHandleIni(const std::string &file_path);
+
+        ~CHandleIni() {};
+
+    public:
+        std::string GetValue(const std::string& key) const;
+
+    private:
+        CHandleIni(const CHandleIni&) = delete;
+        CHandleIni operator=(const CHandleIni&) = delete;
+
+    private:
+        std::unordered_map<std::string, std::string> keyToValue;
     };
 }
 #endif  //__PUBLIC_H__

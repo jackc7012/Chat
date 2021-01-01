@@ -9,13 +9,13 @@
 #include "public.h"
 
 #ifdef _DEBUG
-#define DEFAULT_LEVEL     LogLevel::DEBUG_LEVEL
+#define DEFAULT_LEVEL     LogLevel::INFO_LEVEL
 #else
 #define DEFAULT_LEVEL     Log_Level::ERROR_LEVEL
 #endif
 
 #define FILE_FORMAT                __FILE__ ,__LINE__
-namespace mychat {
+namespace cwy {
     enum class LogLevel {
         INFO_LEVEL = 0,
         DEBUG_LEVEL,
@@ -48,11 +48,13 @@ namespace mychat {
         void PrintlogFatal(const std::string& file_name, const int file_line);
 
         friend CLog& operator<<(CLog& log, const std::string& a) {
+            std::lock_guard<std::mutex> mt(log.mtWriteFile);
             log.strReturnOneLine += a;
             return log;
         }
 
         friend CLog& operator<<(CLog& log, const long long a) {
+            std::lock_guard<std::mutex> mt(log.mtWriteFile);
             char temp[50] = { 0 };
             sprintf_s(temp, 50, "%lld", (long long)a);
             log.strReturnOneLine += temp;
@@ -89,5 +91,5 @@ namespace mychat {
     };
 }
 
-static mychat::CLog logClient;
+static cwy::CLog logClient;
 #endif  //__MY_LOG_H__

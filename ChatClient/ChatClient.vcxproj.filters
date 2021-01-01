@@ -54,6 +54,9 @@
     <ClInclude Include="CLoginWait.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="..\public\CDataBase.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChatClient.cpp">
@@ -84,6 +87,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="CLoginWait.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\public\CDataBase.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

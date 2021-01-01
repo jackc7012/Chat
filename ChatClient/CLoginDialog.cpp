@@ -5,6 +5,7 @@
 #include "ChatClient.h"
 #include "CLoginDialog.h"
 #include "afxdialogex.h"
+using namespace cwy;
 
 // CLoginDialog 对话框
 
@@ -52,8 +53,22 @@ BOOL CLoginDialog::OnInitDialog()
 	GetDlgItem(IDC_LOGIN)->SetFont(&font);
 	GetDlgItem(IDC_REGISTER)->SetFont(&font);
 
-	SetDlgItemText(IDC_IP, _T("127.0.0.1"));
+	SetDlgItemText(IDC_IP, cwy::SERVER_IP.c_str());
 
+	socketClient = ::socket(AF_INET, SOCK_STREAM, 0);
+	if (INVALID_SOCKET == socketClient) {
+		MessageBox(_T("创建服务失败,请重试！"), _T("错误"), MB_ICONERROR);
+		return FALSE;
+	}
+
+	addr.sin_family = AF_INET;
+	addr.sin_port = ntohs(cwy::TCP_PORT);
+	addr.sin_addr.S_un.S_addr = inet_addr(cwy::SERVER_IP.c_str());
+
+	if (::connect(socketClient, (SOCKADDR*)&addr, sizeof(addr)) != 0) {
+		MessageBox(_T("连接失败，请重试！"), _T("错误"), MB_ICONERROR);
+		return FALSE;
+	}
 	return TRUE;
 }
 
@@ -68,24 +83,10 @@ void CLoginDialog::OnBnClickedLogin()
 	const char* ip = str_ip.GetBuffer(0);
 	const char* name = str_name.GetBuffer(0);
 	const char* password = str_password.GetBuffer(0);
-	socketClient = ::socket(AF_INET, SOCK_STREAM, 0);
-	if (INVALID_SOCKET == socketClient) {
-		MessageBox(_T("创建服务失败,请重试！"), _T("错误"), MB_ICONERROR);
-		return;
-	}
 
-	addr.sin_family = AF_INET;
-	addr.sin_port = ntohs(mychat::TCP_PORT);
-	addr.sin_addr.S_un.S_addr = inet_addr(ip);
-
-	if (connect(socketClient, (SOCKADDR*)&addr, sizeof(addr)) != 0) {
-		MessageBox(_T("连接失败，请重试！"), _T("错误"), MB_ICONERROR);
-		return;
-	}
-
-	to_send.Param.Login.customer = const_cast<char*>(name);
-	to_send.Param.Login.password = const_cast<char*>(password);
-	std::string send_data = EncodeJson(LOGIN, to_send);
+	to_send.param.Login.customer = const_cast<char*>(name);
+	to_send.param.Login.password = const_cast<char*>(password);
+	std::string send_data = EncodeJson(CommunicationType::LOGIN, to_send);
 	::send(socketClient, send_data.c_str(), send_data.length(), 0);
 	nick_name = str_name.GetBuffer(0);
 	CLoginWait dlg1;
@@ -101,6 +102,9 @@ void CLoginDialog::OnBnClickedLogin()
 	else if (rt == 2) {
 		MessageBox(_T("登录失败，请输入正确的昵称和密码"), _T("错误"), MB_ICONERROR);
 	}
+    else if (rt == 3) {
+        MessageBox(_T("该用户已经登录，请勿重复登录"), _T("错误"), MB_ICONERROR);
+    }
 	else if (rt == -1) {
 		MessageBox(_T("登录超时，请检查网络状态"), _T("错误"), MB_ICONERROR);
 	}
@@ -110,6 +114,7 @@ void CLoginDialog::OnBnClickedRegister()
 {
 	ShowWindow(SW_HIDE);
 	CRegisterDialog dlg;
+	dlg.socketClient = socketClient;
 	dlg.DoModal();
 	ShowWindow(SW_SHOW);
 }

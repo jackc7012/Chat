@@ -8,7 +8,7 @@
 #define WM_SOCKET_UDP               (WM_USER + 1001)
 
 #include <vector>
-#include <map>
+
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -17,9 +17,7 @@
 #include "CLog.h"
 #include "CNetWorkHandle.h"
 
-using IpName = std::pair<std::string, std::string>;
-
-const int THREAD_NUM = 5;
+const unsigned int THREAD_NUM = 1;
 
 // CChatServiceDlg ¶Ô»°¿ò
 class CChatServiceDlg : public CDialogEx {
@@ -57,15 +55,17 @@ class CChatServiceDlg : public CDialogEx {
     CListBox m_list_login_people;
     std::multimap<std::string, SOCKET> name_to_socket_accept;
     std::multimap<std::string, std::string> name_to_ip;
-    std::multimap<SOCKET, IpName> socketToIpName;
     std::vector<std::string> ve_accept_name;
     std::mutex mtServerHandle;
     afx_msg void OnBnClickedKick();
-    std::queue<mychat::s_TaskQueue> taskQueue;
-    mychat::CLog logService;
-    mychat::CNetWorkHandle* netWorkHandle;
+    std::queue<cwy::s_TaskQueue> taskQueue;
+    cwy::CLog logService;
+    cwy::CNetWorkHandle* netWorkHandle;
     bool StartTcp();
     bool StartUdp();
     std::thread myHandleThread[THREAD_NUM];
     void threadTask(int taskNum);
+    virtual BOOL DestroyWindow();
+    bool isExit{ false };
+    std::string ip;
 };

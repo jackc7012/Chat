@@ -3,33 +3,38 @@
 
 #include <windows.h>
 #include <string>
+#include <map>
 
 #include "CDataBase.h"
 #include "CLog.h"
 
-namespace mychat {
-	const int TCP_PORT = 6000;
-	const int UDP_PORT = 6002;
+namespace cwy {
+    const int TCP_PORT = 6000;
+    const int UDP_PORT = 6002;
 
-	class CNetWorkHandle
-	{
-	public:
-		static CNetWorkHandle* CreateInstance();
+    using IpName = std::pair<std::string, std::string>;
 
-		CommunicationType HandleRecv(const std::string& message, s_HandleRecv& handleRecv, 
-			                         std::string& strToSend);
+    class CNetWorkHandle
+    {
+    public:
+        static CNetWorkHandle* CreateInstance();
 
-		~CNetWorkHandle();
+        CommunicationType HandleRecv(const std::string& message, s_HandleRecv& handleRecv, std::string& strToSend);
 
-	private:
-		CNetWorkHandle();
+        void SetSocketIp(const SOCKET& socket, const std::string& ip);
 
-		CNetWorkHandle(const CNetWorkHandle&) = delete;
-		CNetWorkHandle operator=(const CNetWorkHandle&) = delete;
+        ~CNetWorkHandle();
 
-	private:
-		CLog logNetWork;
-		CDataBase* dataBase;
-	};
+    private:
+        CNetWorkHandle();
+
+        CNetWorkHandle(const CNetWorkHandle&) = delete;
+        CNetWorkHandle operator=(const CNetWorkHandle&) = delete;
+
+    private:
+        CLog logNetWork;
+        CDataBase* dataBase;
+        std::multimap<SOCKET, IpName> socketToIpName;
+    };
 }
 #endif // !__NET_WORK_HANDLE_H__

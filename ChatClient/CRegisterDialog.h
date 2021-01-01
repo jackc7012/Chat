@@ -1,26 +1,31 @@
 ﻿#pragma once
-
+#include <string>
+#include "CNetWorkHandle.h"
 
 // CRegisterDialog 对话框
 
 class CRegisterDialog : public CDialogEx
 {
-	DECLARE_DYNAMIC(CRegisterDialog)
+    DECLARE_DYNAMIC(CRegisterDialog)
 
 public:
-	CRegisterDialog(CWnd* pParent = nullptr);   // 标准构造函数
-	virtual ~CRegisterDialog();
+    CRegisterDialog(CWnd* pParent = nullptr);   // 标准构造函数
+    virtual ~CRegisterDialog();
 
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
-	enum { IDD = IDD_REGISTER_DIALOG };
+    enum { IDD = IDD_REGISTER_DIALOG };
 #endif
 
 protected:
-	HICON m_hIcon;
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+    HICON m_hIcon;
+    virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
-	DECLARE_MESSAGE_MAP()
+    DECLARE_MESSAGE_MAP()
 public:
-	virtual BOOL OnInitDialog();
+    virtual BOOL OnInitDialog();
+    afx_msg void OnBnClickedRegisterUser();
+    void SetVerify();
+    void SendRegisterMessage(const cwy::s_HandleRecv& toSend);
+    SOCKET socketClient{ 0 };
 };

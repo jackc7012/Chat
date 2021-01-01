@@ -25,6 +25,7 @@ public:
 	virtual BOOL OnInitDialog();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	SOCKET socketClient{ 0 };
-	static void socketRecvThread(void *lParam);
+	void socketRecvThread();
+	std::thread threadWait;
 	int flag{ 0 };
 };

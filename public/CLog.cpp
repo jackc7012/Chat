@@ -1,5 +1,5 @@
 #include "CLog.h"
-using namespace mychat;
+using namespace cwy;
 
 CLog::CLog(const std::string& path) {
     std::string ss = path;
@@ -27,6 +27,10 @@ void CLog::UnitLog() {
 }
 
 void CLog::PrintlogInfo(const std::string& file_name, const int file_line) {
+    if (logLevel > LogLevel::INFO_LEVEL) {
+        strReturnOneLine = "";
+        return;
+    }
     std::lock_guard<std::mutex> mt(mtWriteFile);
     std::string log_write = AssembleString(file_name, file_line, "info");
     if (autoFlush == false) {
@@ -37,7 +41,7 @@ void CLog::PrintlogInfo(const std::string& file_name, const int file_line) {
 }
 
 void CLog::PrintlogDebug(const std::string& file_name, const int file_line) {
-    if (logLevel < LogLevel::DEBUG_LEVEL) {
+    if (logLevel > LogLevel::DEBUG_LEVEL) {
         strReturnOneLine = "";
         return;
     }
@@ -51,7 +55,7 @@ void CLog::PrintlogDebug(const std::string& file_name, const int file_line) {
 }
 
 void CLog::PrintlogWarn(const std::string& file_name, const int file_line) {
-    if (logLevel < LogLevel::WARN_LEVEL) {
+    if (logLevel > LogLevel::WARN_LEVEL) {
         strReturnOneLine = "";
         return;
     }
@@ -65,7 +69,7 @@ void CLog::PrintlogWarn(const std::string& file_name, const int file_line) {
 }
 
 void CLog::PrintlogError(const std::string& file_name, const int file_line) {
-    if (logLevel < LogLevel::ERROR_LEVEL) {
+    if (logLevel > LogLevel::ERROR_LEVEL) {
         strReturnOneLine = "";
         return;
     }
@@ -114,7 +118,8 @@ std::string CLog::AssembleString(const std::string& file_name, const int file_li
     SYSTEMTIME st;
     GetLocalTime(&st);
     SplitFileName(temp_file_name);
-    sprintf_s(temp, 512, "[%02d:%02d:%02d %03d]: [%s][%d]\t[%s]%s\r\n", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,                    temp_file_name.c_str(), file_line, type.c_str(), strReturnOneLine.c_str());
+    sprintf_s(temp, 512, "[%02d:%02d:%02d %03d]: [%d][%s][%d]\t[%s]%s\r\n", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, 
+              GetCurrentThreadId(), temp_file_name.c_str(), file_line, type.c_str(), strReturnOneLine.c_str());
     strReturnOneLine = "";
     return std::string(temp);
 }
@@ -154,7 +159,7 @@ std::string CLog::GetServicePath(std::string& filePath)
     return (logPathForward.substr(0, logPathForward.find_last_of(".")) + logPath);
 }
 
-std::string mychat::CLog::GetClientPath(std::string& filePath)
+std::string cwy::CLog::GetClientPath(std::string& filePath)
 {
     std::string logPath = AssembleFilePath(filePath);
     return logPath;

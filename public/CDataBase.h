@@ -8,31 +8,36 @@
 
 #import "C:\Program Files\Common Files\System\ado\msado15.dll" no_namespace rename("EOF", "adoEOF")
 
-namespace mychat {
-	class CDataBase
-	{
-	public:
-		static CDataBase* CreateInstance();
+namespace cwy {
+    class CDataBase
+    {
+    public:
+        static CDataBase* CreateInstance();
 
-		~CDataBase();
+        ~CDataBase();
 
-		int InitDataBase(const std::string& dataBaseName);
+        int InitDataBase(const std::string& dataBaseName);
 
-		int SearchDataBaseLogin(const std::string& loginName, std::string& ip, char *password, int loginStatus);
+        void GetId();
 
-		int UpdateLoginStatus(const std::string& loginName, const int type);
+        int SearchDataBaseLogin(const std::string& loginName, std::string& ip, char* password, int& loginStatus);
 
-	private:
-		CDataBase();
+        int UpdateLoginStatus(const std::string& loginName, const int type);
 
-		CDataBase(const CDataBase&) = delete;
-		CDataBase operator=(const CDataBase&) = delete;
+        long long InsertRegister(const std::string& registerName, const char* password, const std::string ip);
 
-	private:
-		_ConnectionPtr pMyConnect{ nullptr };
-		_RecordsetPtr pRecordset{ nullptr };
-		CLog logDataBase;
-	};
+    private:
+        CDataBase();
+
+        CDataBase(const CDataBase&) = delete;
+        CDataBase operator=(const CDataBase&) = delete;
+
+    private:
+        _ConnectionPtr pMyConnect{ nullptr };
+        _RecordsetPtr pRecordset{ nullptr };
+        CLog logDataBase;
+        long long presentId{ 60000 };
+    };
 }
 
 #endif // !__DATA_BASE_H__

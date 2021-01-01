@@ -1,30 +1,22 @@
 #include "public.h"
 
-std::string mychat::EncodeJson(const CommunicationType type, const s_HandleRecv& param) {
-    CHandleJson* handleJson = CHandleJson::CreateInstance();
-    handleJson->ClearJson();
+std::string cwy::EncodeJson(const CommunicationType type, const s_HandleRecv& param) {
+    CHandleJson* handleJson = new CHandleJson("");
     switch (type) {
-    /*case CommunicationType::REGISTER: {
-        js_value["communication_type"] = "register";
-        js_value["customer"]           = param.param.Register.customer;
-        js_value["password"]           = param.param.Register.password;
+    case CommunicationType::REGISTER: {
+        handleJson->SetJsonValue("communication_type", "register");
+        handleJson->SetJsonValue("customer", param.param.Register.customer);
+        handleJson->SetJsonValue("password", param.param.Register.password);
     }
     break;
 
-    case CommunicationType::REGISTERBACKSUCCEED: {
-        js_value["communication_type"] = "registerbacksucceed";
-        js_value["customer"]           = param.param.RegisterBack.customer;
-        js_value["register_result"]    = param.param.RegisterBack.register_result;
+    case CommunicationType::REGISTERBACK: {
+        handleJson->SetJsonValue("communication_type", "registerback");
+        handleJson->SetJsonValue("customer", param.param.RegisterBack.customer);
+        handleJson->SetJsonValue("register_result", param.param.RegisterBack.register_result);
+        handleJson->SetJsonValue("id", param.param.RegisterBack.id);
     }
     break;
-
-    case CommunicationType::REGISTERBACKFAILED: {
-        js_value["communication_type"] = "registerbackfailed";
-        js_value["customer"]           = param.param.RegisterBack.customer;
-        js_value["register_result"]    = param.param.RegisterBack.register_result;
-        js_value["description"]        = param.param.RegisterBack.description;
-    }
-    break;*/
 
     case CommunicationType::LOGIN: {
         handleJson->SetJsonValue("communication_type", "login");
@@ -94,50 +86,44 @@ std::string mychat::EncodeJson(const CommunicationType type, const s_HandleRecv&
     }
     break;*/
     }
-
-    return handleJson->GetJsonBack();
+    std::string result = handleJson->GetJsonBack();
+    delete handleJson;
+    return result;
 }
 
-bool mychat::DecodeJson(const std::string& message, s_HandleRecv &lReturn) {
-    CHandleJson* handleJson = CHandleJson::CreateInstance();
-    handleJson->ClearJson();
-    handleJson->InitJson(message);
-    if (handleJson->GetJsonValue("communication_type") == "register") { // register
-        std::string customer = handleJson->GetJsonValue("customer"),
-            password = handleJson->GetJsonValue("password");
-        HANDLE_MESSAGE(&lReturn.param.Register.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&lReturn.param.Register.password, password.length(), password.c_str());
-        lReturn.type = CommunicationType::REGISTER;
+bool cwy::DecodeJson(const std::string& message, s_HandleRecv& s_param) {
+    CHandleJson* handleJson = new CHandleJson(message);
+    std::string communicationType = handleJson->GetJsonValueString("communication_type");
+    if (communicationType == "register") { // register
+        std::string customer = handleJson->GetJsonValueString("customer"),
+            password = handleJson->GetJsonValueString("password");
+        HANDLE_MESSAGE(&s_param.param.Register.customer, customer.length(), customer.c_str());
+        HANDLE_MESSAGE(&s_param.param.Register.password, password.length(), password.c_str());
+        s_param.type = CommunicationType::REGISTER;
     } 
-    //else if (handleJson->GetJsonValue("communication_type") == "registerbacksucceed") { // register_succeed
-    //    std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString();
-    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.customer, customer.length(), customer.c_str());
-    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.register_result, register_result.length(), register_result.c_str());
-    //    lReturn.type = CommunicationType::REGISTERBACKSUCCEED;
-    //} 
-    //else if (handleJson->GetJsonValue("communication_type") == "registerbackfailed") { // register_failed
-    //    std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString(),
-    //                description = js_value["description"].asString();
-    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.customer, customer.length(), customer.c_str());
-    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.register_result, register_result.length(), register_result.c_str());
-    //    HANDLE_MESSAGE(&lReturn.param.RegisterBack.description, description.length(), description.c_str());
-    //    lReturn.type = CommunicationType::REGISTERBACKFAILED;
-    //} 
-    else if (handleJson->GetJsonValue("communication_type") == "login") { // login
-        std::string customer = handleJson->GetJsonValue("customer"),
-                    password = handleJson->GetJsonValue("password");
-        HANDLE_MESSAGE(&lReturn.param.Login.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&lReturn.param.Login.password, password.length(), password.c_str());
-        lReturn.type = CommunicationType::LOGIN;
+    else if (communicationType == "registerback") { // register_back
+        std::string customer = handleJson->GetJsonValueString("customer"),
+            register_result = handleJson->GetJsonValueString("register_result");
+        s_param.param.RegisterBack.id = handleJson->GetJsonValueNum("id");
+        HANDLE_MESSAGE(&s_param.param.RegisterBack.customer, customer.length(), customer.c_str());
+        HANDLE_MESSAGE(&s_param.param.RegisterBack.register_result, register_result.length(), register_result.c_str());
+        s_param.type = CommunicationType::REGISTERBACK;
     } 
-    else if (handleJson->GetJsonValue("communication_type") == "loginback") { // login_back
-        std::string customer = handleJson->GetJsonValue("customer"), 
-                    login_result = handleJson->GetJsonValue("login_result"),
-                    description = handleJson->GetJsonValue("description");
-        HANDLE_MESSAGE(&lReturn.param.LoginBack.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&lReturn.param.LoginBack.login_result, login_result.length(), login_result.c_str());
-        HANDLE_MESSAGE(&lReturn.param.LoginBack.description, description.length(), description.c_str());
-        lReturn.type = CommunicationType::LOGINBACK;
+    else if (communicationType == "login") { // login
+        std::string customer = handleJson->GetJsonValueString("customer"),
+                    password = handleJson->GetJsonValueString("password");
+        HANDLE_MESSAGE(&s_param.param.Login.customer, customer.length(), customer.c_str());
+        HANDLE_MESSAGE(&s_param.param.Login.password, password.length(), password.c_str());
+        s_param.type = CommunicationType::LOGIN;
+    } 
+    else if (communicationType == "loginback") { // login_back
+        std::string customer = handleJson->GetJsonValueString("customer"),
+                    login_result = handleJson->GetJsonValueString("login_result"),
+                    description = handleJson->GetJsonValueString("description");
+        HANDLE_MESSAGE(&s_param.param.LoginBack.customer, customer.length(), customer.c_str());
+        HANDLE_MESSAGE(&s_param.param.LoginBack.login_result, login_result.length(), login_result.c_str());
+        HANDLE_MESSAGE(&s_param.param.LoginBack.description, description.length(), description.c_str());
+        s_param.type = CommunicationType::LOGINBACK;
     } 
     //else if (handleJson->GetJsonValue("communication_type") == "showlogin") { // show_login
     //    std::string customer = js_value["customer"].asString();
@@ -201,24 +187,44 @@ bool mychat::DecodeJson(const std::string& message, s_HandleRecv &lReturn) {
     //    lReturn.type = CommunicationType::TRANSFERFILE;
     //} 
     else { // other
-        lReturn.type = CommunicationType::NULLCOMMUNICATION;
+        s_param.type = CommunicationType::NULLCOMMUNICATION;
     }
+    delete handleJson;
     return true;
 }
 
-void mychat::DeleteMemory(const CommunicationType type, s_HandleRecv& s_param)
+void cwy::DeleteMemory(const CommunicationType type, s_HandleRecv& s_param)
 {
     switch (type)
     {
+    case CommunicationType::REGISTER: {
+        delete[]s_param.param.Register.customer;
+        delete[]s_param.param.Register.password;
+    }
+        break;
+
+    case CommunicationType::REGISTERBACK: {
+        delete[]s_param.param.RegisterBack.customer;
+        delete[]s_param.param.RegisterBack.register_result;
+    }
+        break;
+
     case CommunicationType::LOGIN: {
         delete[]s_param.param.Login.customer;
         delete[]s_param.param.Login.password;
     }
         break;
+
+    case CommunicationType::LOGINBACK: {
+        delete[]s_param.param.LoginBack.customer;
+        delete[]s_param.param.LoginBack.description;
+        delete[]s_param.param.LoginBack.login_result;
+    }
+        break;
     }
 }
 
-std::string mychat::Encryption(const std::string& param) {
+std::string cwy::Encryption(const std::string& param) {
     std::string str_return;
 
     unsigned int len = param.length();
@@ -228,7 +234,7 @@ std::string mychat::Encryption(const std::string& param) {
     return str_return;
 }
 
-std::string mychat::Decryption(const std::string& param) {
+std::string cwy::Decryption(const std::string& param) {
     std::string str_return;
 
     unsigned int len = param.length();
@@ -238,9 +244,9 @@ std::string mychat::Decryption(const std::string& param) {
     return str_return;
 }
 
-bool mychat::VerifyCode(const std::string& code, const std::string& code_verify) {
+bool cwy::VerifyCode(const std::string& code, const std::string& code_verify) {
     std::string temp1(code), temp2(code_verify);
-    mychat::ToLow(temp1), mychat::ToLow(temp2);
+    cwy::ToLow(temp1), cwy::ToLow(temp2);
     if (temp1.compare(temp2) == 0) {
         return true;
     } else {
@@ -248,7 +254,7 @@ bool mychat::VerifyCode(const std::string& code, const std::string& code_verify)
     }
 }
 
-void mychat::ToLow(std::string& code) {
+void cwy::ToLow(std::string& code) {
     int len = code.length();
     std::string temp("");
     char low = 0;
@@ -261,7 +267,7 @@ void mychat::ToLow(std::string& code) {
     return;
 }
 
-std::string mychat::CombineString(char** be_combined, const int size) {
+std::string cwy::CombineString(char** be_combined, const int size) {
     std::string s_return("");
     for (int i = 0; i < size; ++i) {
         s_return += be_combined[i];
@@ -270,7 +276,7 @@ std::string mychat::CombineString(char** be_combined, const int size) {
     return s_return.substr(0, s_return.length() - 1);
 }
 
-void mychat::SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest) {
+void cwy::SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest) {
     int pos = -1, old_pos = 0;
     pos = be_converted.find(separator, pos + 1);
     while (pos != be_converted.npos) {
@@ -283,7 +289,7 @@ void mychat::SplitString(const std::string& be_converted, const char separator, 
     return;
 }
 
-void mychat::SplitString(const char * be_converted, const char separator, char **dest, int & size) {
+void cwy::SplitString(const char * be_converted, const char separator, char **dest, int & size) {
     int pos = -1, old_pos = 0, i = 0;
     std::string temp(be_converted);
     pos = temp.find(separator, pos + 1);
@@ -311,43 +317,79 @@ void mychat::SplitString(const char * be_converted, const char separator, char *
     return;
 }
 
-mychat::CHandleJson* mychat::CHandleJson::CreateInstance()
+cwy::CHandleJson::CHandleJson(const std::string& message)
 {
-    static CHandleJson* ptr = nullptr;
-    if (ptr == nullptr) {
-        ptr = new CHandleJson();
-    }
-    return ptr;
+    ClearJson();
+    InitJson(message);
+    strJsonWrite += "{";
 }
 
-void mychat::CHandleJson::InitJson(const std::string& message)
+void cwy::CHandleJson::InitJson(const std::string& message)
 {
     strJsonRead = message;
 }
 
-void mychat::CHandleJson::ClearJson()
+void cwy::CHandleJson::ClearJson()
 {
     strJsonRead = "";
     strJsonWrite = "";
 }
 
-std::string mychat::CHandleJson::GetJsonValue(const std::string& key) const
+std::string cwy::CHandleJson::GetJsonValueString(const std::string& key) const
 {
     std::string result = "";
     int pos = strJsonRead.find(key + "\":");
     if (pos != std::string::npos) {
-        int pos1 = strJsonRead.find_first_of("\",", pos + 1);
-        result = strJsonRead.substr(pos + key.length() + 3, pos1 - pos - key.length() - 1);
+        int pos1 = strJsonRead.find_first_of(",", pos + 1);
+        if (pos1 == std::string::npos) {
+            pos1 = strJsonRead.find_first_of("}", pos + 1);
+        }
+        result = strJsonRead.substr(pos + key.length() + 3, pos1 - pos - key.length() - 4);
     }
     return result;
 }
 
-void mychat::CHandleJson::SetJsonValue(const std::string& key, const std::string& value)
+long long cwy::CHandleJson::GetJsonValueNum(const std::string& key) const
 {
-    strJsonWrite += "\"" + key + "\":\"" + value + "\",";
+    long long result = 0;
+    int pos = strJsonRead.find(key + "\":");
+    if (pos != std::string::npos) {
+        int pos1 = strJsonRead.find_first_of(",", pos + 1);
+        if (pos1 == std::string::npos) {
+            pos1 = strJsonRead.find_first_of("}", pos + 1);
+        }
+        std::string tmp = strJsonRead.substr(pos + key.length() + 2, pos1 - pos - key.length() - 2);
+        result = atoi(tmp.c_str());
+    }
+    return result;
 }
 
-std::string mychat::CHandleJson::GetJsonBack() const
+void cwy::CHandleJson::SetJsonValue(const std::string& key, const std::string& value)
 {
+    std::ostringstream tmp;
+    tmp << "\"" << key << "\":\"" << value << "\",";
+    strJsonWrite += tmp.str();
+}
+
+void cwy::CHandleJson::SetJsonValue(const std::string& key, const long long value)
+{
+    std::ostringstream tmp;
+    tmp << "\"" << key << "\":" << value << ",";
+    strJsonWrite += tmp.str();
+}
+
+std::string cwy::CHandleJson::GetJsonBack()
+{
+    strJsonWrite = strJsonWrite.substr(0, strJsonWrite.length() - 1);
+    strJsonWrite += "}";
     return strJsonWrite;
+}
+
+cwy::CHandleIni::CHandleIni(const std::string& file_path)
+{
+}
+
+std::string cwy::CHandleIni::GetValue(const std::string& key) const
+{
+    return std::string();
 }
