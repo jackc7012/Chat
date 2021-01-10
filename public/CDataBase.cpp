@@ -67,18 +67,22 @@ void CDataBase::GetId()
     return ;
 }
 
-int CDataBase::SearchDataBaseLogin(const std::string& loginName, std::string& ip, char* password, int &loginStatus)
+int CDataBase::SearchDataBaseLogin(const long long loginID, std::string& name, std::string& ip, char* password, int &loginStatus)
 {
     int result = 0;
     char sql[100] = { 0 };
-    sprintf_s(sql, 100, "select Password, Ip, IsLogin from tb_info where Name = '%s'", loginName.c_str());
+    sprintf_s(sql, 100, "select Name, Password, Ip, IsLogin from tb_info where ID = %lld", loginID);
     try
     {
+        logDataBase << "sql :" << sql;
+        logDataBase.PrintlogDebug(FILE_FORMAT);
         pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
-        _variant_t sqlPassword = pRecordset->GetFields()->GetItem((long)0)->GetValue();
-        _variant_t sqlIp = pRecordset->GetFields()->GetItem((long)1)->GetValue();
-        _variant_t sqlIsLogin = pRecordset->GetFields()->GetItem((long)2)->GetValue();
+        _variant_t sqlName = pRecordset->GetFields()->GetItem((long)0)->GetValue();
+        _variant_t sqlPassword = pRecordset->GetFields()->GetItem((long)1)->GetValue();
+        _variant_t sqlIp = pRecordset->GetFields()->GetItem((long)2)->GetValue();
+        _variant_t sqlIsLogin = pRecordset->GetFields()->GetItem((long)3)->GetValue();
         memcpy_s(password, 50, (char*)(_bstr_t)&sqlPassword, strlen((_bstr_t)&sqlPassword) + 1);
+        name = (std::string)(_bstr_t)&sqlName;
         ip = (std::string)(_bstr_t)&sqlIp;
         loginStatus = atoi(((std::string)(_bstr_t)&sqlIsLogin).c_str());
     }
@@ -91,18 +95,20 @@ int CDataBase::SearchDataBaseLogin(const std::string& loginName, std::string& ip
     return result;
 }
 
-int CDataBase::UpdateLoginStatus(const std::string& loginName, const int type)
+int CDataBase::UpdateLoginStatus(const long long loginID/* = 0*/, const int type/* = 0*/)
 {
     int result = 0;
     char sql[100] = { 0 };
-    if (loginName.compare("") == 0) {
+    if (loginID == -1) {
         sprintf_s(sql, 100, "update tb_info set IsLogin = %d ", type);
     }
     else {
-        sprintf_s(sql, 100, "update tb_info set IsLogin = %d where Name = '%s'", type, loginName.c_str());
+        sprintf_s(sql, 100, "update tb_info set IsLogin = %d where ID = %lld", type, loginID);
     }
     try
     {
+        logDataBase << "sql :" << sql;
+        logDataBase.PrintlogDebug(FILE_FORMAT);
         pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
     }
     catch (_com_error e)
@@ -118,7 +124,7 @@ long long CDataBase::InsertRegister(const std::string& registerName, const char*
 {
     long long result = 0;
     char sql[100] = { 0 };
-    sprintf_s(sql, 100, "insert into tb_info values(%lld, '%s', '%s', '%s', 0)", ++presentId, registerName.c_str(),                 password, ip.c_str());
+    sprintf_s(sql, 100, "insert into tb_info values(%lld, '%s', '%s', '%s', 0)", ++presentId, registerName.c_str(), password, ip.c_str());
     try
     {
         logDataBase << "sql :" << sql;

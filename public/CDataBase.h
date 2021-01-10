@@ -20,9 +20,9 @@ namespace cwy {
 
         void GetId();
 
-        int SearchDataBaseLogin(const std::string& loginName, std::string& ip, char* password, int& loginStatus);
+        int SearchDataBaseLogin(const long long loginID, std::string& name, std::string& ip, char* password, int& loginStatus);
 
-        int UpdateLoginStatus(const std::string& loginName, const int type);
+        int UpdateLoginStatus(const long long loginID = 0, const int type = 0);
 
         long long InsertRegister(const std::string& registerName, const char* password, const std::string ip);
 

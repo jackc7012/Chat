@@ -18,15 +18,15 @@
 class CChatClientApp : public CWinApp
 {
 public:
-	CChatClientApp();
+    CChatClientApp();
 
 // ÷ÿ–¥
 public:
-	virtual BOOL InitInstance();
+    virtual BOOL InitInstance();
 
 //  µœ÷
 
-	DECLARE_MESSAGE_MAP()
+    DECLARE_MESSAGE_MAP()
 };
 
 extern CChatClientApp theApp;

@@ -54,7 +54,9 @@
 #define IDC_REGISTER_USER               1027
 #define IDC_STATIC_VERIFY_CODE          1028
 #define IDC_VERIFY                      1029
+#define IDC_ID                          1029
 #define IDC_PASSWORD_CONFIRM            1030
+#define IDC_STATICID                    1030
 
 // Next default values for new objects
 // 
@@ -62,7 +64,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        147
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1029
+#define _APS_NEXT_CONTROL_VALUE         1031
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

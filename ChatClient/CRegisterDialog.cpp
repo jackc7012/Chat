@@ -81,8 +81,8 @@ void CRegisterDialog::OnBnClickedRegisterUser()
     }
     else {
 	    cwy::s_HandleRecv toSend;
-	    toSend.param.Register.customer = const_cast<char*>(str_name.GetBuffer(0));
-	    toSend.param.Register.password = const_cast<char*>(str_password.GetBuffer(0));
+	    toSend.param_.register_.customer_ = const_cast<char*>(str_name.GetBuffer(0));
+	    toSend.param_.register_.password_ = const_cast<char*>(str_password.GetBuffer(0));
 	    SendRegisterMessage(toSend);
     }
     str_name.ReleaseBuffer();
@@ -94,8 +94,8 @@ void CRegisterDialog::SetVerify()
     int code_rand = 0;
     std::string verify_code("");
     for (int i = 0; i < 4; ++i) {
-	    code_rand = rand() % strlen(cwy::VERIFY_CODE);
-	    verify_code += cwy::VERIFY_CODE[code_rand];
+        code_rand = rand() % strlen(cwy::VERIFY_CODE);
+        verify_code += cwy::VERIFY_CODE[code_rand];
     }
     SetDlgItemText(IDC_STATIC_VERIFY_CODE, verify_code.c_str());
 }

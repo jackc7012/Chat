@@ -1,28 +1,24 @@
 #ifndef __PUBLIC_H__
 #define __PUBLIC_H__
 
-#include "../json/json.h"
 #include <windows.h>
 #include <vector>
 #include <unordered_map>
-#include <sstream>
+
+#define WM_TO_MAIN_MESSAGE          (WM_USER + 1100)
 
 namespace cwy {
-    const int DATA_LENGTH = 1024 * 10;
+    static const int DATA_LENGTH = 1024 * 10;
 
-    const std::string SERVER_IP = "192.168.1.3";
+    static const std::string SERVER_IP = "192.168.1.3";
+
+    static const std::string DATABASE_NAME = "mychat";
 
     static const char* VERIFY_CODE = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-    static std::string nick_name;
+    static std::string client_nick_name;
 
-    inline void HANDLE_MESSAGE(char** type, const unsigned int length, const std::string& message) {
-        *type = new char[length + 1];
-        if (*type != nullptr) {
-            memset(*type, 0, length + 1);
-            memcpy_s(*type, length, message.c_str(), length);
-        }    
-    }
+    static std::string client_token;
 
     enum class ConnectionType {
         UNKNOWN = 0,
@@ -33,6 +29,18 @@ namespace cwy {
     enum class CommunicationType {
         NULLCOMMUNICATION = 0,
         ERRORCOMMUNICATION,
+        TOKEN,
+        /*
+          { "communication_type":"token"
+          , "token_length" : 16
+          , "content" : "abcdefghijklmnop"}
+        */
+        TOKENBACK,
+        /*
+          { "communication_type":"tokenback"
+          , "token_length" : 16
+          , "content" : "abcdefghijklmnop"}
+        */
         REGISTER,
         /*
           { "communication_type":"register"
@@ -44,13 +52,13 @@ namespace cwy {
           { "communication_type":"registerback"
           , "customer" : "aaa"
           , "register_result" : "succeed"
-          , "id" : "516401043"}
+          , "id" : 60001}
         */
         LOGIN,
         /*
           { "communication_type":"login"
-          , "customer" : "aaa"
-          , "password" : "******"} // 加密
+          , "id" : 60001
+          , "password" : "******"}
         */
         LOGINBACK,
         /*
@@ -110,139 +118,188 @@ namespace cwy {
           { "communication_type":"forcedelete"
           , "customer" : "bbb"}
         */
+        MODIFYPASSWORD,
+        /*
+          { "communication_type":"modifypassword"
+          , "old_password" : "***"
+          , "new_password" : "***"}
+        */
+        MODIFYPASSWORDBACK
+        /*
+          { "communication_type":"modifypasswordback"
+          , "modify_result" : "succeed/failed"
+          , "description" : "modify success"}
+        */
     };
 
     struct s_HandleRecv {
         s_HandleRecv() {
-            type = CommunicationType::NULLCOMMUNICATION;
-            connectionType = ConnectionType::UNKNOWN;
+            type_ = CommunicationType::NULLCOMMUNICATION;
+            connectionType_ = ConnectionType::UNKNOWN;
+            socket_ = {0};
+            param_ = {0};
         }
         s_HandleRecv(const s_HandleRecv& other) {
-            connectionType = other.connectionType;
-            ip = other.ip;
-            socket = other.socket;
+            connectionType_ = other.connectionType_;
+            ip_ = other.ip_;
+            socket_ = other.socket_;
+            param_ = {0};
         }
         s_HandleRecv operator=(const s_HandleRecv& other) {
-            connectionType = other.connectionType;
-            ip = other.ip;
-            socket = other.socket;
+            connectionType_ = other.connectionType_;
+            ip_ = other.ip_;
+            socket_ = other.socket_;
             return *this;
         }
-        CommunicationType type;
-        ConnectionType connectionType;
-        std::string ip;
+        CommunicationType type_;
+        ConnectionType connectionType_;
+        std::string ip_;
         union Socket {
-            SOCKET socket_accept_tcp;
-            SOCKADDR_IN addr_client_udp;
-        }socket;
+            SOCKET socketAccept_;
+            SOCKADDR_IN addrClientUdp_;
+        }socket_;
         union Param {
+            // token
+            struct TokenType {
+                int tokenLength_;
+                char* content_;
+            };
+            // token应答
+            struct TokenBackType {
+                int tokenLength_;
+                char* content_;
+
+            };
             // 注册用户
             struct RegisterType {
-                char* customer;
-                char* password;
+                char* customer_;
+                char* password_;
             };
             // 注册用户应答
             struct RegisterBackType {
-                char* customer;
-                char* register_result;
-                long long id;
+                char* customer_;
+                char* registerResult_;
+                long long id_;
             };
             // 用户登录
             struct LoginType {
-                char* customer;
-                char* password;
+                long long id_;
+                char* password_;
             };
             // 用户登录应答
             struct LoginBackType {
-                char* customer;
-                char* login_result;
-                char* description;
+                char* customer_;
+                char* loginResult_;
+                char* description_;
             };
             // 显示用户
             struct ShowLoginType {
-                char** customer;
-                unsigned int customer_num;
+                char** customer_;
+                unsigned int customerNum_;
             };
             // 用户退出
             struct DelCustomerType {
-                char* customer;
-                char* source;
+                char* customer_;
+                char* source_;
             };
             // 聊天
             struct ChatType {
-                char* source;
-                char* target;
-                char* content;
+                char* source_;
+                char* target_;
+                char* content_;
             };
             // 传送文件请求
             struct TransferFileRequestType {
-                char* source;
-                char* target;
-                char* file_name;
-                char* file_length;
+                char* source_;
+                char* target_;
+                char* fileName_;
+                char* fileLength_;
             };
             // 传送文件应答
             struct TransferFileRespondType {
-                char* source;
-                char* target;
-                char* transfer_result;
-                char* file_name;
+                char* source_;
+                char* target_;
+                char* transferResult_;
+                char* fileName_;
             };
             // 传送文件
             struct TransferFileType {
-                char* source;
-                char* target;
-                char* file_name;
-                char* file_length;
-                char* file_content;
-                unsigned int file_block;
-                unsigned int current_block;
+                char* source_;
+                char* target_;
+                char* fileName_;
+                char* fileLength_;
+                char* fileContent_;
+                unsigned int fileBlock_;
+                unsigned int currentBlock_;
             };
+            // 强制退出
             struct ForceDeleteType {
-                char* customer;
+                char* customer_;
             };
-            RegisterType Register;
-            RegisterBackType RegisterBack;
-            LoginType Login;
-            LoginBackType LoginBack;
-            ShowLoginType ShowLogin;
-            DelCustomerType DelCustomer;
-            ChatType Chat;
-            TransferFileRequestType TransferFileRequest;
-            TransferFileRespondType TransferFileRespond;
-            TransferFileType TransferFile;
-            ForceDeleteType ForceDelete;
-        } param;
+            // 修改密码
+            struct ModifyPasswordType {
+                char* oldPassword_;
+                char* newPassword_;
+            };
+            // 修改密码应答
+            struct ModifyPasswordRespondType {
+                char* modifyResult_;
+                char* description_;
+            };
+            TokenType token_;
+            TokenBackType tokenBack_;
+            RegisterType register_;
+            RegisterBackType registerBack_;
+            LoginType login_;
+            LoginBackType loginBack_;
+            ShowLoginType showLogin_;
+            DelCustomerType delCustomer_;
+            ChatType chat_;
+            TransferFileRequestType transferFileRequest_;
+            TransferFileRespondType transferFileRespond_;
+            TransferFileType transferFile_;
+            ForceDeleteType forceDelete_;
+            ModifyPasswordType modifyPassword_;
+            ModifyPasswordRespondType modifyPasswordRespond_;
+        } param_;
     };
 
     struct s_TaskQueue {
-        s_TaskQueue(const s_HandleRecv& handleRecv, const std::string message) {
-            this->handleRecv = handleRecv;
-            this->message = message;
+        s_TaskQueue(const s_HandleRecv& handleRecv, const std::string& message) {
+            this->handleRecv_ = handleRecv;
+            this->message_ = message;
         }
-        s_HandleRecv handleRecv;
-        std::string message;
+        s_HandleRecv handleRecv_;
+        std::string message_;
     };
 
-    std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param);
+    inline void HANDLE_MESSAGE(char** type, const unsigned int length, const std::string& message) {
+        *type = new char[length + 1];
+        if (*type != nullptr) {
+            memset(*type, 0, length + 1);
+            memcpy_s(*type, length, message.c_str(), length);
+        }
+    }
 
-    bool DecodeJson(const std::string& message, s_HandleRecv& s_param);
+    std::string EncodeJson(const CommunicationType type, const s_HandleRecv& lParam);
 
-    void DeleteMemory(const CommunicationType type, s_HandleRecv& s_param);
+    bool DecodeJson(const std::string& message, s_HandleRecv& lParam);
 
-    std::string Encryption(const std::string& param);
+    void DeleteMemory(const CommunicationType type, s_HandleRecv& lParam);
 
-    std::string Decryption(const std::string& param);
+    void GetToken(std::string& token, int& tokenLength);
 
-    bool VerifyCode(const std::string& code, const std::string& code_verify);
+    bool AnalToken(const std::string& token);
+
+    bool VerifyCode(const std::string& code, const std::string& codeVerify);
 
     void ToLow(std::string& code);
 
-    std::string CombineString(char** be_combined, const int size);
+    std::string CombineString(char** beCombined, const int size);
 
-    void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest);
+    void SplitString(const std::string& beConverted, const char separator, std::vector<std::string>& dest);
 
-    void SplitString(const char* be_converted, const char separator, char** dest, int& size);
+    void SplitString(const char* beConverted, const char separator, char** dest, int& size);
 
     class CHandleJson {
     public:
@@ -270,8 +327,8 @@ namespace cwy {
         CHandleJson operator=(const CHandleJson&) = delete;
 
     private:
-        std::string strJsonRead;
-        std::string strJsonWrite;
+        std::string strJsonRead_;
+        std::string strJsonWrite_;
     };
 
     class CHandleIni {
@@ -288,7 +345,7 @@ namespace cwy {
         CHandleIni operator=(const CHandleIni&) = delete;
 
     private:
-        std::unordered_map<std::string, std::string> keyToValue;
+        std::unordered_map<std::string, std::string> keyToValue_;
     };
 }
 #endif  //__PUBLIC_H__

@@ -1,35 +1,51 @@
 #include "public.h"
 
-std::string cwy::EncodeJson(const CommunicationType type, const s_HandleRecv& param) {
+#include <sstream>
+
+std::string cwy::EncodeJson(const CommunicationType type, const s_HandleRecv& lParam) {
     CHandleJson* handleJson = new CHandleJson("");
     switch (type) {
+    case CommunicationType::TOKEN: {
+        handleJson->SetJsonValue("communication_type", "token");
+        handleJson->SetJsonValue("token_length", lParam.param_.token_.tokenLength_);
+        handleJson->SetJsonValue("content", lParam.param_.token_.content_);
+    }
+    break;
+
+    case CommunicationType::TOKENBACK: {
+        handleJson->SetJsonValue("communication_type", "tokenback");
+        handleJson->SetJsonValue("token_length", lParam.param_.tokenBack_.tokenLength_);
+        handleJson->SetJsonValue("content", lParam.param_.tokenBack_.content_);
+    }
+    break;
+
     case CommunicationType::REGISTER: {
         handleJson->SetJsonValue("communication_type", "register");
-        handleJson->SetJsonValue("customer", param.param.Register.customer);
-        handleJson->SetJsonValue("password", param.param.Register.password);
+        handleJson->SetJsonValue("customer", lParam.param_.register_.customer_);
+        handleJson->SetJsonValue("password", lParam.param_.register_.password_);
     }
     break;
 
     case CommunicationType::REGISTERBACK: {
         handleJson->SetJsonValue("communication_type", "registerback");
-        handleJson->SetJsonValue("customer", param.param.RegisterBack.customer);
-        handleJson->SetJsonValue("register_result", param.param.RegisterBack.register_result);
-        handleJson->SetJsonValue("id", param.param.RegisterBack.id);
+        handleJson->SetJsonValue("customer", lParam.param_.registerBack_.customer_);
+        handleJson->SetJsonValue("register_result", lParam.param_.registerBack_.registerResult_);
+        handleJson->SetJsonValue("id", lParam.param_.registerBack_.id_);
     }
     break;
 
     case CommunicationType::LOGIN: {
         handleJson->SetJsonValue("communication_type", "login");
-        handleJson->SetJsonValue("customer", param.param.Login.customer);
-        handleJson->SetJsonValue("password", param.param.Login.password);
+        handleJson->SetJsonValue("id", lParam.param_.login_.id_);
+        handleJson->SetJsonValue("password", lParam.param_.login_.password_);
     }
     break;
 
     case CommunicationType::LOGINBACK: {
         handleJson->SetJsonValue("communication_type", "loginback");
-        handleJson->SetJsonValue("customer", param.param.LoginBack.customer);
-        handleJson->SetJsonValue("login_result", param.param.LoginBack.login_result);
-        handleJson->SetJsonValue("description", param.param.LoginBack.description);
+        handleJson->SetJsonValue("customer", lParam.param_.loginBack_.customer_);
+        handleJson->SetJsonValue("login_result", lParam.param_.loginBack_.loginResult_);
+        handleJson->SetJsonValue("description", lParam.param_.loginBack_.description_);
     }
     break;
 
@@ -91,41 +107,47 @@ std::string cwy::EncodeJson(const CommunicationType type, const s_HandleRecv& pa
     return result;
 }
 
-bool cwy::DecodeJson(const std::string& message, s_HandleRecv& s_param) {
+bool cwy::DecodeJson(const std::string& message, s_HandleRecv& lParam) {
     CHandleJson* handleJson = new CHandleJson(message);
     std::string communicationType = handleJson->GetJsonValueString("communication_type");
-    if (communicationType == "register") { // register
+    if (communicationType == "token") { // token
+        std::string token = handleJson->GetJsonValueString("content");
+        lParam.param_.token_.tokenLength_ = (int)handleJson->GetJsonValueNum("token_length");
+        HANDLE_MESSAGE(&lParam.param_.token_.content_, token.length(), token.c_str());
+        lParam.type_ = CommunicationType::TOKEN;
+    } else if (communicationType == "tokenback") { // token_back
+        std::string token = handleJson->GetJsonValueString("content");
+        lParam.param_.token_.tokenLength_ = (int)handleJson->GetJsonValueNum("token_length");
+        HANDLE_MESSAGE(&lParam.param_.token_.content_, token.length(), token.c_str());
+        lParam.type_ = CommunicationType::TOKENBACK;
+    } else if (communicationType == "register") { // register
         std::string customer = handleJson->GetJsonValueString("customer"),
             password = handleJson->GetJsonValueString("password");
-        HANDLE_MESSAGE(&s_param.param.Register.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&s_param.param.Register.password, password.length(), password.c_str());
-        s_param.type = CommunicationType::REGISTER;
-    } 
-    else if (communicationType == "registerback") { // register_back
+        HANDLE_MESSAGE(&lParam.param_.register_.customer_, customer.length(), customer.c_str());
+        HANDLE_MESSAGE(&lParam.param_.register_.password_, password.length(), password.c_str());
+        lParam.type_ = CommunicationType::REGISTER;
+    } else if (communicationType == "registerback") { // register_back
         std::string customer = handleJson->GetJsonValueString("customer"),
             register_result = handleJson->GetJsonValueString("register_result");
-        s_param.param.RegisterBack.id = handleJson->GetJsonValueNum("id");
-        HANDLE_MESSAGE(&s_param.param.RegisterBack.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&s_param.param.RegisterBack.register_result, register_result.length(), register_result.c_str());
-        s_param.type = CommunicationType::REGISTERBACK;
-    } 
-    else if (communicationType == "login") { // login
+        lParam.param_.registerBack_.id_ = handleJson->GetJsonValueNum("id");
+        HANDLE_MESSAGE(&lParam.param_.registerBack_.customer_, customer.length(), customer.c_str());
+        HANDLE_MESSAGE(&lParam.param_.registerBack_.registerResult_, register_result.length(), register_result.c_str());
+        lParam.type_ = CommunicationType::REGISTERBACK;
+    } else if (communicationType == "login") { // login
         std::string customer = handleJson->GetJsonValueString("customer"),
                     password = handleJson->GetJsonValueString("password");
-        HANDLE_MESSAGE(&s_param.param.Login.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&s_param.param.Login.password, password.length(), password.c_str());
-        s_param.type = CommunicationType::LOGIN;
-    } 
-    else if (communicationType == "loginback") { // login_back
+        lParam.param_.login_.id_ = handleJson->GetJsonValueNum("id");
+        HANDLE_MESSAGE(&lParam.param_.login_.password_, password.length(), password.c_str());
+        lParam.type_ = CommunicationType::LOGIN;
+    } else if (communicationType == "loginback") { // login_back
         std::string customer = handleJson->GetJsonValueString("customer"),
                     login_result = handleJson->GetJsonValueString("login_result"),
                     description = handleJson->GetJsonValueString("description");
-        HANDLE_MESSAGE(&s_param.param.LoginBack.customer, customer.length(), customer.c_str());
-        HANDLE_MESSAGE(&s_param.param.LoginBack.login_result, login_result.length(), login_result.c_str());
-        HANDLE_MESSAGE(&s_param.param.LoginBack.description, description.length(), description.c_str());
-        s_param.type = CommunicationType::LOGINBACK;
-    } 
-    //else if (handleJson->GetJsonValue("communication_type") == "showlogin") { // show_login
+        HANDLE_MESSAGE(&lParam.param_.loginBack_.customer_, customer.length(), customer.c_str());
+        HANDLE_MESSAGE(&lParam.param_.loginBack_.loginResult_, login_result.length(), login_result.c_str());
+        HANDLE_MESSAGE(&lParam.param_.loginBack_.description_, description.length(), description.c_str());
+        lParam.type_ = CommunicationType::LOGINBACK;
+    //} else if (handleJson->GetJsonValue("communication_type") == "showlogin") { // show_login
     //    std::string customer = js_value["customer"].asString();
     //    int size = 0;
     //    lReturn.param.ShowLogin.customer = new char *[js_value["customer_num"].asInt()];
@@ -185,63 +207,57 @@ bool cwy::DecodeJson(const std::string& message, s_HandleRecv& s_param) {
     //    lReturn.param.TransferFile.file_block = js_value["file_block"].asUInt();
     //    lReturn.param.TransferFile.current_block = js_value["current_block"].asUInt();
     //    lReturn.type = CommunicationType::TRANSFERFILE;
-    //} 
-    else { // other
-        s_param.type = CommunicationType::NULLCOMMUNICATION;
+    } else { // other
+        lParam.type_ = CommunicationType::NULLCOMMUNICATION;
     }
     delete handleJson;
     return true;
 }
 
-void cwy::DeleteMemory(const CommunicationType type, s_HandleRecv& s_param)
+void cwy::DeleteMemory(const CommunicationType type, s_HandleRecv& lParam)
 {
     switch (type)
     {
     case CommunicationType::REGISTER: {
-        delete[]s_param.param.Register.customer;
-        delete[]s_param.param.Register.password;
+        delete[]lParam.param_.register_.customer_;
+        delete[]lParam.param_.register_.password_;
     }
         break;
 
     case CommunicationType::REGISTERBACK: {
-        delete[]s_param.param.RegisterBack.customer;
-        delete[]s_param.param.RegisterBack.register_result;
+        delete[]lParam.param_.registerBack_.customer_;
+        delete[]lParam.param_.registerBack_.registerResult_;
     }
         break;
 
     case CommunicationType::LOGIN: {
-        delete[]s_param.param.Login.customer;
-        delete[]s_param.param.Login.password;
+        delete[]lParam.param_.login_.password_;
     }
         break;
 
     case CommunicationType::LOGINBACK: {
-        delete[]s_param.param.LoginBack.customer;
-        delete[]s_param.param.LoginBack.description;
-        delete[]s_param.param.LoginBack.login_result;
+        delete[]lParam.param_.loginBack_.customer_;
+        delete[]lParam.param_.loginBack_.description_;
+        delete[]lParam.param_.loginBack_.loginResult_;
     }
         break;
     }
 }
 
-std::string cwy::Encryption(const std::string& param) {
-    std::string str_return;
-
-    unsigned int len = param.length();
-    for (unsigned int i = 0; i < len; ++i) {
-        str_return += (~(~(param[i] ^ 0xff) + i));
+void cwy::GetToken(std::string& token, int& tokenLength)
+{
+    srand((unsigned int)time(NULL));
+    int code_rand = 0;
+    for (int i = 0; i < 16; ++i) {
+        code_rand = rand() % strlen(cwy::VERIFY_CODE);
+        token += cwy::VERIFY_CODE[code_rand];
     }
-    return str_return;
+    tokenLength = 16;
 }
 
-std::string cwy::Decryption(const std::string& param) {
-    std::string str_return;
-
-    unsigned int len = param.length();
-    for (unsigned int i = 0; i < len; ++i) {
-        str_return += (~(~param[i] - i) ^ 0xff);
-    }
-    return str_return;
+bool cwy::AnalToken(const std::string& token)
+{
+    return false;
 }
 
 bool cwy::VerifyCode(const std::string& code, const std::string& code_verify) {
@@ -321,30 +337,30 @@ cwy::CHandleJson::CHandleJson(const std::string& message)
 {
     ClearJson();
     InitJson(message);
-    strJsonWrite += "{";
+    strJsonWrite_ += "{";
 }
 
 void cwy::CHandleJson::InitJson(const std::string& message)
 {
-    strJsonRead = message;
+    strJsonRead_ = message;
 }
 
 void cwy::CHandleJson::ClearJson()
 {
-    strJsonRead = "";
-    strJsonWrite = "";
+    strJsonRead_ = "";
+    strJsonWrite_ = "";
 }
 
 std::string cwy::CHandleJson::GetJsonValueString(const std::string& key) const
 {
     std::string result = "";
-    int pos = strJsonRead.find(key + "\":");
+    int pos = strJsonRead_.find(key + "\":");
     if (pos != std::string::npos) {
-        int pos1 = strJsonRead.find_first_of(",", pos + 1);
+        int pos1 = strJsonRead_.find_first_of(",", pos + 1);
         if (pos1 == std::string::npos) {
-            pos1 = strJsonRead.find_first_of("}", pos + 1);
+            pos1 = strJsonRead_.find_first_of("}", pos + 1);
         }
-        result = strJsonRead.substr(pos + key.length() + 3, pos1 - pos - key.length() - 4);
+        result = strJsonRead_.substr(pos + key.length() + 3, pos1 - pos - key.length() - 4);
     }
     return result;
 }
@@ -352,14 +368,14 @@ std::string cwy::CHandleJson::GetJsonValueString(const std::string& key) const
 long long cwy::CHandleJson::GetJsonValueNum(const std::string& key) const
 {
     long long result = 0;
-    int pos = strJsonRead.find(key + "\":");
+    int pos = strJsonRead_.find(key + "\":");
     if (pos != std::string::npos) {
-        int pos1 = strJsonRead.find_first_of(",", pos + 1);
+        int pos1 = strJsonRead_.find_first_of(",", pos + 1);
         if (pos1 == std::string::npos) {
-            pos1 = strJsonRead.find_first_of("}", pos + 1);
+            pos1 = strJsonRead_.find_first_of("}", pos + 1);
         }
-        std::string tmp = strJsonRead.substr(pos + key.length() + 2, pos1 - pos - key.length() - 2);
-        result = atoi(tmp.c_str());
+        std::string tmp = strJsonRead_.substr(pos + key.length() + 2, pos1 - pos - key.length() - 2);
+        result = atoll(tmp.c_str());
     }
     return result;
 }
@@ -368,21 +384,21 @@ void cwy::CHandleJson::SetJsonValue(const std::string& key, const std::string& v
 {
     std::ostringstream tmp;
     tmp << "\"" << key << "\":\"" << value << "\",";
-    strJsonWrite += tmp.str();
+    strJsonWrite_ += tmp.str();
 }
 
 void cwy::CHandleJson::SetJsonValue(const std::string& key, const long long value)
 {
     std::ostringstream tmp;
     tmp << "\"" << key << "\":" << value << ",";
-    strJsonWrite += tmp.str();
+    strJsonWrite_ += tmp.str();
 }
 
 std::string cwy::CHandleJson::GetJsonBack()
 {
-    strJsonWrite = strJsonWrite.substr(0, strJsonWrite.length() - 1);
-    strJsonWrite += "}";
-    return strJsonWrite;
+    strJsonWrite_ = strJsonWrite_.substr(0, strJsonWrite_.length() - 1);
+    strJsonWrite_ += "}";
+    return strJsonWrite_;
 }
 
 cwy::CHandleIni::CHandleIni(const std::string& file_path)

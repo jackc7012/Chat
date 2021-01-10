@@ -60,6 +60,7 @@ BEGIN_MESSAGE_MAP(CChatServiceDlg, CDialogEx)
     ON_BN_CLICKED(IDC_START, &CChatServiceDlg::OnBnClickedStart)
     ON_MESSAGE(WM_SOCKET_TCP, OnSocketTcp)
     ON_MESSAGE(WM_SOCKET_UDP, OnSocketUdp)
+    ON_MESSAGE(WM_TO_MAIN_MESSAGE, OnMainMessage)
     ON_BN_CLICKED(IDC_KICK, &CChatServiceDlg::OnBnClickedKick)
 END_MESSAGE_MAP()
 
@@ -101,24 +102,14 @@ BOOL CChatServiceDlg::OnInitDialog() {
     GetDlgItem(IDC_LIST_LOGIN_PEOPLE)->SetFont(&font);
 
     logService.InitLog("../{time}/service");
-    netWorkHandle = cwy::CNetWorkHandle::CreateInstance();
-
-    for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-        myHandleThread[i] = std::thread(&CChatServiceDlg::threadTask, this, i);
-    }
+    netWorkHandle = CNetWorkHandle::CreateInstance();
+    netWorkHandle->InitNetWork(this->m_hWnd);
 
     return TRUE;
 }
 
 BOOL CChatServiceDlg::DestroyWindow()
 {
-    // TODO: 在此添加专用代码和/或调用基类
-    isExit = true;
-    for (unsigned int i = 0; i < THREAD_NUM; ++i) {
-        if (myHandleThread[i].joinable()) {
-            myHandleThread[i].join();
-        }
-    }
     if (netWorkHandle != nullptr) {
         delete netWorkHandle;
     }
@@ -193,8 +184,7 @@ bool CChatServiceDlg::StartTcp()
     if (socketServiceTcp == INVALID_SOCKET) {
         MessageBox(_T("创建TCP服务失败"), _T("错误"), MB_ICONERROR);
         return false;
-    }
-    else {
+    } else {
         addrServiceTcp.sin_family = AF_INET;
         addrServiceTcp.sin_port = htons(cwy::TCP_PORT);
         addrServiceTcp.sin_addr.S_un.S_addr = INADDR_ANY;
@@ -213,8 +203,7 @@ bool CChatServiceDlg::StartUdp()
     if (socketServiceUdp == INVALID_SOCKET) {
         MessageBox(_T("创建UDP服务失败"), _T("错误"), MB_ICONERROR);
         return false;
-    }
-    else {
+    } else {
         addrServiceUdp.sin_family = AF_INET;
         addrServiceUdp.sin_port = htons(cwy::UDP_PORT);
         addrServiceUdp.sin_addr.S_un.S_addr = INADDR_ANY;
@@ -230,37 +219,12 @@ LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
     CString str_text;
     switch (lParam) {
     case FD_ACCEPT: {
-        int addr_len = sizeof(addrAccept);
-        SOCKET addrClient = ::accept(socketServiceTcp, (SOCKADDR*)&addrAccept, &addr_len);
-        if (addrClient == INVALID_SOCKET) {
-            break;
-        }
-        socketAccept.push_back(addrClient);
-        ip = ::inet_ntoa(addrAccept.sin_addr);
-        netWorkHandle->SetSocketIp(addrClient, ip);
-        logService << "ip = " << ip << " connect";
-        logService.PrintlogInfo(FILE_FORMAT);
-        ++accpetCount;
+        netWorkHandle->ClientAccept(socketServiceTcp, addrServiceTcp);
     }
     break;
 
     case FD_READ: {
-        char *strRecv = new char[DATA_LENGTH];
-        memset(strRecv, 0, DATA_LENGTH);
-        size_t i = socketAccept.size() - 1;
-        SOCKADDR_IN addrClient = { 0 };
-        int addr_len = sizeof(SOCKADDR);
-        for (; i >= 0; --i) {
-            int nRet = ::recv(socketAccept[i], strRecv, DATA_LENGTH, 0);
-            if (nRet > 0)
-                break;
-        }
-        s_HandleRecv handleRecv;
-        handleRecv.connectionType = ConnectionType::TCP;
-        handleRecv.socket.socket_accept_tcp = socketAccept[i];
-        handleRecv.ip = ip;
-        taskQueue.push(s_TaskQueue(handleRecv, strRecv));
-        delete []strRecv;
+        netWorkHandle->HandleRecvTcp();
     }
     break;
 
@@ -284,17 +248,7 @@ LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
 {
     switch (lParam) {
     case FD_READ: {
-        char* strRecv = new char[DATA_LENGTH];
-        memset(strRecv, 0, DATA_LENGTH);
-        SOCKADDR_IN addrClient = { 0 };
-        int addrLen = sizeof(SOCKADDR);
-        ::recvfrom(socketServiceUdp, strRecv, DATA_LENGTH, 0, (SOCKADDR*)&addrClient, &addrLen);
-        s_HandleRecv handleRecv;
-        handleRecv.connectionType = ConnectionType::UDP;
-        handleRecv.socket.addr_client_udp = addrClient;
-        handleRecv.ip = ::inet_ntoa(addrClient.sin_addr);
-        taskQueue.push(s_TaskQueue(handleRecv, strRecv));
-        delete[]strRecv;
+        netWorkHandle->HandleRecvUdp();
     }
     break;
 
@@ -304,41 +258,12 @@ LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-void CChatServiceDlg::threadTask(int taskNum)
+LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
 {
-    s_HandleRecv temp;
-    std::string message;
-    CommunicationType type = CommunicationType::NULLCOMMUNICATION;
-    std::string result_message;
-    while (1) {
-        if (isExit) {
-            break;
-        }
-        if (!taskQueue.empty()) {
-                std::lock_guard<std::mutex> lg(mtServerHandle);
-                if (!taskQueue.empty()) {
-                    temp.connectionType = taskQueue.front().handleRecv.connectionType;
-                    temp.ip = taskQueue.front().handleRecv.ip;
-                    temp.socket = taskQueue.front().handleRecv.socket;
-                    message = taskQueue.front().message;
-                    taskQueue.pop();
-                }
-            if (message == "") {
-                Sleep(1);
-                continue;
-            }
-            type = netWorkHandle->HandleRecv(message, temp, result_message);
-            if (temp.connectionType == ConnectionType::TCP) {
-                ::send(temp.socket.socket_accept_tcp, result_message.c_str(), result_message.length(), 0);
-            }
-            else if (temp.connectionType == ConnectionType::UDP) {
-                int addrLen = sizeof(SOCKADDR);
-                ::sendto(socketServiceUdp, result_message.c_str(), result_message.length(), 0,
-                    (SOCKADDR*)&temp.socket.addr_client_udp, addrLen);
-            }
-        }
-        Sleep(1);
-    }
+    CommunicationType aa = (CommunicationType)wParam;
+    char* loginName = (char *)lParam;
+    m_list_login_people.AddString(loginName);
+    return LRESULT();
 }
 
 //

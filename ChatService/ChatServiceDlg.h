@@ -7,6 +7,8 @@
 #define WM_SOCKET_TCP               (WM_USER + 1000)
 #define WM_SOCKET_UDP               (WM_USER + 1001)
 
+
+
 #include <vector>
 
 #include <mutex>
@@ -17,7 +19,7 @@
 #include "CLog.h"
 #include "CNetWorkHandle.h"
 
-const unsigned int THREAD_NUM = 1;
+
 
 // CChatServiceDlg ¶Ô»°¿ò
 class CChatServiceDlg : public CDialogEx {
@@ -48,24 +50,15 @@ class CChatServiceDlg : public CDialogEx {
     afx_msg void OnBnClickedStart();
     SOCKET socketServiceTcp{ 0 }, socketServiceUdp{ 0 };
     SOCKADDR_IN addrServiceTcp{ 0 }, addrAccept{ 0 }, addrServiceUdp{ 0 };
-    std::vector<SOCKET> socketAccept;
-    DWORD accpetCount{ 0 };
     afx_msg LRESULT OnSocketTcp(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnSocketUdp(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnMainMessage(WPARAM wParam, LPARAM lParam);
     CListBox m_list_login_people;
-    std::multimap<std::string, SOCKET> name_to_socket_accept;
-    std::multimap<std::string, std::string> name_to_ip;
     std::vector<std::string> ve_accept_name;
-    std::mutex mtServerHandle;
     afx_msg void OnBnClickedKick();
-    std::queue<cwy::s_TaskQueue> taskQueue;
     cwy::CLog logService;
     cwy::CNetWorkHandle* netWorkHandle;
     bool StartTcp();
     bool StartUdp();
-    std::thread myHandleThread[THREAD_NUM];
-    void threadTask(int taskNum);
     virtual BOOL DestroyWindow();
-    bool isExit{ false };
-    std::string ip;
 };

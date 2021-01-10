@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#
+
 #include "public.h"
 #include "CLog.h"
 #include <iostream>
