@@ -20,6 +20,11 @@ namespace cwy {
 
     static std::string client_token;
 
+    enum class HandlePwd {
+        ENCRYPT = 1,
+        DECRYPT
+    };
+
     enum class ConnectionType {
         UNKNOWN = 0,
         TCP,
@@ -142,18 +147,21 @@ namespace cwy {
         s_HandleRecv(const s_HandleRecv& other) {
             connectionType_ = other.connectionType_;
             ip_ = other.ip_;
+            token_ = other.token_;
             socket_ = other.socket_;
             param_ = {0};
         }
         s_HandleRecv operator=(const s_HandleRecv& other) {
             connectionType_ = other.connectionType_;
             ip_ = other.ip_;
+            token_ = other.token_;
             socket_ = other.socket_;
             return *this;
         }
         CommunicationType type_;
         ConnectionType connectionType_;
         std::string ip_;
+        std::string token_;
         union Socket {
             SOCKET socketAccept_;
             SOCKADDR_IN addrClientUdp_;
@@ -289,7 +297,7 @@ namespace cwy {
 
     void GetToken(std::string& token, int& tokenLength);
 
-    bool AnalToken(const std::string& token);
+    std::string EncryOrDecryPwd(const HandlePwd type, const std::string& pwd, const std::string& token = "");
 
     bool VerifyCode(const std::string& code, const std::string& codeVerify);
 

@@ -21,7 +21,7 @@ CNetWorkHandle* CNetWorkHandle::CreateInstance()
 CNetWorkHandle::~CNetWorkHandle()
 {
     isExit_ = true;
-    for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+    for (unsigned short i = 0; i < THREAD_NUM; ++i) {
         if (myHandleThread_[i].joinable()) {
             myHandleThread_[i].join();
         }
@@ -33,21 +33,15 @@ CNetWorkHandle::~CNetWorkHandle()
 
 bool CNetWorkHandle::InitNetWork(const HWND hWnd)
 {
-    for (unsigned int i = 0; i < THREAD_NUM; ++i) {
+    for (unsigned short i = 0; i < THREAD_NUM; ++i) {
         myHandleThread_[i] = std::thread(&CNetWorkHandle::threadTask, this, i);
     }
     mainWnd = hWnd;
-    std::string cc = "aaa";
-    char * dd = new char[10];
-    memset(dd, 0, 10);
-    memcpy_s(dd, 10, cc.c_str(), 10);
-    char * ee = "bbb";
-    PostMessage(mainWnd, WM_TO_MAIN_MESSAGE, 0, (LPARAM)dd);
     return true;
 }
 
 
-void cwy::CNetWorkHandle::threadTask(int taskNum)
+void cwy::CNetWorkHandle::threadTask(unsigned short taskNum)
 {
     s_HandleRecv temp;
     std::string message;
@@ -68,25 +62,25 @@ void cwy::CNetWorkHandle::threadTask(int taskNum)
                     taskQueue_.pop();
                 }
             }
-        }
-        if (message == "") {
+            if (message == "") {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
+            type = HandleRecv(message, temp, result_message);
+            if (type == CommunicationType::NULLCOMMUNICATION) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }
+            if (temp.connectionType_ == ConnectionType::TCP) {
+                ::send(temp.socket_.socketAccept_, result_message.c_str(), result_message.length(), 0);
+            }
+            else if (temp.connectionType_ == ConnectionType::UDP) {
+                int addrLen = sizeof(SOCKADDR);
+                ::sendto(temp.socket_.socketAccept_, result_message.c_str(), result_message.length(), 0,
+                    (SOCKADDR*)&temp.socket_.addrClientUdp_, addrLen);
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            continue;
         }
-        type = HandleRecv(message, temp, result_message);
-        if (type == CommunicationType::NULLCOMMUNICATION) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            continue;
-        }
-        if (temp.connectionType_ == ConnectionType::TCP) {
-            ::send(temp.socket_.socketAccept_, result_message.c_str(), result_message.length(), 0);
-        }
-        else if (temp.connectionType_ == ConnectionType::UDP) {
-            int addrLen = sizeof(SOCKADDR);
-            ::sendto(temp.socket_.socketAccept_, result_message.c_str(), result_message.length(), 0,
-                (SOCKADDR*)&temp.socket_.addrClientUdp_, addrLen);
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -171,36 +165,34 @@ CommunicationType CNetWorkHandle::HandleRecv(const std::string& message, s_Handl
     break;
 
     case CommunicationType::LOGIN: {
-        auto itor = socketToClientInfo_.find(handleRecv.socket_.socketAccept_);
         result = CommunicationType::LOGINBACK;
         toSend.param_.loginBack_.customer_ = "";
         toSend.param_.loginBack_.loginResult_ = "failed";
         char* password = new char[50];
         if (password == nullptr) {
             result = CommunicationType::ERRORCOMMUNICATION;
-        }   
-        else {
+        } else {
             memset(password, 0, 50);
             std::string name;
             std::string ip;
             int IsLogin = -1;
             int nRet = dataBase_->SearchDataBaseLogin(handleRecv.param_.login_.id_, name, ip, password, IsLogin);
+            toSend.param_.loginBack_.customer_ = const_cast<char*>(name.c_str());
             if (nRet != 0) {
                 toSend.param_.loginBack_.description_ = "no such people";
-            }
-            else if (IsLogin == 1) {
+            } else if (IsLogin == 1) {
                 toSend.param_.loginBack_.loginResult_ = "isLogin";
                 toSend.param_.loginBack_.description_ = "people has already login";
-            }
-            else if (strcmp(password, handleRecv.param_.login_.password_) != 0) {
+            } else if (strcmp(password, handleRecv.param_.login_.password_) != 0) {
                 toSend.param_.loginBack_.description_ = "password error";
-            }
-            else if (strcmp(password, handleRecv.param_.login_.password_) == 0) {
+            } else if (strcmp(password, handleRecv.param_.login_.password_) == 0) {
+                auto itor = socketToClientInfo_.find(handleRecv.socket_.socketAccept_);
                 itor->second.name_ = name;
                 toSend.param_.loginBack_.description_ = ((ip == handleRecv.ip_) ? "login succeed" : "ip does not match last time");
                 toSend.param_.loginBack_.loginResult_ = "succeed";
                 dataBase_->UpdateLoginStatus(handleRecv.param_.login_.id_, 1);
-                ::PostMessage(mainWnd, WM_TO_MAIN_MESSAGE, (WPARAM)CommunicationType::LOGIN, (LPARAM)name.c_str());
+                std::string *toName = new std::string(name);
+                ::PostMessage(mainWnd, WM_TO_MAIN_MESSAGE, (WPARAM)CommunicationType::LOGIN, (LPARAM)toName);
             }
             delete[]password;
         }

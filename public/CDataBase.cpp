@@ -57,7 +57,7 @@ void CDataBase::GetId()
     {
         pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
         _variant_t id = pRecordset->GetFields()->GetItem((long)0)->GetValue();
-        presentId = atoi(((std::string)(_bstr_t)&id).c_str());
+        presentId = atoll(((std::string)(_bstr_t)&id).c_str());
     }
     catch (_com_error e)
     {
@@ -95,7 +95,7 @@ int CDataBase::SearchDataBaseLogin(const long long loginID, std::string& name, s
     return result;
 }
 
-int CDataBase::UpdateLoginStatus(const long long loginID/* = 0*/, const int type/* = 0*/)
+int CDataBase::UpdateLoginStatus(const int type/* = 0*/, const long long loginID/* = -1*/)
 {
     int result = 0;
     char sql[100] = { 0 };

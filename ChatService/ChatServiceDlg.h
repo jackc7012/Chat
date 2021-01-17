@@ -7,8 +7,6 @@
 #define WM_SOCKET_TCP               (WM_USER + 1000)
 #define WM_SOCKET_UDP               (WM_USER + 1001)
 
-
-
 #include <vector>
 
 #include <mutex>
@@ -18,8 +16,6 @@
 #include "public.h"
 #include "CLog.h"
 #include "CNetWorkHandle.h"
-
-
 
 // CChatServiceDlg ¶Ô»°¿ò
 class CChatServiceDlg : public CDialogEx {
@@ -53,7 +49,7 @@ class CChatServiceDlg : public CDialogEx {
     afx_msg LRESULT OnSocketTcp(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnSocketUdp(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnMainMessage(WPARAM wParam, LPARAM lParam);
-    CListBox m_list_login_people;
+    CListBox listLoginPeople;
     std::vector<std::string> ve_accept_name;
     afx_msg void OnBnClickedKick();
     cwy::CLog logService;

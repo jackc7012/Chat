@@ -255,9 +255,21 @@ void cwy::GetToken(std::string& token, int& tokenLength)
     tokenLength = 16;
 }
 
-bool cwy::AnalToken(const std::string& token)
+std::string cwy::EncryOrDecryPwd(const HandlePwd type, const std::string& pwd, const std::string& token/* = ""*/)
 {
-    return false;
+    static const char* randPwd = "u9FOZzlI";
+    std::string result;
+    if (type == HandlePwd::ENCRYPT) {
+        for (size_t i = 0; i < pwd.length(); ++i) {
+            result += ((pwd[i] ^ randPwd[i % sizeof(randPwd)]) + 'a');
+        }
+    }
+    else {
+        for (size_t i = 0; i < pwd.length(); ++i) {
+            result += ((pwd[i] - 'a') ^ randPwd[i % sizeof(randPwd)]);
+        }
+    }
+    return result;
 }
 
 bool cwy::VerifyCode(const std::string& code, const std::string& code_verify) {

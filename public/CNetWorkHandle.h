@@ -12,10 +12,10 @@
 #include "CLog.h"
 
 namespace cwy {
-    static const int TCP_PORT = 6000;
-    static const int UDP_PORT = 6002;
+    static const unsigned short TCP_PORT = 6000;
+    static const unsigned short UDP_PORT = 6002;
 
-    static const unsigned int THREAD_NUM = 5;
+    static const unsigned short THREAD_NUM = 5;
 
     struct ClientInfo {
         ClientInfo(const std::string& ip, const std::string& name, const std::string& token)
@@ -49,7 +49,7 @@ namespace cwy {
 
         CommunicationType HandleRecv(const std::string& message, s_HandleRecv& handleRecv, std::string& strToSend);
 
-        void threadTask(int taskNum);
+        void threadTask(unsigned short taskNum);
 
     private:
         CLog logNetWork_;

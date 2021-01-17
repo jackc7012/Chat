@@ -50,7 +50,7 @@ CChatServiceDlg::CChatServiceDlg(CWnd* pParent /*=NULL*/)
 
 void CChatServiceDlg::DoDataExchange(CDataExchange* pDX) {
     CDialogEx::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_LIST1, m_list_login_people);
+    DDX_Control(pDX, IDC_LIST1, listLoginPeople);
 }
 
 BEGIN_MESSAGE_MAP(CChatServiceDlg, CDialogEx)
@@ -260,10 +260,20 @@ LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
 
 LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
 {
-    CommunicationType aa = (CommunicationType)wParam;
-    char* loginName = (char *)lParam;
-    m_list_login_people.AddString(loginName);
-    return LRESULT();
+    CommunicationType communicationType = (CommunicationType)wParam;
+    std::string* message = (std::string*)lParam;
+    switch (communicationType)
+    {
+    case CommunicationType::LOGIN: {
+        listLoginPeople.AddString((*message).c_str());
+    }
+    break;
+
+    default:
+        break;
+    }
+    delete message;
+    return 0;
 }
 
 //
