@@ -1,8 +1,11 @@
 #include "CNetWorkHandle.h"
+
+#include <sstream>
 using namespace cwy;
 
 CNetWorkHandle::CNetWorkHandle()
-: mainWnd(nullptr)
+: mainWnd_(nullptr)
+, udpSocket_(0)
 {
     logNetWork_.InitLog("../{time}/network");
     dataBase_ = CDataBase::CreateInstance();
@@ -26,6 +29,7 @@ CNetWorkHandle::~CNetWorkHandle()
             myHandleThread_[i].join();
         }
     }
+    dataBase_->UpdateLoginStatus();
     if (dataBase_ != nullptr) {
         delete dataBase_;
     }
@@ -36,12 +40,16 @@ bool CNetWorkHandle::InitNetWork(const HWND hWnd)
     for (unsigned short i = 0; i < THREAD_NUM; ++i) {
         myHandleThread_[i] = std::thread(&CNetWorkHandle::threadTask, this, i);
     }
-    mainWnd = hWnd;
+    mainWnd_ = hWnd;
     return true;
 }
 
+void CNetWorkHandle::SetUdpSocket(SOCKET udpSocket)
+{
+    udpSocket_ = udpSocket;
+}
 
-void cwy::CNetWorkHandle::threadTask(unsigned short taskNum)
+void CNetWorkHandle::threadTask(unsigned short taskNum)
 {
     s_HandleRecv temp;
     std::string message;
@@ -76,8 +84,9 @@ void cwy::CNetWorkHandle::threadTask(unsigned short taskNum)
             }
             else if (temp.connectionType_ == ConnectionType::UDP) {
                 int addrLen = sizeof(SOCKADDR);
-                ::sendto(temp.socket_.socketAccept_, result_message.c_str(), result_message.length(), 0,
-                    (SOCKADDR*)&temp.socket_.addrClientUdp_, addrLen);
+                auto itor = idToSockaddrinUdp_.find(temp.param_.chat_.target_);
+                ::sendto(udpSocket_, result_message.c_str(), result_message.length(), 0,
+                    (SOCKADDR*)&(itor->second), addrLen);
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -111,7 +120,7 @@ void CNetWorkHandle::HandleRecvTcp()
     s_HandleRecv handleRecv;
     handleRecv.connectionType_ = ConnectionType::TCP;
     handleRecv.socket_.socketAccept_ = socketAccept_[i];
-    auto itor = socketToClientInfo_.find(socketAccept_[i]);
+    auto itor = socketToClientInfoTcp_.find(socketAccept_[i]);
     handleRecv.ip_ = itor->second.ip_;
     taskQueue_.push(s_TaskQueue(handleRecv, strRecv));
     delete[]strRecv;
@@ -123,17 +132,15 @@ void CNetWorkHandle::HandleRecvUdp()
     memset(strRecv, 0, DATA_LENGTH);
     SOCKADDR_IN addrClient = { 0 };
     int addrLen = sizeof(SOCKADDR);
-    int i = socketAccept_.size() - 1;
-    for (; i >= 0; --i) {
-        int nRet = ::recvfrom(socketAccept_[i], strRecv, DATA_LENGTH, 0, (SOCKADDR*)&addrClient, &addrLen);
-        if (nRet > 0)
-            break;
+    int nRet = ::recvfrom(udpSocket_, strRecv, DATA_LENGTH, 0, (SOCKADDR*)&addrClient, &addrLen);
+    if (std::string(strRecv).substr(0, 6) == "Accept") {
+        idToSockaddrinUdp_[atoll(std::string(strRecv).substr(7, 5).c_str())] = addrClient;
+    } else {
+        s_HandleRecv handleRecv;
+        handleRecv.connectionType_ = ConnectionType::UDP;
+        handleRecv.ip_ = ::inet_ntoa(addrClient.sin_addr);
+        taskQueue_.push(s_TaskQueue(handleRecv, strRecv));
     }
-    s_HandleRecv handleRecv;
-    handleRecv.connectionType_ = ConnectionType::UDP;
-    handleRecv.socket_.addrClientUdp_ = addrClient;
-    handleRecv.ip_ = ::inet_ntoa(addrClient.sin_addr);
-    taskQueue_.push(s_TaskQueue(handleRecv, strRecv));
     delete[]strRecv;
 }
 
@@ -148,7 +155,7 @@ CommunicationType CNetWorkHandle::HandleRecv(const std::string& message, s_Handl
     toSend.connectionType_ = handleRecv.connectionType_;
     switch (handleRecv.type_) {
     case CommunicationType::TOKENBACK: {
-        auto itor = socketToClientInfo_.find(handleRecv.socket_.socketAccept_);
+        auto itor = socketToClientInfoTcp_.find(handleRecv.socket_.socketAccept_);
         if (itor->second.token_ != handleRecv.param_.tokenBack_.content_) {
             itor->second.token_ = "";
         }
@@ -186,16 +193,25 @@ CommunicationType CNetWorkHandle::HandleRecv(const std::string& message, s_Handl
             } else if (strcmp(password, handleRecv.param_.login_.password_) != 0) {
                 toSend.param_.loginBack_.description_ = "password error";
             } else if (strcmp(password, handleRecv.param_.login_.password_) == 0) {
-                auto itor = socketToClientInfo_.find(handleRecv.socket_.socketAccept_);
+                auto itor = socketToClientInfoTcp_.find(handleRecv.socket_.socketAccept_);
                 itor->second.name_ = name;
+                itor->second.id_ = handleRecv.param_.login_.id_;
                 toSend.param_.loginBack_.description_ = ((ip == handleRecv.ip_) ? "login succeed" : "ip does not match last time");
                 toSend.param_.loginBack_.loginResult_ = "succeed";
-                dataBase_->UpdateLoginStatus(handleRecv.param_.login_.id_, 1);
-                std::string *toName = new std::string(name);
-                ::PostMessage(mainWnd, WM_TO_MAIN_MESSAGE, (WPARAM)CommunicationType::LOGIN, (LPARAM)toName);
+                dataBase_->UpdateLoginStatus(1, handleRecv.param_.login_.id_);
+                std::ostringstream tmp;
+                tmp << handleRecv.param_.login_.id_ << "\t\t" << name;
+                std::string *toName = new std::string(tmp.str());
+                ::PostMessage(mainWnd_, WM_TO_MAIN_MESSAGE, (WPARAM)CommunicationType::LOGIN, (LPARAM)toName);
             }
             delete[]password;
         }
+    }
+    break;
+
+    case CommunicationType::CHAT: {
+        result = CommunicationType::CHATRECV;
+        toSend.param_.chatRecv_.content_ = handleRecv.param_.chat_.content_;
     }
     break;
 
@@ -212,7 +228,7 @@ void CNetWorkHandle::SetSocketInfo(const SOCKET& socket, const std::string& ip)
     int tokenLength = 0;
     GetToken(token, tokenLength);
     socketAccept_.push_back(socket);
-    socketToClientInfo_.insert(std::pair<SOCKET, ClientInfo>(socket, ClientInfo(ip, "", token)));
+    socketToClientInfoTcp_.insert(std::pair<SOCKET, ClientInfoTcp>(socket, ClientInfoTcp(ip, "", token)));
     s_HandleRecv toSend;
     toSend.param_.token_.tokenLength_ = tokenLength;
     toSend.param_.token_.content_ = const_cast<char *>(token.c_str());

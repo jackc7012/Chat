@@ -87,8 +87,13 @@ namespace cwy {
         CHAT,
         /*
           { "communication_type":"chat"
-          , "source" : "aaa"
-          , "target" : "bbb"
+          , "source" : 60001
+          , "target" : 60002
+          , "content" : "hello"}
+        */
+        CHATRECV,
+        /*
+          { "communication_type":"chatrecv"
           , "content" : "hello"}
         */
         TRANSFERFILEREQUEST,
@@ -164,19 +169,17 @@ namespace cwy {
         std::string token_;
         union Socket {
             SOCKET socketAccept_;
-            SOCKADDR_IN addrClientUdp_;
         }socket_;
         union Param {
             // token
             struct TokenType {
-                int tokenLength_;
+                unsigned int tokenLength_;
                 char* content_;
             };
             // token应答
             struct TokenBackType {
-                int tokenLength_;
+                unsigned int tokenLength_;
                 char* content_;
-
             };
             // 注册用户
             struct RegisterType {
@@ -187,11 +190,11 @@ namespace cwy {
             struct RegisterBackType {
                 char* customer_;
                 char* registerResult_;
-                long long id_;
+                unsigned long long id_;
             };
             // 用户登录
             struct LoginType {
-                long long id_;
+                unsigned long long id_;
                 char* password_;
             };
             // 用户登录应答
@@ -212,8 +215,12 @@ namespace cwy {
             };
             // 聊天
             struct ChatType {
-                char* source_;
-                char* target_;
+                unsigned long long source_;
+                unsigned long long target_;
+                char* content_;
+            };
+            // 聊天信息
+            struct ChatRecvType {
                 char* content_;
             };
             // 传送文件请求
@@ -263,6 +270,7 @@ namespace cwy {
             ShowLoginType showLogin_;
             DelCustomerType delCustomer_;
             ChatType chat_;
+            ChatRecvType chatRecv_;
             TransferFileRequestType transferFileRequest_;
             TransferFileRespondType transferFileRespond_;
             TransferFileType transferFile_;
@@ -324,7 +332,7 @@ namespace cwy {
 
         long long GetJsonValueNum(const std::string& key) const;
 
-        void SetJsonValue(const std::string& key, const std::string& value);
+        void SetJsonValue(const std::string& key, const char* value);
 
         void SetJsonValue(const std::string& key, const long long value);
 

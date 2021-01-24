@@ -67,7 +67,7 @@ void CDataBase::GetId()
     return ;
 }
 
-int CDataBase::SearchDataBaseLogin(const long long loginID, std::string& name, std::string& ip, char* password, int &loginStatus)
+int CDataBase::SearchDataBaseLogin(const long long loginID, std::string& name, std::string& ip, char* password, int& loginStatus)
 {
     int result = 0;
     char sql[100] = { 0 };

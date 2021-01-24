@@ -62,17 +62,23 @@ std::string cwy::EncodeJson(const CommunicationType type, const s_HandleRecv& lP
         js_value["del_customer"]       = param.param.DelCustomer.customer;
         js_value["source"]             = param.param.DelCustomer.source;
     }
-    break;
+    break;*/
 
     case CommunicationType::CHAT: {
-        js_value["communication_type"] = "chat";
-        js_value["content"]            = param.param.Chat.content;
-        js_value["target"]             = param.param.Chat.target;
-        js_value["source"]             = param.param.Chat.source;
+        handleJson->SetJsonValue("communication_type", "chat");
+        handleJson->SetJsonValue("source", lParam.param_.chat_.source_);
+        handleJson->SetJsonValue("target", lParam.param_.chat_.target_);
+        handleJson->SetJsonValue("content", lParam.param_.chat_.content_);
     }
     break;
 
-    case CommunicationType::TRANSFERFILEREQUEST: {
+    case CommunicationType::CHATRECV: {
+        handleJson->SetJsonValue("communication_type", "chatrecv");
+        handleJson->SetJsonValue("content", lParam.param_.chatRecv_.content_);
+    }
+    break;
+
+    /*case CommunicationType::TRANSFERFILEREQUEST: {
         js_value["communication_type"] = "transferfilerequest";
         js_value["file_name"]          = param.param.TransferFileRequest.file_name;
         js_value["file_length"]        = param.param.TransferFile.file_length;
@@ -168,14 +174,12 @@ bool cwy::DecodeJson(const std::string& message, s_HandleRecv& lParam) {
     //    HANDLE_MESSAGE(&lReturn.param.DelCustomer.customer, customer.length(), customer.c_str());
     //    HANDLE_MESSAGE(&lReturn.param.DelCustomer.source, source.length(), source.c_str());
     //    lReturn.type = CommunicationType::DELETECUSTOMER;
-    //} 
-    //else if (handleJson->GetJsonValue("communication_type") == "chat") { // chat
-    //    std::string content = js_value["content"].asString(), source = js_value["source"].asString(),
-    //                target = js_value["target"].asString();
-    //    HANDLE_MESSAGE(&lReturn.param.Chat.content, content.length(), content.c_str());
-    //    HANDLE_MESSAGE(&lReturn.param.Chat.source, source.length(), source.c_str());
-    //    HANDLE_MESSAGE(&lReturn.param.Chat.target, target.length(), target.c_str());
-    //    lReturn.type = CommunicationType::CHAT;
+    } else if (communicationType == "chat") { // chat
+        std::string content = handleJson->GetJsonValueString("content");
+        lParam.param_.chat_.source_ = handleJson->GetJsonValueNum("source");
+        lParam.param_.chat_.target_ = handleJson->GetJsonValueNum("target");
+        HANDLE_MESSAGE(&lParam.param_.chat_.content_, content.length(), content.c_str());
+        lParam.type_ = CommunicationType::CHAT;
     //} 
     //else if (handleJson->GetJsonValue("communication_type") == "transferfilerequest") { // transfer_filequest
     //    std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
@@ -222,25 +226,30 @@ void cwy::DeleteMemory(const CommunicationType type, s_HandleRecv& lParam)
         delete[]lParam.param_.register_.customer_;
         delete[]lParam.param_.register_.password_;
     }
-        break;
+    break;
 
     case CommunicationType::REGISTERBACK: {
         delete[]lParam.param_.registerBack_.customer_;
         delete[]lParam.param_.registerBack_.registerResult_;
     }
-        break;
+    break;
 
     case CommunicationType::LOGIN: {
         delete[]lParam.param_.login_.password_;
     }
-        break;
+    break;
 
     case CommunicationType::LOGINBACK: {
         delete[]lParam.param_.loginBack_.customer_;
         delete[]lParam.param_.loginBack_.description_;
         delete[]lParam.param_.loginBack_.loginResult_;
     }
-        break;
+    break;
+
+    case CommunicationType::CHAT: {
+        delete[]lParam.param_.chat_.content_;
+    }
+    break;
     }
 }
 
@@ -392,8 +401,11 @@ long long cwy::CHandleJson::GetJsonValueNum(const std::string& key) const
     return result;
 }
 
-void cwy::CHandleJson::SetJsonValue(const std::string& key, const std::string& value)
+void cwy::CHandleJson::SetJsonValue(const std::string& key, const char* value)
 {
+    if (value == nullptr) {
+        return;
+    }
     std::ostringstream tmp;
     tmp << "\"" << key << "\":\"" << value << "\",";
     strJsonWrite_ += tmp.str();

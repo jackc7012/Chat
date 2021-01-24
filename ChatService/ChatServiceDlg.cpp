@@ -209,6 +209,7 @@ bool CChatServiceDlg::StartUdp()
         addrServiceUdp.sin_addr.S_un.S_addr = INADDR_ANY;
         ::bind(socketServiceUdp, (sockaddr*)&addrServiceUdp, sizeof(addrServiceUdp));
         ::WSAAsyncSelect(socketServiceUdp, this->m_hWnd, WM_SOCKET_UDP, FD_READ);
+        netWorkHandle->SetUdpSocket(socketServiceUdp);
         logService << "服务器UDP开启监听，端口号为：" << cwy::UDP_PORT;
     }
     logService.PrintlogInfo(FILE_FORMAT);

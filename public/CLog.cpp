@@ -118,7 +118,7 @@ std::string CLog::AssembleString(const std::string& file_name, const int file_li
     SYSTEMTIME st;
     GetLocalTime(&st);
     SplitFileName(temp_file_name);
-    sprintf_s(temp, 512, "[%02d:%02d:%02d %03d]: [%d][%s][%d]\t[%s]%s\r\n", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, 
+    sprintf_s(temp, 512, "[%02d:%02d:%02d %03d]: [%5d][%10s][%5d]\t[%s]%s\r\n", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, 
               GetCurrentThreadId(), temp_file_name.c_str(), file_line, type.c_str(), strReturnOneLine.c_str());
     strReturnOneLine = "";
     return std::string(temp);

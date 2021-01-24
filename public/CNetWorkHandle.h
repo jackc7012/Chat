@@ -17,9 +17,10 @@ namespace cwy {
 
     static const unsigned short THREAD_NUM = 5;
 
-    struct ClientInfo {
-        ClientInfo(const std::string& ip, const std::string& name, const std::string& token)
+    struct ClientInfoTcp {
+        ClientInfoTcp(const std::string& ip, const std::string& name, const std::string& token)
         :ip_(ip), name_(name), token_(token){}
+        long long id_{0};
         std::string ip_;
         std::string name_;
         std::string token_;
@@ -33,6 +34,8 @@ namespace cwy {
         ~CNetWorkHandle();
 
         bool InitNetWork(const HWND hWnd);
+
+        void SetUdpSocket(SOCKET udpSocket);
 
         bool ClientAccept(const SOCKET& socket, const SOCKADDR_IN& sockAddr);
 
@@ -55,12 +58,14 @@ namespace cwy {
         CLog logNetWork_;
         CDataBase* dataBase_;
         std::vector<SOCKET> socketAccept_;
-        std::unordered_map<SOCKET, ClientInfo> socketToClientInfo_;
+        SOCKET udpSocket_;
+        std::unordered_map<SOCKET, ClientInfoTcp> socketToClientInfoTcp_;
+        std::unordered_map<long long, SOCKADDR_IN> idToSockaddrinUdp_;
         std::queue<s_TaskQueue> taskQueue_;
         std::thread myHandleThread_[THREAD_NUM];
         bool isExit_{ false };
         std::mutex mtServerHandle_;
-        HWND mainWnd;
+        HWND mainWnd_;
     };
 }
 #endif // !__NET_WORK_HANDLE_H__
