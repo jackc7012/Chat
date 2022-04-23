@@ -18,6 +18,7 @@ CNetWorkHandle* CNetWorkHandle::CreateInstance()
     if (ptr == nullptr) {
         ptr = new CNetWorkHandle();
     }
+
     return ptr;
 }
 
@@ -35,13 +36,30 @@ CNetWorkHandle::~CNetWorkHandle()
     }
 }
 
-bool CNetWorkHandle::InitNetWork(const HWND hWnd)
+std::vector<std::string> CNetWorkHandle::InitNetWork(const HWND hWnd)
 {
     for (unsigned short i = 0; i < THREAD_NUM; ++i) {
         myHandleThread_[i] = std::thread(&CNetWorkHandle::threadTask, this, i);
     }
     mainWnd_ = hWnd;
-    return true;
+    std::vector<std::string> result;
+    char name[256];
+    int getNameRet = gethostname(name, sizeof(name));
+    if (getNameRet == 0) {
+        hostent* host = gethostbyname(name);
+        if (NULL == host) {
+            return std::vector<std::string>{};
+        }
+        in_addr* pAddr = (in_addr*)*host->h_addr_list;
+        for (int i = 0; i < (strlen((char*)*host->h_addr_list) - strlen(host->h_name)) / 4 && pAddr; i++) {
+            std::string addr = inet_ntoa(pAddr[i]);
+            result.push_back(addr);
+        }
+    } else {
+        return std::vector<std::string>{};
+    }
+
+    return result;
 }
 
 void CNetWorkHandle::SetUdpSocket(SOCKET udpSocket)
@@ -85,8 +103,9 @@ void CNetWorkHandle::threadTask(unsigned short taskNum)
             else if (temp.connectionType_ == ConnectionType::UDP) {
                 int addrLen = sizeof(SOCKADDR);
                 auto itor = idToSockaddrinUdp_.find(temp.param_.chat_.target_);
-                ::sendto(udpSocket_, result_message.c_str(), result_message.length(), 0,
+                int ret = ::sendto(udpSocket_, result_message.c_str(), result_message.length(), 0,
                     (SOCKADDR*)&(itor->second), addrLen);
+                int c = GetLastError();
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -104,6 +123,7 @@ bool CNetWorkHandle::ClientAccept(const SOCKET& socket, const SOCKADDR_IN& sockA
     SetSocketInfo(addrClient, ip);
     logNetWork_ << "ip = " << ip << " connect";
     logNetWork_.PrintlogInfo(FILE_FORMAT);
+
     return true;
 }
 
@@ -219,6 +239,7 @@ CommunicationType CNetWorkHandle::HandleRecv(const std::string& message, s_Handl
     toSend.type_ = result;
     strToSend = EncodeJson(result, toSend);
     DeleteMemory(handleRecv.type_, handleRecv);
+
     return result;
 }
 

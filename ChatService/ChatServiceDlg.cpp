@@ -100,10 +100,13 @@ BOOL CChatServiceDlg::OnInitDialog() {
     GetDlgItem(IDC_KICK)->SetFont(&font);
     GetDlgItem(IDC_STATIC_LOGIN_PEOPLE)->SetFont(&font);
     GetDlgItem(IDC_LIST_LOGIN_PEOPLE)->SetFont(&font);
+    GetDlgItem(IDC_IPLIST)->SetFont(&font);
 
     logService.InitLog("../{time}/service");
     netWorkHandle = CNetWorkHandle::CreateInstance();
-    netWorkHandle->InitNetWork(this->m_hWnd);
+    std::vector<std::string> ipList = netWorkHandle->InitNetWork(this->m_hWnd);
+    std::string ip = (ipList.size() == 0 ? "未获取到ip地址" : "服务器ip：\t" + ipList[0]);
+    SetDlgItemText(IDC_IPLIST, ip.c_str());
 
     return TRUE;
 }

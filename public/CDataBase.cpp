@@ -39,7 +39,7 @@ int CDataBase::InitDataBase(const std::string& dataBaseName)
         return -1;
     }
     char connectionString[100] = { 0 };
-    sprintf_s(connectionString, 100, "Driver={sql server};server=127.0.0.1;uid=sa;pwd=chen931125;database=%s;",	                    dataBaseName.c_str());
+    sprintf_s(connectionString, 100, "Driver={sql server};server=192.168.0.103;uid=sa;pwd=chen931125;database=%s;", dataBaseName.c_str());
     if (pMyConnect->Open(connectionString, "", "", adModeUnknown) != 0) {
         logDataBase << "open database" << dataBaseName.c_str() << "failed";
         logDataBase.PrintlogError(FILE_FORMAT);

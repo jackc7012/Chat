@@ -33,7 +33,7 @@ namespace cwy {
 
         ~CNetWorkHandle();
 
-        bool InitNetWork(const HWND hWnd);
+        std::vector<std::string> InitNetWork(const HWND hWnd);
 
         void SetUdpSocket(SOCKET udpSocket);
 
