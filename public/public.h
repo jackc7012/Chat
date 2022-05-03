@@ -8,13 +8,8 @@
 
 const unsigned int DATA_LENGTH = 1024 * 10;
 
-inline void HANDLE_MESSAGE(char **type, const unsigned int length, const std::string &message) {
-    *type = new char[length + 1];
-    memset(*type, 0, length + 1);
-    memcpy_s(*type, length, message.c_str(), length);
-}
-
-enum class CommunicationType {
+enum class CommunicationType
+{
     NULLCOMMUNICATION = 0,
     ERRORCOMMUNICATION,
     REGISTER,
@@ -64,8 +59,7 @@ enum class CommunicationType {
     DELETECUSTOMER,
     /*
       { "communication_type":"deletecustomer"
-      , "customer" : "aaa"
-      , "source" : "aaa"}
+      , "customer" : "aaa"}
     */
     CHAT,
     /*
@@ -108,7 +102,13 @@ enum class CommunicationType {
     */
 };
 
-struct s_HandleRecv {
+struct s_HandleRecv
+{
+    s_HandleRecv()
+    : type_(CommunicationType::NULLCOMMUNICATION),
+      socket_accept_(0)
+    {
+    }
     CommunicationType type_;
     SOCKET socket_accept_;
     union param {
@@ -142,7 +142,6 @@ struct s_HandleRecv {
         // 用户退出
         struct DelCustomerType {
             char *customer;
-            char *source;
         };
         // 聊天
         struct ChatType {
@@ -190,6 +189,16 @@ struct s_HandleRecv {
         ForceDeleteType forceDelete_;
     } Param;
 };
+
+inline void RegisterSpace(char** field, const std::string& message)
+{
+    size_t len = message.length();
+    *field = new char[len + 1];
+    memset(*field, 0, len + 1);
+    memcpy_s(*field, len, message.c_str(), len);
+}
+
+void UnregisterSpace(CommunicationType type, s_HandleRecv& field);
 
 std::string EncodeJson(const CommunicationType type, const s_HandleRecv &s_param);
 

@@ -4,8 +4,9 @@
 #include <iostream>
 #include <tchar.h>
 #include <queue>
+#include <unordered_set>
+#include <unordered_map>
 
-#include "public.h"
 #include "NetWorkHandle.h"
 
 using namespace cwy;
@@ -18,7 +19,10 @@ std::thread threadAcc, threadTcp, threadUdp;
 std::vector<std::thread> threadHandle;
 std::mutex mutexHandle, mutexPush;
 std::queue<std::pair<std::string, SOCKET>> taskQue;
-long long acceptCount{0};
+unsigned long long loginCount{0};
+std::unordered_map<std::string, SOCKET> loginCustomer;
+std::unordered_map<SOCKET, std::string> acceptCustomer;
+HWND hWnd;
 
 SOCKET socketServiceTcp{0}, socketServiceUdp{0};
 SOCKADDR_IN addrServiceTcp{0}, addrAccept{0}, addrServiceUdp{0};
@@ -34,17 +38,56 @@ int HandleError(const std::string& msg)
 
 void NetWorkEvent(const std::string& taskParam, const SOCKET socket)
 {
-    s_HandleRecv handleRecv;
+    s_HandleRecv handleRecv, handleSend;
+    handleSend.socket_accept_ = socket;
     DecodeJson(taskParam, handleRecv);
-    int ret = 0;
+    std::string result;
+    std::unique_lock<std::mutex> ul(mutexPush, std::defer_lock);
     switch (handleRecv.type_) {
-        case CommunicationType::LOGIN:
+        case CommunicationType::REGISTER:
         {
-            netWorkHandle->HandleLogin(handleRecv);
+            auto itor = acceptCustomer.find(socket);
+            result = netWorkHandle->HandleRegister(handleRecv, itor->second, handleSend);
+            ::send(socket, result.c_str(), result.length(), 0);
             break;
         }
+
+        case CommunicationType::LOGIN:
+        {
+            bool isLoginSucceed = false;
+            result = netWorkHandle->HandleLogin(handleRecv, handleSend, isLoginSucceed);
+            ::send(socket, result.c_str(), result.length(), 0);
+            if (isLoginSucceed) {
+                ul.lock();
+                ++loginCount;
+                loginCustomer.insert(std::make_pair(handleRecv.Param.login_.customer, socket));
+                ul.unlock();
+            }
+            break;
+        }
+
+        case CommunicationType::DELETECUSTOMER:
+        {
+            netWorkHandle->HandleExit(handleRecv.Param.delCustomer_.customer);
+            ul.lock();
+            --loginCount;
+            loginCustomer.erase(handleRecv.Param.delCustomer_.customer);
+            ul.unlock();
+            break;
+        }
+
+        case CommunicationType::CHAT:
+        {
+            auto itor = loginCustomer.find(handleRecv.Param.chat_.target);
+            result = netWorkHandle->HandleChat(handleRecv, handleSend);
+            ::send(itor->second, result.c_str(), result.length(), 0);
+            break;
+        }
+
+        default:
+            break;
     }
-    
+    UnregisterSpace(handleRecv.type_, handleRecv);
     return ;
 }
 
@@ -91,7 +134,7 @@ void HandleAcc()
             std::lock_guard<std::mutex> lg(mutexPush);
             socketAccept.push_back(socket);
             std::string ip = inet_ntoa(addrClient.sin_addr);
-            ++acceptCount;
+            acceptCustomer.insert(std::make_pair(socket, ip));
         }
     }
 }
@@ -109,7 +152,7 @@ void HandleTcp()
                 break;
         }
         if (ret > 0) {
-            std::lock_guard<std::mutex> lg(mutexPush);
+            std::lock_guard<std::mutex> lg(mutexHandle);
             taskQue.push(std::make_pair(strRecv, socketAccept[i]));
         }
         delete []strRecv;
@@ -167,6 +210,7 @@ int StartNetWork()
 
 int main()
 {
+    
     HANDLE chatServiceMutex = nullptr;
     chatServiceMutex = CreateMutex(nullptr, TRUE, "ChatService");
     if (chatServiceMutex == nullptr) {

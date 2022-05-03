@@ -18,21 +18,21 @@
     <ClCompile Include="ChatServiceWin.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\public\public.cpp">
+    <ClCompile Include="NetWorkHandle.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="NetWorkHandle.cpp">
+    <ClCompile Include="..\public\public.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\public\public.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="NetWorkHandle.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="data_base.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\public\public.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

@@ -95,7 +95,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../public</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;json_vc71_libmtd.lib;SQLReader.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
