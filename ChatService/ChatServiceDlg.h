@@ -12,6 +12,7 @@
 #include <mutex>
 #include <queue>
 #include <thread>
+#include <unordered_map>
 
 #include "public.h"
 #include "CLog.h"
@@ -48,13 +49,13 @@ class CChatServiceDlg : public CDialogEx {
     SOCKADDR_IN addrServiceTcp{ 0 }, addrAccept{ 0 }, addrServiceUdp{ 0 };
     afx_msg LRESULT OnSocketTcp(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnSocketUdp(WPARAM wParam, LPARAM lParam);
-    afx_msg LRESULT OnMainMessage(WPARAM wParam, LPARAM lParam);
     CListBox listLoginPeople;
     std::vector<std::string> ve_accept_name;
     afx_msg void OnBnClickedKick();
-    cwy::CLog logService;
-    cwy::CNetWorkHandle* netWorkHandle;
     bool StartTcp();
     bool StartUdp();
+    void HandleAfter(int code, std::string msg);
     virtual BOOL DestroyWindow();
+    std::unordered_map<SOCKET, std::string> socket2IpMap;
+    afx_msg void OnDestroy();
 };

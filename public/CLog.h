@@ -9,16 +9,16 @@
 #include "public.h"
 
 #ifdef _DEBUG
-#define DEFAULT_LEVEL     LogLevel::INFO_LEVEL
+#define DEFAULT_LEVEL     LogLevel::DEBUG_LEVEL
 #else
-#define DEFAULT_LEVEL     Log_Level::ERROR_LEVEL
+#define DEFAULT_LEVEL     logLevel::INFO_LEVEL
 #endif
 
 #define FILE_FORMAT                __FILE__ ,__LINE__
 namespace cwy {
     enum class LogLevel {
-        INFO_LEVEL = 0,
-        DEBUG_LEVEL,
+        DEBUG_LEVEL = 0,
+        INFO_LEVEL,
         WARN_LEVEL,
         ERROR_LEVEL,
         FATAL_LEVEL
@@ -32,20 +32,20 @@ namespace cwy {
 
         ~CLog();
 
-        void InitLog(const std::string& path, const LogLevel log_level = DEFAULT_LEVEL, const int file_size = 50, 
-                     bool auto_flush = true);
+        void InitLog(const std::string& path, const LogLevel logLevel = DEFAULT_LEVEL, const int fileSize = 50, 
+                     bool autoFlush = true);
 
         void UnitLog();
 
-        void PrintlogInfo(const std::string& file_name, const int file_line);
+        void PrintlogDebug(const std::string& fileName, const int fileLine);
 
-        void PrintlogDebug(const std::string& file_name, const int file_line);
+        void PrintlogInfo(const std::string& fileName, const int fileLine);
 
-        void PrintlogWarn(const std::string& file_name, const int file_line);
+        void PrintlogWarn(const std::string& fileName, const int fileLine);
 
-        void PrintlogError(const std::string& file_name, const int file_line);
+        void PrintlogError(const std::string& fileName, const int fileLine);
 
-        void PrintlogFatal(const std::string& file_name, const int file_line);
+        void PrintlogFatal(const std::string& fileName, const int fileLine);
 
         friend CLog& operator<<(CLog& log, const std::string& a) {
             std::lock_guard<std::mutex> mt(log.mtWriteFile);
@@ -56,28 +56,30 @@ namespace cwy {
         friend CLog& operator<<(CLog& log, const long long a) {
             std::lock_guard<std::mutex> mt(log.mtWriteFile);
             char temp[50] = { 0 };
-            sprintf_s(temp, 50, "%lld", (long long)a);
+            sprintf_s(temp, 50, "%lld", a);
             log.strReturnOneLine += temp;
             return log;
         }
 
     private:
-        CLog(CLog&) = delete;
-        CLog& operator=(CLog&) = delete;
+        CLog(const CLog&) = delete;
+        CLog(CLog&&) = delete;
+        CLog& operator=(const CLog&) = delete;
+        CLog& operator=(CLog&&) = delete;
 
-        std::string AssembleFilePath(std::string& file_path);
+        std::string AssembleString(const std::string& fileName, const int fileLine, const std::string& type);
 
-        std::string AssembleString(const std::string& file_name, const int file_line, const std::string& type);
-
-        void SplitFileName(std::string& file_name);
+        void SplitFileName(std::string& fileName);
 
         void WriteFile(const std::string& content);
 
-        std::string GetPath(std::string& filePath);
+        std::string GetPath(const std::string& filePath);
 
         std::string GetServicePath(std::string& filePath);
 
         std::string GetClientPath(std::string& filePath);
+
+        std::string AssembleFilePath(std::string& filePath);
 
     private:
         std::mutex mtWriteFile;
@@ -91,5 +93,5 @@ namespace cwy {
     };
 }
 
-static cwy::CLog logClient;
+static cwy::CLog logClient, logService;
 #endif  //__MY_LOG_H__

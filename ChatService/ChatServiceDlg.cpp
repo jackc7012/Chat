@@ -6,6 +6,7 @@
 #include "ChatService.h"
 #include "ChatServiceDlg.h"
 #include "afxdialogex.h"
+#include <functional>
 using namespace cwy;
 
 #ifdef _DEBUG
@@ -60,8 +61,8 @@ BEGIN_MESSAGE_MAP(CChatServiceDlg, CDialogEx)
     ON_BN_CLICKED(IDC_START, &CChatServiceDlg::OnBnClickedStart)
     ON_MESSAGE(WM_SOCKET_TCP, OnSocketTcp)
     ON_MESSAGE(WM_SOCKET_UDP, OnSocketUdp)
-    ON_MESSAGE(WM_TO_MAIN_MESSAGE, OnMainMessage)
     ON_BN_CLICKED(IDC_KICK, &CChatServiceDlg::OnBnClickedKick)
+    ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 // CChatServiceDlg 消息处理程序
@@ -103,19 +104,17 @@ BOOL CChatServiceDlg::OnInitDialog() {
     GetDlgItem(IDC_IPLIST)->SetFont(&font);
 
     logService.InitLog("../{time}/service");
-    netWorkHandle = CNetWorkHandle::CreateInstance();
-    std::vector<std::string> ipList = netWorkHandle->InitNetWork(this->m_hWnd);
-    std::string ip = (ipList.size() == 0 ? "未获取到ip地址" : "服务器ip：\t" + ipList[0]);
-    SetDlgItemText(IDC_IPLIST, ip.c_str());
+    std::string ip = CNetWorkHandle::CreateInstance()->GetMainNetworkIp();
+    Fun HandleBind = std::bind(&CChatServiceDlg::HandleAfter, this, std::placeholders::_1, std::placeholders::_2);
+    CNetWorkHandle::CreateInstance()->StartThread(HandleBind);
+    std::string showIp = ((ip == "get error") ? ("ip get error") : ("服务器ip : " + ip));
+    SetDlgItemText(IDC_IPLIST, showIp.c_str());
 
     return TRUE;
 }
 
 BOOL CChatServiceDlg::DestroyWindow()
 {
-    if (netWorkHandle != nullptr) {
-        delete netWorkHandle;
-    }
     return CDialogEx::DestroyWindow();
 }
 
@@ -191,9 +190,18 @@ bool CChatServiceDlg::StartTcp()
         addrServiceTcp.sin_family = AF_INET;
         addrServiceTcp.sin_port = htons(cwy::TCP_PORT);
         addrServiceTcp.sin_addr.S_un.S_addr = INADDR_ANY;
-        ::bind(socketServiceTcp, (sockaddr*)&addrServiceTcp, sizeof(addrServiceTcp));
-        ::listen(socketServiceTcp, SOMAXCONN);
-        ::WSAAsyncSelect(socketServiceTcp, this->m_hWnd, WM_SOCKET_TCP, FD_ACCEPT | FD_READ | FD_CLOSE);
+        if (::bind(socketServiceTcp, (sockaddr*)&addrServiceTcp, sizeof(addrServiceTcp)) == SOCKET_ERROR) {
+            MessageBox(_T("绑定TCP服务失败"), _T("错误"), MB_ICONERROR);
+            return false;
+        }
+        if (::listen(socketServiceTcp, SOMAXCONN) == SOCKET_ERROR) {
+            MessageBox(_T("监听TCP服务失败"), _T("错误"), MB_ICONERROR);
+            return false;
+        }
+        if (::WSAAsyncSelect(socketServiceTcp, this->m_hWnd, WM_SOCKET_TCP, FD_ACCEPT | FD_READ | FD_CLOSE) == SOCKET_ERROR) {
+            MessageBox(_T("创建异步TCP服务失败"), _T("错误"), MB_ICONERROR);
+            return false;
+        }
         logService << "服务器TCP开启监听，端口号为：" << cwy::TCP_PORT;
     }
     logService.PrintlogInfo(FILE_FORMAT);
@@ -202,7 +210,7 @@ bool CChatServiceDlg::StartTcp()
 
 bool CChatServiceDlg::StartUdp()
 {
-    socketServiceUdp = ::socket(AF_INET, SOCK_DGRAM, 0);
+    /*socketServiceUdp = ::socket(AF_INET, SOCK_DGRAM, 0);
     if (socketServiceUdp == INVALID_SOCKET) {
         MessageBox(_T("创建UDP服务失败"), _T("错误"), MB_ICONERROR);
         return false;
@@ -215,68 +223,74 @@ bool CChatServiceDlg::StartUdp()
         netWorkHandle->SetUdpSocket(socketServiceUdp);
         logService << "服务器UDP开启监听，端口号为：" << cwy::UDP_PORT;
     }
-    logService.PrintlogInfo(FILE_FORMAT);
+    logService.PrintlogInfo(FILE_FORMAT);*/
     return true;
+}
+
+void CChatServiceDlg::HandleAfter(int code, std::string msg)
+{
+    int aa = 0;
 }
 
 LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
     CString str_text;
-    switch (lParam) {
-    case FD_ACCEPT: {
-        netWorkHandle->ClientAccept(socketServiceTcp, addrServiceTcp);
-    }
-    break;
-
-    case FD_READ: {
-        netWorkHandle->HandleRecvTcp();
-    }
-    break;
-
-    case FD_CLOSE: {
-        GetDlgItemText(IDC_TEXT, str_text);
-        str_text += "\r\n";
-        str_text += ::inet_ntoa(addrAccept.sin_addr);
-        str_text += "已断开";
-        SetDlgItemText(IDC_TEXT, str_text);
-        //m_list_login_people.DeleteString(del_index);
-    }
-    break;
-
-    default:
+    switch (lParam)
+    {
+        case FD_ACCEPT:
+        {
+            SOCKADDR_IN addrClient = {0};
+            int len = sizeof(SOCKADDR);
+            SOCKET socket = ::accept(socketServiceTcp, (SOCKADDR*)&addrClient, &len);
+            if (socket == SOCKET_ERROR) {
+                break;
+            }
+            socket2IpMap.insert(std::make_pair(socket, inet_ntoa(addrClient.sin_addr)));
+        }
         break;
+
+        case FD_READ:
+        {
+            char strRecv[DATA_LENGTH] = {0};
+            for (std::pair<SOCKET, std::string> itor : socket2IpMap) {
+                int ret = ::recv(itor.first, strRecv, DATA_LENGTH, 0);
+                if (ret > 0) {
+                    break;
+                }
+            }
+            CNetWorkHandle::CreateInstance()->PushEvent(strRecv);
+        }
+        break;
+
+        case FD_CLOSE:
+        {
+            GetDlgItemText(IDC_TEXT, str_text);
+            str_text += "\r\n";
+            str_text += ::inet_ntoa(addrAccept.sin_addr);
+            str_text += "已断开";
+            SetDlgItemText(IDC_TEXT, str_text);
+            //m_list_login_people.DeleteString(del_index);
+        }
+        break;
+
+        default:
+            break;
     }
     return 0;
 }
 
 LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
 {
-    switch (lParam) {
-    case FD_READ: {
-        netWorkHandle->HandleRecvUdp();
-    }
-    break;
-
-    default:
-        break;
-    }
-    return 0;
-}
-
-LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
-{
-    CommunicationType communicationType = (CommunicationType)wParam;
-    std::string* message = (std::string*)lParam;
-    switch (communicationType)
+    switch (lParam)
     {
-    case CommunicationType::LOGIN: {
-        listLoginPeople.AddString((*message).c_str());
-    }
-    break;
+        case FD_READ:
+        {
 
-    default:
+        }
         break;
+
+        default:
+            break;
     }
-    delete message;
     return 0;
 }
 
@@ -427,13 +441,13 @@ LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
 //        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFileRequest.target);
 //        to_send.Param.TransferFileRequest.source = handle_recv.Param.TransferFileRequest.source;
 //        to_send.Param.TransferFileRequest.target = handle_recv.Param.TransferFileRequest.target;
-//        to_send.Param.TransferFileRequest.file_name = handle_recv.Param.TransferFileRequest.file_name;
+//        to_send.Param.TransferFileRequest.fileName = handle_recv.Param.TransferFileRequest.fileName;
 //        to_send.Param.TransferFileRequest.file_length = handle_recv.Param.TransferFileRequest.file_length;
 //        js_str_send = EncodeJson(TRANSFERFILEREQUEST, to_send);
 //        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
 //        delete[]handle_recv.Param.TransferFileRequest.source;
 //        delete[]handle_recv.Param.TransferFileRequest.target;
-//        delete[]handle_recv.Param.TransferFileRequest.file_name;
+//        delete[]handle_recv.Param.TransferFileRequest.fileName;
 //        delete[]handle_recv.Param.TransferFileRequest.file_length;
 //    }
 //    break;
@@ -442,13 +456,13 @@ LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
 //        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFileRespond.target);
 //        to_send.Param.TransferFileRespond.source = handle_recv.Param.TransferFileRespond.source;
 //        to_send.Param.TransferFileRespond.target = handle_recv.Param.TransferFileRespond.target;
-//        to_send.Param.TransferFileRespond.file_name = handle_recv.Param.TransferFileRespond.file_name;
+//        to_send.Param.TransferFileRespond.fileName = handle_recv.Param.TransferFileRespond.fileName;
 //        to_send.Param.TransferFileRespond.transfer_result = handle_recv.Param.TransferFileRespond.transfer_result;
 //        js_str_send = EncodeJson(TRANSFERFILERESPOND, to_send);
 //        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
 //        delete[]handle_recv.Param.TransferFileRespond.source;
 //        delete[]handle_recv.Param.TransferFileRespond.target;
-//        delete[]handle_recv.Param.TransferFileRespond.file_name;
+//        delete[]handle_recv.Param.TransferFileRespond.fileName;
 //        delete[]handle_recv.Param.TransferFileRespond.transfer_result;
 //    }
 //    break;
@@ -457,7 +471,7 @@ LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
 //        auto itor = name_to_socket_accept.find(handle_recv.Param.TransferFile.target);
 //        to_send.Param.TransferFile.source = handle_recv.Param.TransferFile.source;
 //        to_send.Param.TransferFile.target = handle_recv.Param.TransferFile.target;
-//        to_send.Param.TransferFile.file_name = handle_recv.Param.TransferFile.file_name;
+//        to_send.Param.TransferFile.fileName = handle_recv.Param.TransferFile.fileName;
 //        to_send.Param.TransferFile.file_length = handle_recv.Param.TransferFile.file_length;
 //        to_send.Param.TransferFile.file_block = handle_recv.Param.TransferFile.file_block;
 //        to_send.Param.TransferFile.file_content = handle_recv.Param.TransferFile.file_content;
@@ -466,7 +480,7 @@ LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
 //        ::send(itor->second, js_str_send.c_str(), js_str_send.length(), 0);
 //        delete[]handle_recv.Param.TransferFile.source;
 //        delete[]handle_recv.Param.TransferFile.target;
-//        delete[]handle_recv.Param.TransferFile.file_name;
+//        delete[]handle_recv.Param.TransferFile.fileName;
 //        delete[]handle_recv.Param.TransferFile.file_content;
 //        delete[]handle_recv.Param.TransferFile.file_length;
 //    }
@@ -479,3 +493,8 @@ LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
 //
 //    return;
 //}
+
+void CChatServiceDlg::OnDestroy()
+{
+    CNetWorkHandle::CreateInstance()->ExitThread();
+}

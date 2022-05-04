@@ -313,9 +313,9 @@ void CChatClientDlg::OnBnClickedConnect() {
         str_password.ReleaseBuffer();
         str_code.ReleaseBuffer();
         str_code_verify.ReleaseBuffer();
-        char file_path[256] = { 0 };
-        sprintf_s(file_path, 256, "./%s.txt", nick_name.c_str());
-        g_log.InitLog(file_path);
+        char filePath[256] = { 0 };
+        sprintf_s(filePath, 256, "./%s.txt", nick_name.c_str());
+        g_log.InitLog(filePath);
     } else if (str_connect == "断开") {
         closesocket(socket_client);
         GetDlgItem(IDC_IP)->EnableWindow(TRUE);
@@ -394,7 +394,7 @@ void CChatClientDlg::OnBnClickedTransferfile() {
         CString filename = fileDlg.GetFileName();
         char c_file_length[256] = { 0 };
         sprintf_s(c_file_length, 256, "%lld", (long long)len);
-        to_send.Param.TransferFileRequest.file_name = filename.GetBuffer(0);;
+        to_send.Param.TransferFileRequest.fileName = filename.GetBuffer(0);;
         to_send.Param.TransferFileRequest.file_length = c_file_length;
         to_send.Param.TransferFileRequest.source = const_cast<char *>(nick_name.c_str());
         to_send.Param.TransferFileRequest.target = str_send_target.GetBuffer(0);
@@ -524,16 +524,16 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
                 CMessage m_dlg;
                 char temp[DATA_LENGTH] = { 0 };
                 sprintf_s(temp, DATA_LENGTH, "%s向你发送%s文件，大小为%s字节，\r\n是否接受？",
-                          handle_recv.Param.TransferFileRequest.source,handle_recv.Param.TransferFileRequest.file_name, handle_recv.Param.TransferFileRequest.file_length);
+                          handle_recv.Param.TransferFileRequest.source,handle_recv.Param.TransferFileRequest.fileName, handle_recv.Param.TransferFileRequest.file_length);
                 m_dlg.message = temp;
                 int i_return = m_dlg.DoModal();
                 to_send.Param.TransferFileRespond.source = handle_recv.Param.TransferFileRequest.target;
                 to_send.Param.TransferFileRespond.target = handle_recv.Param.TransferFileRequest.source;
-                to_send.Param.TransferFileRespond.file_name = handle_recv.Param.TransferFileRequest.file_name;
+                to_send.Param.TransferFileRespond.fileName = handle_recv.Param.TransferFileRequest.fileName;
                 if (i_return == 1) {
                     to_send.Param.TransferFileRespond.transfer_result = "agree";
                     can_transfer_file = true;
-                    std::string filename(handle_recv.Param.TransferFileRequest.file_name);
+                    std::string filename(handle_recv.Param.TransferFileRequest.fileName);
                     std::string filetitle = filename.substr(0, filename.find('.'));
                     std::string filesuffix = filename.substr(filename.find('.') + 1);
                     TCHAR szFilter[] = _T("所有文件(*.*)|*.*||");
@@ -555,7 +555,7 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
             }
             delete[]handle_recv.Param.TransferFileRequest.target;
             delete[]handle_recv.Param.TransferFileRequest.source;
-            delete[]handle_recv.Param.TransferFileRequest.file_name;
+            delete[]handle_recv.Param.TransferFileRequest.fileName;
             delete[]handle_recv.Param.TransferFileRequest.file_length;
         }
         break;
@@ -579,7 +579,7 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
             }
             delete[]handle_recv.Param.TransferFileRespond.target;
             delete[]handle_recv.Param.TransferFileRespond.source;
-            delete[]handle_recv.Param.TransferFileRespond.file_name;
+            delete[]handle_recv.Param.TransferFileRespond.fileName;
             delete[]handle_recv.Param.TransferFileRespond.transfer_result;
         }
         break;
@@ -590,7 +590,7 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
             }
             delete[]handle_recv.Param.TransferFile.target;
             delete[]handle_recv.Param.TransferFile.source;
-            delete[]handle_recv.Param.TransferFile.file_name;
+            delete[]handle_recv.Param.TransferFile.fileName;
             delete[]handle_recv.Param.TransferFile.file_length;
             delete[]handle_recv.Param.TransferFile.file_content;
         }
@@ -605,16 +605,16 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam) {
     return 0;
 }
 
-int CChatClientDlg::thread_TransferFile(const HWND & hwnd, const std::string & file_name, const std::string & target) {
+int CChatClientDlg::thread_TransferFile(const HWND & hwnd, const std::string & fileName, const std::string & target) {
     /*s_HandleRecv to_send;
     CFile m_file;
-    m_file.Open(file_name.c_str(), CFile::modeRead | CFile::typeBinary);
+    m_file.Open(fileName.c_str(), CFile::modeRead | CFile::typeBinary);
     unsigned long long len = m_file.GetLength();
     unsigned int now_block = 1;
     char c_file_length[256] = { 0 };
     sprintf_s(c_file_length, 256, "%lld", (long long)len);
     char *getStr = new char[DATA_LENGTH];
-    to_send.Param.TransferFile.file_name = const_cast<char *>(file_name.c_str());
+    to_send.Param.TransferFile.fileName = const_cast<char *>(fileName.c_str());
     to_send.Param.TransferFile.file_length = c_file_length;
     to_send.Param.TransferFile.source = const_cast<char *>(nick_name.c_str());
     to_send.Param.TransferFile.target = const_cast<char *>(target.c_str());
@@ -638,7 +638,7 @@ int CChatClientDlg::thread_TransferFile(const HWND & hwnd, const std::string & f
     return 0;
 }
 
-int CChatClientDlg::thread_TransferFileAccept(const HWND & hwnd, const std::string & file_name, const s_HandleRecv & handle_recv) {
+int CChatClientDlg::thread_TransferFileAccept(const HWND & hwnd, const std::string & fileName, const s_HandleRecv & handle_recv) {
     /*CFile file_accept;
     s_HandleRecv transfer_file_accept;
     while (1) {
@@ -646,7 +646,7 @@ int CChatClientDlg::thread_TransferFileAccept(const HWND & hwnd, const std::stri
             transfer_file_accept = q_transfer_file.front();
             q_transfer_file.pop();
             if (transfer_file_accept.Param.TransferFile.current_block == 1) {
-                file_accept.Open(file_name.c_str(), CFile::modeWrite | CFile::modeCreate | CFile::typeBinary);
+                file_accept.Open(fileName.c_str(), CFile::modeWrite | CFile::modeCreate | CFile::typeBinary);
             }
             if (transfer_file_accept.Param.TransferFile.current_block != transfer_file_accept.Param.TransferFile.file_block) {
                 file_accept.Write(transfer_file_accept.Param.TransferFile.file_content, DATA_LENGTH);

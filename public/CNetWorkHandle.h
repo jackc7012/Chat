@@ -1,17 +1,17 @@
 #ifndef __NET_WORK_HANDLE_H__
 #define __NET_WORK_HANDLE_H__
 
-#include <windows.h>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <queue>
 #include <thread>
 #include <chrono>
 
-#include "CDataBase.h"
 #include "CLog.h"
 
 namespace cwy {
+    typedef std::function<void(int, std::string)> Fun;
     static const unsigned short TCP_PORT = 6000;
     static const unsigned short UDP_PORT = 6002;
 
@@ -29,43 +29,33 @@ namespace cwy {
     class CNetWorkHandle
     {
     public:
-        static CNetWorkHandle* CreateInstance();
+        static CNetWorkHandle *CreateInstance();
 
         ~CNetWorkHandle();
 
-        std::vector<std::string> InitNetWork(const HWND hWnd);
+        std::string GetMainNetworkIp();
 
-        void SetUdpSocket(SOCKET udpSocket);
+        void StartThread(Fun handleAfter);
 
-        bool ClientAccept(const SOCKET& socket, const SOCKADDR_IN& sockAddr);
+        void PushEvent(const std::string& handleRecv);
 
-        void HandleRecvTcp();
-        void HandleRecvUdp();
-
+        void ExitThread();
     private:
+        CNetWorkHandle(const CNetWorkHandle&) = delete;
+        CNetWorkHandle(CNetWorkHandle&&) = delete;
+        CNetWorkHandle& operator=(const CNetWorkHandle&) = delete;
+        CNetWorkHandle& operator=(CNetWorkHandle&&) = delete;
+
         CNetWorkHandle();
 
-        CNetWorkHandle(const CNetWorkHandle&) = delete;
-        CNetWorkHandle operator=(const CNetWorkHandle&) = delete;
-
-        void SetSocketInfo(const SOCKET& socket, const std::string& ip);
-
-        CommunicationType HandleRecv(const std::string& message, s_HandleRecv& handleRecv, std::string& strToSend);
-
-        void threadTask(unsigned short taskNum);
+        void HandleNetworkEvent(const unsigned short threadNo);
 
     private:
-        CLog logNetWork_;
-        CDataBase* dataBase_;
-        std::vector<SOCKET> socketAccept_;
-        SOCKET udpSocket_;
-        std::unordered_map<SOCKET, ClientInfoTcp> socketToClientInfoTcp_;
-        std::unordered_map<long long, SOCKADDR_IN> idToSockaddrinUdp_;
-        std::queue<s_TaskQueue> taskQueue_;
-        std::thread myHandleThread_[THREAD_NUM];
-        bool isExit_{ false };
-        std::mutex mtServerHandle_;
-        HWND mainWnd_;
+        Fun handle;
+        std::queue<std::string> taskQue;
+        std::mutex taskMt;
+        std::thread handleThread[THREAD_NUM];
+        bool isExit{false};
     };
 }
 #endif // !__NET_WORK_HANDLE_H__

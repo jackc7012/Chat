@@ -42,7 +42,10 @@
     <ClInclude Include="..\public\CNetWorkHandle.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\public\CDataBase.h">
+    <ClInclude Include="..\public\NetWorkEvent.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\public\NetWorkFactory.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -65,7 +68,10 @@
     <ClCompile Include="..\public\CNetWorkHandle.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\public\CDataBase.cpp">
+    <ClCompile Include="..\public\NetWorkEvent.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\public\NetWorkFactory.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
