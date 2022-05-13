@@ -227,9 +227,9 @@ bool CChatServiceDlg::StartUdp()
     return true;
 }
 
-void CChatServiceDlg::HandleAfter(int code, std::string msg)
+void CChatServiceDlg::HandleAfter(int code, const std::string& msg)
 {
-    int aa = 0;
+    
 }
 
 LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
@@ -250,14 +250,16 @@ LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
 
         case FD_READ:
         {
+            std::string ip;
             char strRecv[DATA_LENGTH] = {0};
             for (std::pair<SOCKET, std::string> itor : socket2IpMap) {
                 int ret = ::recv(itor.first, strRecv, DATA_LENGTH, 0);
                 if (ret > 0) {
+                    ip = itor.second;
                     break;
                 }
             }
-            CNetWorkHandle::CreateInstance()->PushEvent(strRecv);
+            CNetWorkHandle::CreateInstance()->PushEvent(strRecv, ip);
         }
         break;
 

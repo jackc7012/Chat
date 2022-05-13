@@ -54,7 +54,7 @@ class CChatServiceDlg : public CDialogEx {
     afx_msg void OnBnClickedKick();
     bool StartTcp();
     bool StartUdp();
-    void HandleAfter(int code, std::string msg);
+    void HandleAfter(int code, const std::string& msg);
     virtual BOOL DestroyWindow();
     std::unordered_map<SOCKET, std::string> socket2IpMap;
     afx_msg void OnDestroy();

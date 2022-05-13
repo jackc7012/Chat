@@ -18,12 +18,11 @@ namespace cwy {
     static const unsigned short THREAD_NUM = 5;
 
     struct ClientInfoTcp {
-        ClientInfoTcp(const std::string& ip, const std::string& name, const std::string& token)
-        :ip_(ip), name_(name), token_(token){}
-        long long id_{0};
-        std::string ip_;
-        std::string name_;
-        std::string token_;
+        ClientInfoTcp(const std::string& taskIp, std::string& content, SOCKET acceptSocket)
+        :ip(taskIp), taskContent(content), socket(acceptSocket){}
+        std::string ip;
+        std::string taskContent;
+        SOCKET socket;
     };
 
     class CNetWorkHandle
@@ -37,7 +36,7 @@ namespace cwy {
 
         void StartThread(Fun handleAfter);
 
-        void PushEvent(const std::string& handleRecv);
+        void PushEvent(const std::string& handleRecv, const std::string& ip);
 
         void ExitThread();
     private:
@@ -52,7 +51,7 @@ namespace cwy {
 
     private:
         Fun handle;
-        std::queue<std::string> taskQue;
+        std::queue<std::pair<std::string, std::string>> taskQue;
         std::mutex taskMt;
         std::thread handleThread[THREAD_NUM];
         bool isExit{false};

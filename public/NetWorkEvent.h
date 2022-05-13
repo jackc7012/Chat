@@ -1,22 +1,25 @@
 #ifndef __NET_WORK_EVENT_H__
 #define __NET_WORK_EVENT_H__
 
-#include "../json/json.h"
+#include "public.h"
+#include "data_base.h"
 
 namespace cwy {
 class NetWorkEvent
 {
 public:
-    virtual void NetWorkEventHandle() = 0;
+    ~NetWorkEvent();
+
+    int InitDataBase(const std::string& ip, const std::string& name);
+
+    void NetWorkEventHandle(const s_HandleRecv& taskContent, int& code, std::string& msg);
+
+private:
+    void NetWorkRegisterHandle(const s_HandleRecv& taskContent, int code, std::string& msg);
+
+private:
+    DataBase *dataBase{nullptr};
 };
 
-class Register : public NetWorkEvent
-{
-    void NetWorkEventHandle() override;
-};
-
-class Login : public NetWorkEvent {
-    void NetWorkEventHandle() override;
-};
 }
 #endif // !__NET_WORK_EVENT_H__

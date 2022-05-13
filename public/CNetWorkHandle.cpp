@@ -1,6 +1,6 @@
 #include "CNetWorkHandle.h"
 
-#include "NetWorkFactory.h"
+#include "NetWorkEvent.h"
 
 namespace cwy {
 
@@ -10,35 +10,39 @@ CNetWorkHandle::CNetWorkHandle()
 
 void CNetWorkHandle::HandleNetworkEvent(const unsigned short threadNo)
 {
+    NetWorkEvent* networkEvent = new NetWorkEvent();
+    taskMt.lock();
+    networkEvent->InitDataBase("127.0.0.1", "MyChat");
+    taskMt.unlock();
     while (true) {
         if (isExit) {
             break;
         }
         Sleep(1);
         std::string taskContent;
+        std::string ip;
         if (!taskMt.try_lock()) {
             continue;
         }
         if (!taskQue.empty()) {
-            taskContent = taskQue.front();
+            taskContent = taskQue.front().first;
+            ip = taskQue.front().second;
             taskQue.pop();
         }
         taskMt.unlock();
         if (!taskContent.empty()) {
-            Json::Value jsValue;
-            Json::Reader jsReader;
-            jsReader.parse(taskContent, jsValue);
-            if (!jsValue.isMember("communication_type")) {
-                handle(-100, "error communication type");
-                continue;
-            }
-            NetWorkFactory* networkFactory = new NetWorkFactory();
-            NetWorkEvent *networkEvent = networkFactory->CreateNetWorkEvent(jsValue["communication_type"].asString());
-            networkEvent->NetWorkEventHandle();
-            delete networkEvent;
-            delete networkFactory;
+            int code = 0;
+            std::string msg;
+            s_HandleRecv handleRecv;
+            DecodeJson(taskContent, handleRecv);
+            handleRecv.connect_ip_ = ip;
+            networkEvent->NetWorkEventHandle(handleRecv, code, msg);
+            handle(code, msg);
+            UnregisterSpace(handleRecv.type_, handleRecv);
         }
     }
+    delete networkEvent;
+    networkEvent = nullptr;
 }
 
 CNetWorkHandle *CNetWorkHandle::CreateInstance()
@@ -81,10 +85,10 @@ void CNetWorkHandle::StartThread(Fun handleAfter)
         handleThread[i] = std::thread(&cwy::CNetWorkHandle::HandleNetworkEvent, this, i);
     }
 }
-void CNetWorkHandle::PushEvent(const std::string& handleRecv)
+void CNetWorkHandle::PushEvent(const std::string& handleRecv, const std::string& ip)
 {
     taskMt.lock();
-    taskQue.push(handleRecv);
+    taskQue.push(std::make_pair(handleRecv, ip));
     taskMt.unlock();
 }
 

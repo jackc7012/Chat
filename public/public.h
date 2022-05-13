@@ -105,11 +105,14 @@ enum class CommunicationType
 struct s_HandleRecv
 {
     s_HandleRecv()
-    : type_(CommunicationType::NULLCOMMUNICATION),
-      socket_accept_(0)
+    : type_(CommunicationType::NULLCOMMUNICATION)
+    , connect_ip_("")
+    , socket_accept_(0)
+    , Param()
     {
     }
     CommunicationType type_;
+    std::string connect_ip_;
     SOCKET socket_accept_;
     union param {
         // ×¢²áÓÃ»§
