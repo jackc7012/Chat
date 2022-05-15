@@ -1,43 +1,89 @@
 #ifndef __DATA_BASE_H__
 #define __DATA_BASE_H__
 
-#include <windows.h>
+#include "public.h"
 #include <string>
-
-#include "CLog.h"
+#include <sstream>
+#include <vector>
 
 #import "C:\Program Files\Common Files\System\ado\msado15.dll" no_namespace rename("EOF", "adoEOF")
 
+enum class DBTYPE {
+    CREATETABLE,
+    DROPTABLE,
+    INSERT,
+    DEL,
+    MODIFY,
+    SEARCH
+};
+
+enum class ERRTYPE {
+    OK,
+    COMMANDINJECTION
+};
+
 namespace cwy {
-    class CDataBase
+class SqlRequest {
+public:
+    SqlRequest(const std::string& str);
+    SqlRequest();
+    ~SqlRequest();
+    SqlRequest(const SqlRequest&) = delete;
+    SqlRequest(SqlRequest&&) = delete;
+    SqlRequest& operator = (const SqlRequest&) = delete;
+    SqlRequest& operator = (SqlRequest&&) = delete;
+
+    SqlRequest& operator <<(const std::string& sqlRequest);
+    SqlRequest& operator <<(const long long sqlRequest);
+
+    void clear();
+    std::string str() const;
+
+private:
+    std::stringstream str_;
+    ERRTYPE errType_{ERRTYPE::OK};
+};
+
+using DataBaseRecord = std::vector<std::vector<std::string>>;
+class DataBaseImpl {
+public:
+    DataBaseImpl();
+
+    ~DataBaseImpl();
+
+    BOOL initDataBase(const std::string& ip, const std::string& dataBaseName, std::string& errMsg);
+
+    BOOL operSql(const DBTYPE dbType, const std::string& sqlRequest, std::string& errMsg);
+
+    void selectSql(const std::string& sqlRequest, DataBaseRecord& result, std::string& errMsg);
+
+    BOOL uninitDataBase();
+
+    std::string getDbName() const
     {
-    public:
-        static CDataBase* CreateInstance();
+        return dataBaseName_;
+    }
 
-        ~CDataBase();
+    std::string getServerIp() const
+    {
+        return dataBaseIp_;
+    }
 
-        int InitDataBase(const std::string& dataBaseName);
+private:
+    BOOL judgeCommand(const DBTYPE dbType, const std::string& command);
 
-        void GetId();
+private:
+    DataBaseImpl(const DataBaseImpl&) = delete;
+    DataBaseImpl(DataBaseImpl&&) = delete;
+    DataBaseImpl operator=(const DataBaseImpl&) = delete;
+    DataBaseImpl operator=(DataBaseImpl&&) = delete;
 
-        int SearchDataBaseLogin(const long long loginID, std::string& name, std::string& ip, char* password, int& loginStatus);
-
-        int UpdateLoginStatus(const int type = 0, const long long loginID = -1);
-
-        long long InsertRegister(const std::string& registerName, const char* password, const std::string ip);
-
-    private:
-        CDataBase();
-
-        CDataBase(const CDataBase&) = delete;
-        CDataBase operator=(const CDataBase&) = delete;
-
-    private:
-        _ConnectionPtr pMyConnect{ nullptr };
-        _RecordsetPtr pRecordset{ nullptr };
-        CLog logDataBase;
-        long long presentId{ 60000 };
-    };
+private:
+    _ConnectionPtr pMyConnect{nullptr};
+    _RecordsetPtr pRecordset{nullptr};
+    std::string dataBaseName_;
+    std::string dataBaseIp_;
+};
 }
 
 #endif // !__DATA_BASE_H__

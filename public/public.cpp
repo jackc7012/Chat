@@ -1,4 +1,5 @@
 #include "public.h"
+#include <sstream>
 
 void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
 {
@@ -220,87 +221,95 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv &s_param
 
 bool DecodeJson(const std::string &value, s_HandleRecv &s_return)
 {
-    Json::Value js_value;
-    Json::Reader js_reader;
-    js_reader.parse(value, js_value);
-    if (!js_value.isMember("communication_type")) {
-        return false;
-    }
-
-    if (js_value["communication_type"].asString() == "register") { // register
-        std::string customer = js_value["customer"].asString(), password = js_value["password"].asString();
-        RegisterSpace(&s_return.Param.register_.customer, customer.c_str());
-        RegisterSpace(&s_return.Param.register_.password, password.c_str());
-        s_return.type_ = CommunicationType::REGISTER;
-
-    } else if (js_value["communication_type"].asString() == "registerbacksucceed") { // register_succeed
-        std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString();
-        s_return.type_ = CommunicationType::REGISTERBACKSUCCEED;
-
-    } else if (js_value["communication_type"].asString() == "registerbackfailed") { // register_failed
-        std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString(),
-                    description = js_value["description"].asString();
-        s_return.type_ = CommunicationType::REGISTERBACKFAILED;
-
-    } else if (js_value["communication_type"].asString() == "login") { // login
-        std::string customer = js_value["customer"].asString(), password = js_value["password"].asString();
-        RegisterSpace(&s_return.Param.login_.customer, customer.c_str());
-        RegisterSpace(&s_return.Param.login_.password, password.c_str());
-        s_return.type_ = CommunicationType::LOGIN;
-
-    } else if (js_value["communication_type"].asString() == "loginbacksucceed") { // login_succeed
-        std::string customer = js_value["customer"].asString(), login_result = js_value["login_result"].asString();
-        s_return.type_ = CommunicationType::LOGINBACKSUCCEED;
-
-    } else if (js_value["communication_type"].asString() == "loginbackfailed") { // login_faileds
-        std::string customer = js_value["customer"].asString(), login_result = js_value["login_result"].asString(),
-                    description = js_value["description"].asString();
-        s_return.type_ = CommunicationType::LOGINBACKFAILED;
-
-    } else if (js_value["communication_type"].asString() == "showlogin") { // show_login
-        std::string customer = js_value["customer"].asString();
-        int size = 0;
-        if (size != js_value["customer_num"].asInt()) {
-            s_return.type_ = CommunicationType::ERRORCOMMUNICATION;
-            for (int i = 0; i < size; ++i) {
-                delete[]s_return.Param.showLogin_.customer[i];
-            }
-            delete[]s_return.Param.showLogin_.customer;
-        } else {
-            s_return.type_ = CommunicationType::SHOWLOGIN;
+    try {
+        Json::Value js_value;
+        Json::Reader js_reader;
+        if (!CheckJsonValid(value)) {
+            return false;
+        }
+        bool flag = js_reader.parse(value, js_value);
+        if (flag == false || js_value.isMember("communication_type") == false) {
+            return false;
         }
 
-    } else if (js_value["communication_type"].asString() == "delcustomer") { // delete_customer
-        std::string customer = js_value["customer"].asString();
-        RegisterSpace(&s_return.Param.delCustomer_.customer, customer.c_str());
-        s_return.type_ = CommunicationType::DELETECUSTOMER;
+        if (js_value["communication_type"].asString() == "register") { // register
+            std::string customer = js_value["customer"].asString(), password = js_value["password"].asString();
+            RegisterSpace(&s_return.Param.register_.customer, customer.c_str());
+            RegisterSpace(&s_return.Param.register_.password, password.c_str());
+            s_return.type_ = CommunicationType::REGISTER;
 
-    } else if (js_value["communication_type"].asString() == "chat") { // chat
-        std::string content = js_value["content"].asString(), source = js_value["source"].asString(),
-                    target = js_value["target"].asString();
-        RegisterSpace(&s_return.Param.chat_.content, content.c_str());
-        RegisterSpace(&s_return.Param.chat_.source, source.c_str());
-        RegisterSpace(&s_return.Param.chat_.target, target.c_str());
-        s_return.type_ = CommunicationType::CHAT;
+        } else if (js_value["communication_type"].asString() == "registerbacksucceed") { // register_succeed
+            std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString();
+            s_return.type_ = CommunicationType::REGISTERBACKSUCCEED;
 
-    } else if (js_value["communication_type"].asString() == "transferfilerequest") { // transfer_filequest
-        std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
-                    target = js_value["target"].asString(), file_length = js_value["file_length"].asString();
-        s_return.type_ = CommunicationType::TRANSFERFILEREQUEST;
+        } else if (js_value["communication_type"].asString() == "registerbackfailed") { // register_failed
+            std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString(),
+                description = js_value["description"].asString();
+            s_return.type_ = CommunicationType::REGISTERBACKFAILED;
 
-    } else if (js_value["communication_type"].asString() == "transferfilerespond") { // transfer_filerespond
-        std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
-                    target = js_value["target"].asString(), transfer_result = js_value["transfer_result"].asString();
-        s_return.type_ = CommunicationType::TRANSFERFILERESPOND;
+        } else if (js_value["communication_type"].asString() == "login") { // login
+            std::string customer = js_value["customer"].asString(), password = js_value["password"].asString();
+            RegisterSpace(&s_return.Param.login_.customer, customer.c_str());
+            RegisterSpace(&s_return.Param.login_.password, password.c_str());
+            s_return.type_ = CommunicationType::LOGIN;
 
-    } else if (js_value["communication_type"].asString() == "transferfile") { // transfer_file
-        std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
-                    target = js_value["target"].asString(), file_content = js_value["file_content"].asString(),
-                    file_length = js_value["file_length"].asString();
-        s_return.type_ = CommunicationType::TRANSFERFILE;
+        } else if (js_value["communication_type"].asString() == "loginbacksucceed") { // login_succeed
+            std::string customer = js_value["customer"].asString(), login_result = js_value["login_result"].asString();
+            s_return.type_ = CommunicationType::LOGINBACKSUCCEED;
 
-    } else { // other
-        s_return.type_ = CommunicationType::NULLCOMMUNICATION;
+        } else if (js_value["communication_type"].asString() == "loginbackfailed") { // login_faileds
+            std::string customer = js_value["customer"].asString(), login_result = js_value["login_result"].asString(),
+                description = js_value["description"].asString();
+            s_return.type_ = CommunicationType::LOGINBACKFAILED;
+
+        } else if (js_value["communication_type"].asString() == "showlogin") { // show_login
+            std::string customer = js_value["customer"].asString();
+            int size = 0;
+            if (size != js_value["customer_num"].asInt()) {
+                s_return.type_ = CommunicationType::ERRORCOMMUNICATION;
+                for (int i = 0; i < size; ++i) {
+                    delete[]s_return.Param.showLogin_.customer[i];
+                }
+                delete[]s_return.Param.showLogin_.customer;
+            } else {
+                s_return.type_ = CommunicationType::SHOWLOGIN;
+            }
+
+        } else if (js_value["communication_type"].asString() == "delcustomer") { // delete_customer
+            std::string customer = js_value["customer"].asString();
+            RegisterSpace(&s_return.Param.delCustomer_.customer, customer.c_str());
+            s_return.type_ = CommunicationType::DELETECUSTOMER;
+
+        } else if (js_value["communication_type"].asString() == "chat") { // chat
+            std::string content = js_value["content"].asString(), source = js_value["source"].asString(),
+                target = js_value["target"].asString();
+            RegisterSpace(&s_return.Param.chat_.content, content.c_str());
+            RegisterSpace(&s_return.Param.chat_.source, source.c_str());
+            RegisterSpace(&s_return.Param.chat_.target, target.c_str());
+            s_return.type_ = CommunicationType::CHAT;
+
+        } else if (js_value["communication_type"].asString() == "transferfilerequest") { // transfer_filequest
+            std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
+                target = js_value["target"].asString(), file_length = js_value["file_length"].asString();
+            s_return.type_ = CommunicationType::TRANSFERFILEREQUEST;
+
+        } else if (js_value["communication_type"].asString() == "transferfilerespond") { // transfer_filerespond
+            std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
+                target = js_value["target"].asString(), transfer_result = js_value["transfer_result"].asString();
+            s_return.type_ = CommunicationType::TRANSFERFILERESPOND;
+
+        } else if (js_value["communication_type"].asString() == "transferfile") { // transfer_file
+            std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
+                target = js_value["target"].asString(), file_content = js_value["file_content"].asString(),
+                file_length = js_value["file_length"].asString();
+            s_return.type_ = CommunicationType::TRANSFERFILE;
+
+        } else { // other
+            s_return.type_ = CommunicationType::NULLCOMMUNICATION;
+        }
+    }
+    catch (...) {
+        return false;
     }
     return true;
 }
@@ -396,4 +405,89 @@ void SplitString(const char * be_converted, const char separator, char **dest, i
     size = i;
 
     return;
+}
+
+std::string ToDbString(const std::string& src)
+{
+    std::ostringstream result;
+    if (CheckValid(src)) {
+        result << "'" << src << "'";
+    }
+    return result.str();
+}
+
+std::string DbJoin(const std::vector<long long>& srcList)
+{
+    std::string result("(");
+    for (const auto& srcStr : srcList) {
+        std::string src = std::to_string(srcStr);
+        if (CheckValid(src)) {
+            result += "'" + src + "', ";
+        }
+    }
+    result += ")";
+    return result;
+}
+
+std::string DbJoin(const std::vector<std::string>& srcList)
+{
+    std::string result("(");
+    for (const auto& src : srcList) {
+        if (CheckValid(src)) {
+            result += "'" + src + "', ";
+        }
+    }
+    result = result.substr(0, result.length() - 2);
+    result += ")";
+    return result;
+}
+
+bool CheckSqlValid(const std::string& src)
+{
+    std::string key[9] = {"%", "/", "union", "|", "&", "^", "#", "/*", "*/"};
+    for (int i = 0; i < 9; i++) {
+        if (src.find(key[i]) != std::string::npos) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CheckValid(const std::string& src)
+{
+    std::string key[14] = {"and","*","="," ","%0a","%","/","union","|","&","^" ,"#","/*","*/"};
+    for (int i = 0; i < 14; i++) {
+        if (src.find(key[i]) != std::string::npos) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool CheckJsonValid(const std::string& src)
+{
+    size_t index1 = src.find_first_of('{');
+    size_t index2 = src.find_last_of('}');
+    unsigned int quotation{0}, colon{0}, comma{0}, character{0};
+    if (index1 == std::string::npos || index2 == std::string::npos) {
+        return false;
+    }
+    for (size_t i = index1; i < index2; ++i) {
+        if (src[i] == '\"') {
+            ++quotation;
+        } else if (src[i] == ':') {
+            ++colon;
+        } else if (src[i] == ',') {
+            ++comma;
+        } else if ((src[i] >= 'a' && src[i] <= 'z') || (src[i] >= 'A' || src[i] <= 'Z') || (src[i] >= '0' || src[i] <= '9')
+            || src[i] == ' ') {
+            ++character;
+        } else {
+            return false;
+        }
+    }
+    if (((colon * 4) != quotation) || ((comma + 1) != colon)) {
+        return false;
+    }
+    return true;
 }

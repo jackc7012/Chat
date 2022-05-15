@@ -6,7 +6,6 @@
 #include "ChatService.h"
 #include "ChatServiceDlg.h"
 #include "afxdialogex.h"
-#include <functional>
 using namespace cwy;
 
 #ifdef _DEBUG
@@ -51,7 +50,7 @@ CChatServiceDlg::CChatServiceDlg(CWnd* pParent /*=NULL*/)
 
 void CChatServiceDlg::DoDataExchange(CDataExchange* pDX) {
     CDialogEx::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_LIST1, listLoginPeople);
+    DDX_Control(pDX, IDC_LIST_LOGIN_PEOPLE, listLoginPeople);
 }
 
 BEGIN_MESSAGE_MAP(CChatServiceDlg, CDialogEx)
@@ -61,6 +60,7 @@ BEGIN_MESSAGE_MAP(CChatServiceDlg, CDialogEx)
     ON_BN_CLICKED(IDC_START, &CChatServiceDlg::OnBnClickedStart)
     ON_MESSAGE(WM_SOCKET_TCP, OnSocketTcp)
     ON_MESSAGE(WM_SOCKET_UDP, OnSocketUdp)
+    ON_MESSAGE(THREAD_CONTROL_UPDATE, HandleControlUpdate)
     ON_BN_CLICKED(IDC_KICK, &CChatServiceDlg::OnBnClickedKick)
     ON_WM_DESTROY()
 END_MESSAGE_MAP()
@@ -104,9 +104,9 @@ BOOL CChatServiceDlg::OnInitDialog() {
     GetDlgItem(IDC_IPLIST)->SetFont(&font);
 
     logService.InitLog("../{time}/service");
-    std::string ip = CNetWorkHandle::CreateInstance()->GetMainNetworkIp();
-    Fun HandleBind = std::bind(&CChatServiceDlg::HandleAfter, this, std::placeholders::_1, std::placeholders::_2);
-    CNetWorkHandle::CreateInstance()->StartThread(HandleBind);
+    netWorkHandle = std::make_unique<CNetWorkHandle>();
+    std::string ip = netWorkHandle->GetMainNetworkIp();
+    netWorkHandle->StartThread(m_hWnd);
     std::string showIp = ((ip == "get error") ? ("ip get error") : ("服务器ip : " + ip));
     SetDlgItemText(IDC_IPLIST, showIp.c_str());
 
@@ -165,6 +165,7 @@ void CChatServiceDlg::OnBnClickedStart() {
         if (StartTcp() && StartUdp()) {
             SetDlgItemText(IDC_STATUS, _T("服务器监听已经启动。。。"));
             SetDlgItemText(IDC_START, _T("停止"));
+            logService << "服务器开启监听";
         }
     } else if (str == "停止") {
         ::closesocket(socketServiceTcp);
@@ -172,8 +173,8 @@ void CChatServiceDlg::OnBnClickedStart() {
         SetDlgItemText(IDC_STATUS, _T("服务器未启动监听。。。"));
         SetDlgItemText(IDC_START, _T("启动"));
         logService << "服务器监听关闭";
-        logService.PrintlogInfo(FILE_FORMAT);
     }
+    //logService.PrintlogInfo(FILE_FORMAT);
 }
 
 void CChatServiceDlg::OnBnClickedKick() {
@@ -227,11 +228,6 @@ bool CChatServiceDlg::StartUdp()
     return true;
 }
 
-void CChatServiceDlg::HandleAfter(int code, const std::string& msg)
-{
-    
-}
-
 LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
     CString str_text;
     switch (lParam)
@@ -251,15 +247,17 @@ LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
         case FD_READ:
         {
             std::string ip;
+            SOCKET socket = INVALID_SOCKET;
             char strRecv[DATA_LENGTH] = {0};
             for (std::pair<SOCKET, std::string> itor : socket2IpMap) {
                 int ret = ::recv(itor.first, strRecv, DATA_LENGTH, 0);
                 if (ret > 0) {
+                    socket = itor.first;
                     ip = itor.second;
                     break;
                 }
             }
-            CNetWorkHandle::CreateInstance()->PushEvent(strRecv, ip);
+            netWorkHandle->PushEvent(ClientInfoTcp(CommunicationType::NULLCOMMUNICATION, ip, strRecv, socket));
         }
         break;
 
@@ -498,5 +496,42 @@ LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
 
 void CChatServiceDlg::OnDestroy()
 {
-    CNetWorkHandle::CreateInstance()->ExitThread();
+    netWorkHandle->ExitThread();
+}
+
+LRESULT CChatServiceDlg::HandleControlUpdate(WPARAM wParam, LPARAM lParam)
+{
+    ClientInfoTcp* clientInfoTcp = (ClientInfoTcp*)wParam;
+    UpdateData(TRUE);
+
+    if (clientInfoTcp->GetType() == CommunicationType::ERRORCOMMUNICATION) {
+        ::send(clientInfoTcp->GetSocket(), "unknown error", std::string("unknown error").length(), 0);
+    } else if ((clientInfoTcp->GetType() != CommunicationType::NULLCOMMUNICATION) &&
+               (clientInfoTcp->GetType() != CommunicationType::DELETECUSTOMER)) {
+        ::send(clientInfoTcp->GetSocket(), clientInfoTcp->GetContent().c_str(), clientInfoTcp->GetContent().length(), 0);
+    }
+
+    switch (clientInfoTcp->GetType()) {
+        case CommunicationType::LOGINBACKSUCCEED:
+        {
+            Json::Value js_value;
+            Json::Reader js_reader;
+            js_reader.parse(clientInfoTcp->GetContent(), js_value);
+            std::string userName = js_value["customer"].asString();
+            listLoginPeople.AddString(userName.c_str());
+            break;
+        }
+
+        case CommunicationType::DELETECUSTOMER:
+        {
+            int index = listLoginPeople.FindString(-1, clientInfoTcp->GetContent().c_str());
+            if (index != LB_ERR) {
+                listLoginPeople.DeleteString(index);
+            }
+            break;
+        }
+    }
+
+    UpdateData(FALSE);
+    return 0;
 }

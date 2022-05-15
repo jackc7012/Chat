@@ -220,4 +220,16 @@ std::string CombineString(char **be_combined, const int size);
 void SplitString(const std::string &be_converted, const char separator, std::vector<std::string> &dest);
 
 void SplitString(const char *be_converted, const char separator, char **dest, int &size);
+
+std::string ToDbString(const std::string& src);
+
+std::string DbJoin(const std::vector<long long>& srcList);
+
+std::string DbJoin(const std::vector<std::string>& srcList);
+
+bool CheckSqlValid(const std::string& src);
+
+bool CheckValid(const std::string& src);
+
+bool CheckJsonValid(const std::string& src);
 #endif  //__PUBLIC_H__

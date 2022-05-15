@@ -49,13 +49,14 @@ class CChatServiceDlg : public CDialogEx {
     SOCKADDR_IN addrServiceTcp{ 0 }, addrAccept{ 0 }, addrServiceUdp{ 0 };
     afx_msg LRESULT OnSocketTcp(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnSocketUdp(WPARAM wParam, LPARAM lParam);
-    CListBox listLoginPeople;
     std::vector<std::string> ve_accept_name;
     afx_msg void OnBnClickedKick();
     bool StartTcp();
     bool StartUdp();
-    void HandleAfter(int code, const std::string& msg);
     virtual BOOL DestroyWindow();
     std::unordered_map<SOCKET, std::string> socket2IpMap;
     afx_msg void OnDestroy();
+    std::unique_ptr<cwy::CNetWorkHandle> netWorkHandle{nullptr};
+    CListBox listLoginPeople;
+    LRESULT HandleControlUpdate(WPARAM wParam, LPARAM lParam);
 };

@@ -99,6 +99,12 @@ public:
         * return 删除成功与否
         */
     BOOL delDbInfo(const SqlRequest& sqlRequest);
+
+    /* 删除数据库数据
+        * sqlRequest sql请求
+        * return 删除成功与否
+        */
+    BOOL uninitDataBase();
 };
 
 #endif // !MY_DATA_BASE_H

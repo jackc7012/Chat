@@ -2,10 +2,10 @@
 
 namespace cwy {
 CLog::CLog(const std::string& path)
-: filePath(GetPath(path))
-, logLevel(DEFAULT_LEVEL)
-, fileSize(50)
-, autoFlush(true)
+    : filePath(GetPath(path)),
+      logLevel(DEFAULT_LEVEL),
+      fileSize(50),
+      autoFlush(true)
 {
 }
 
@@ -42,7 +42,7 @@ void CLog::PrintlogDebug(const std::string& fileName, const int fileLine)
 
 void CLog::PrintlogInfo(const std::string& fileName, const int fileLine)
 {
-    if (logLevel < LogLevel::INFO_LEVEL) {
+    if (logLevel > LogLevel::INFO_LEVEL) {
         strReturnOneLine = "";
         return;
     }
@@ -57,7 +57,7 @@ void CLog::PrintlogInfo(const std::string& fileName, const int fileLine)
 
 void CLog::PrintlogWarn(const std::string& fileName, const int fileLine)
 {
-    if (logLevel < LogLevel::WARN_LEVEL) {
+    if (logLevel > LogLevel::WARN_LEVEL) {
         strReturnOneLine = "";
         return;
     }
@@ -72,7 +72,7 @@ void CLog::PrintlogWarn(const std::string& fileName, const int fileLine)
 
 void CLog::PrintlogError(const std::string& fileName, const int fileLine)
 {
-    if (logLevel < LogLevel::ERROR_LEVEL) {
+    if (logLevel > LogLevel::ERROR_LEVEL) {
         strReturnOneLine = "";
         return;
     }
@@ -144,7 +144,7 @@ std::string CLog::GetPath(const std::string& filePath)
 
 std::string CLog::GetServicePath(std::string& filePath)
 {
-    std::string logPath = filePath.substr(filePath.find_last_of('/') + 1);
+    std::string logPath = filePath.substr(filePath.find_last_of('/'));
     std::string logPathForward = filePath.substr(0, filePath.find_last_of('/'));
     logPathForward = AssembleFilePath(logPathForward);
     return (logPathForward.substr(0, logPathForward.find_last_of(".")) + logPath);

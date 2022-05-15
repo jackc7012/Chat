@@ -10,7 +10,7 @@ CNetWorkHandle::CNetWorkHandle()
 
 void CNetWorkHandle::HandleNetworkEvent(const unsigned short threadNo)
 {
-    NetWorkEvent* networkEvent = new NetWorkEvent();
+    std::unique_ptr<NetWorkEvent> networkEvent = std::make_unique<NetWorkEvent>();
     taskMt.lock();
     networkEvent->InitDataBase("127.0.0.1", "MyChat");
     taskMt.unlock();
@@ -19,36 +19,32 @@ void CNetWorkHandle::HandleNetworkEvent(const unsigned short threadNo)
             break;
         }
         Sleep(1);
-        std::string taskContent;
-        std::string ip;
+        ClientInfoTcp clientInfoTcp;
         if (!taskMt.try_lock()) {
             continue;
         }
         if (!taskQue.empty()) {
-            taskContent = taskQue.front().first;
-            ip = taskQue.front().second;
+            clientInfoTcp = taskQue.front();
             taskQue.pop();
         }
         taskMt.unlock();
-        if (!taskContent.empty()) {
-            int code = 0;
+        if (!clientInfoTcp.IsEmpty()) {
+            CommunicationType type = CommunicationType::NULLCOMMUNICATION;
             std::string msg;
             s_HandleRecv handleRecv;
-            DecodeJson(taskContent, handleRecv);
-            handleRecv.connect_ip_ = ip;
-            networkEvent->NetWorkEventHandle(handleRecv, code, msg);
-            handle(code, msg);
+            handleRecv.connect_ip_ = clientInfoTcp.GetIp();
+            handleRecv.socket_accept_ = clientInfoTcp.GetSocket();
+            if (DecodeJson(clientInfoTcp.GetContent(), handleRecv) == false) {
+                clientSendInfo.SetInfo(CommunicationType::ERRORCOMMUNICATION, handleRecv.connect_ip_,
+                                       "", handleRecv.socket_accept_);
+                PostMessage(hBackWnd, THREAD_CONTROL_UPDATE, (WPARAM)&clientSendInfo, 0);
+            }
+            networkEvent->NetWorkEventHandle(handleRecv, type, msg);
+            clientSendInfo.SetInfo(type, handleRecv.connect_ip_, msg, handleRecv.socket_accept_);
+            PostMessage(hBackWnd, THREAD_CONTROL_UPDATE, (WPARAM)&clientSendInfo, 0);
             UnregisterSpace(handleRecv.type_, handleRecv);
         }
     }
-    delete networkEvent;
-    networkEvent = nullptr;
-}
-
-CNetWorkHandle *CNetWorkHandle::CreateInstance()
-{
-    static CNetWorkHandle networkHandle;
-    return &networkHandle;
 }
 
 CNetWorkHandle::~CNetWorkHandle()
@@ -78,17 +74,17 @@ std::string CNetWorkHandle::GetMainNetworkIp()
     return result;
 }
 
-void CNetWorkHandle::StartThread(Fun handleAfter)
+void CNetWorkHandle::StartThread(HWND hWnd)
 {
-    handle = handleAfter;
+    hBackWnd = hWnd;
     for (unsigned short i = 0; i < THREAD_NUM; ++i) {
         handleThread[i] = std::thread(&cwy::CNetWorkHandle::HandleNetworkEvent, this, i);
     }
 }
-void CNetWorkHandle::PushEvent(const std::string& handleRecv, const std::string& ip)
+void CNetWorkHandle::PushEvent(const ClientInfoTcp& clientInfoTcp)
 {
     taskMt.lock();
-    taskQue.push(std::make_pair(handleRecv, ip));
+    taskQue.push(clientInfoTcp);
     taskMt.unlock();
 }
 
