@@ -5,6 +5,8 @@
 #include "ChatClient.h"
 #include "CLoginWait.h"
 #include "afxdialogex.h"
+
+#include "public.h"
 using namespace cwy;
 
 // CLoginWait 对话框
@@ -34,7 +36,6 @@ END_MESSAGE_MAP()
 
 // CLoginWait 消息处理程序
 
-
 BOOL CLoginWait::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
@@ -56,36 +57,27 @@ BOOL CLoginWait::OnInitDialog()
 void CLoginWait::OnTimer(UINT_PTR nIDEvent)
 {
     switch (nIDEvent) {
-    case 1: {
-        int time = GetDlgItemInt(IDC_LOGIN_TIME_OUT);
-        if (time > 0) {
-            --time;
-            SetDlgItemInt(IDC_LOGIN_TIME_OUT, time);
-        }   
-    }
-          break;
+        case 1:
+        {
+            int time = GetDlgItemInt(IDC_LOGIN_TIME_OUT);
+            if (time > 0) {
+                --time;
+                SetDlgItemInt(IDC_LOGIN_TIME_OUT, time);
+            }
+            break;
+        }
 
-    case 2: {
-        if (flag == 1) {
-            threadWait.join();
-            EndDialog(1);
+        case 2:
+        {
+            if ((flag == 1) || (flag == 2) || (flag == -1)) {
+                threadWait.join();
+                EndDialog(flag);
+            }
+            break;
         }
-        else if (flag == 2) {
-            threadWait.join();
-            EndDialog(2);
-        }
-        else if (flag == 3) {
-            threadWait.join();
-            EndDialog(3);
-        }
-        else if (flag == -1) {
-            threadWait.join();
-            EndDialog(-1);
-        }
-    }
-          break;
-    default:
-        break;
+
+        default:
+            break;
     }
 
     CDialogEx::OnTimer(nIDEvent);
@@ -93,27 +85,22 @@ void CLoginWait::OnTimer(UINT_PTR nIDEvent)
 
 void CLoginWait::socketRecvThread()
 {
-    char* buf = new char[DATA_LENGTH];
-    memset(buf, 0, DATA_LENGTH);
+    char buf[256] = {0};
     int nNetTimeout = 30000;
     ::setsockopt(socketClient, SOL_SOCKET, SO_RCVTIMEO, (char*)&nNetTimeout, sizeof(int));
-    ::recv(socketClient, buf, DATA_LENGTH, 0);
-    if (buf[0] != '\0') {
+    int ret = ::recv(socketClient, buf, 256, 0);
+    if (ret > 0) {
         s_HandleRecv rt;
         DecodeJson(buf, rt);
-        if (strcmp(rt.param.LoginBack.login_result, "succeed") == 0) {
+        nickName = rt.Param.loginBack_.customer;
+        if (strcmp(rt.Param.loginBack_.login_result, "succeed") == 0) {
+            UnregisterSpace(CommunicationType::LOGINBACKSUCCEED, rt);
             flag = 1;
-        }
-        else if (strcmp(rt.param.LoginBack.login_result, "failed") == 0) {
+        } else if (strcmp(rt.Param.loginBack_.login_result, "failed") == 0) {
+            UnregisterSpace(CommunicationType::LOGINBACKFAILED, rt);
             flag = 2;
         }
-        else if (strcmp(rt.param.LoginBack.login_result, "isLogin") == 0) {
-            flag = 3;
-        }
-        DeleteMemory(CommunicationType::LOGINBACK,  rt);
-    }
-    else {
+    } else {
         flag = -1;
     }
-    delete[]buf;
 }

@@ -1,7 +1,8 @@
 ﻿#pragma once
 
 #include <thread>
-#include "public.h"
+#include <string>
+
 // CLoginWait 对话框
 
 class CLoginWait : public CDialogEx
@@ -19,13 +20,15 @@ public:
 
 protected:
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+    virtual BOOL OnInitDialog();
 
     DECLARE_MESSAGE_MAP()
 public:
-    virtual BOOL OnInitDialog();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
-    SOCKET socketClient{ 0 };
+    SOCKET socketClient{INVALID_SOCKET};
+    std::string nickName;
+private:
     void socketRecvThread();
     std::thread threadWait;
-    int flag{ 0 };
+    int flag{0};
 };

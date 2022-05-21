@@ -1,16 +1,6 @@
 ﻿#pragma once
 
-#include <thread>
-#include "ChatClientDlg.h"
-#include "CRegisterDialog.h"
-#include "CNetWorkHandle.h"
-#include "CLoginWait.h"
-#include "CLog.h"
-
-
 // CLoginDialog 对话框
-
-const int GET_TOKEN_TIMEOUT = 3000;
 
 class CLoginDialog : public CDialogEx
 {
@@ -28,12 +18,12 @@ public:
 protected:
     HICON m_hIcon;
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+    virtual BOOL OnInitDialog();
 
     DECLARE_MESSAGE_MAP()
 public:
     afx_msg void OnBnClickedLogin();
-    virtual BOOL OnInitDialog();
     afx_msg void OnBnClickedRegister();
-    SOCKET socketClient;
-    SOCKADDR_IN addr;
+    SOCKET socketClient{INVALID_SOCKET};
+    virtual void OnOK();
 };

@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include <string>
-#include "CNetWorkHandle.h"
 
 // CRegisterDialog 对话框
 
@@ -20,12 +18,13 @@ public:
 protected:
     HICON m_hIcon;
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+    virtual BOOL OnInitDialog();
 
     DECLARE_MESSAGE_MAP()
 public:
-    virtual BOOL OnInitDialog();
     afx_msg void OnBnClickedRegisterUser();
+    SOCKET socketClient{INVALID_SOCKET};
+private:
     void SetVerify();
-    void SendRegisterMessage(const cwy::s_HandleRecv& toSend);
-    SOCKET socketClient{ 0 };
+    void GetRecv();
 };

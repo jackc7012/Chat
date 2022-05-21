@@ -18,12 +18,13 @@ class CMessage : public CDialogEx {
 
   protected:
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
+    virtual BOOL OnInitDialog();
+    afx_msg void OnTimer(UINT_PTR nIDEvent);
+    afx_msg void OnBnClickedAgree();
+    afx_msg void OnBnClickedRefuse();
 
     DECLARE_MESSAGE_MAP()
   public:
-    virtual BOOL OnInitDialog();
-    afx_msg void OnTimer(UINT_PTR nIDEvent);
     std::string message;
-    afx_msg void OnBnClickedAgree();
-    afx_msg void OnBnClickedRefuse();
+    
 };

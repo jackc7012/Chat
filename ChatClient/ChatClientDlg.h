@@ -4,17 +4,12 @@
 
 #pragma once
 
-#include "public.h"
-#include "CLog.h"
-#include <iostream>
-#include <fstream>
-#include <math.h>
-#include "CMessage.h"
 #include <thread>
 #include <mutex>
-#include <queue>
+#include <unordered_map>
+#include "CMessage.h"
 
-#define WM_SOCKET                 (WM_USER + 1000)
+#define WM_SOCKET_CLIENT                 (WM_USER + 2001)
 #define WM_TRANSFERFILEACCEPT     (WM_USER + 1001)
 
 // CChatClientDlg 对话框
@@ -38,28 +33,35 @@ class CChatClientDlg : public CDialogEx {
 
     // 生成的消息映射函数
     virtual BOOL OnInitDialog();
+    virtual void OnOK();
     afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
     afx_msg void OnPaint();
     afx_msg HCURSOR OnQueryDragIcon();
+    afx_msg void OnBnClickedSend();
+    afx_msg void OnBnClickedTransferfile();
+    afx_msg void OnSelchangeLoginPeople();
+    afx_msg void OnSelchangeStatus();
+    afx_msg LRESULT OnSocket(WPARAM wParam, LPARAM lParam);
     DECLARE_MESSAGE_MAP()
   public:
-    afx_msg void OnBnClickedConnect();
-    afx_msg LRESULT OnSocket(WPARAM wParam, LPARAM lParam);
-    afx_msg LRESULT OnTransferFileAccept(WPARAM wParam, LPARAM lParam);
-  public:
-    SOCKET socket_client;
-    SOCKADDR_IN addr;
-    afx_msg void OnBnClickedSend();
-    virtual void OnOK();
-    CListBox m_list_login_people;
-    std::string nick_name;
-    afx_msg void OnBnClickedRegister();
+    std::string nickName;
+    SOCKET socketClient{INVALID_SOCKET};
+  private:
+    std::unordered_map<std::string, std::string> userToChat;
+    
+    CListBox loginPeopleList;
+    CComboBox statusCombo;
     bool is_service_open{ false };
-    afx_msg void OnBnClickedTransferfile();
+
+    void threadTransFile(CFile fileToTrans, const std::string& target);
     bool can_transfer_file{ false };
-    int thread_TransferFile(const HWND &hwnd, const std::string &file_name, const std::string &target);
-    int thread_TransferFileAccept(const HWND &hwnd, const std::string &file_name, const cwy::s_HandleRecv &handle_recv);
     std::mutex mt_read_file;
-    std::queue<cwy::s_HandleRecv> q_transfer_file;
-    cwy::CLog g_log;
+    
+    
+    
+    
+public:
+    
+    
+    
 };

@@ -6,23 +6,24 @@
 #include "CMessage.h"
 #include "afxdialogex.h"
 
-
 // CMessage 对话框
 
 IMPLEMENT_DYNAMIC(CMessage, CDialogEx)
 
 CMessage::CMessage(CWnd* pParent /*=nullptr*/)
-    : CDialogEx(IDD_REQUEST, pParent) {
+    : CDialogEx(IDD_REQUEST, pParent)
+{
 
 }
 
-CMessage::~CMessage() {
+CMessage::~CMessage()
+{
 }
 
-void CMessage::DoDataExchange(CDataExchange* pDX) {
+void CMessage::DoDataExchange(CDataExchange* pDX)
+{
     CDialogEx::DoDataExchange(pDX);
 }
-
 
 BEGIN_MESSAGE_MAP(CMessage, CDialogEx)
     ON_WM_TIMER()
@@ -33,8 +34,8 @@ END_MESSAGE_MAP()
 
 // CMessage 消息处理程序
 
-
-BOOL CMessage::OnInitDialog() {
+BOOL CMessage::OnInitDialog()
+{
     CDialogEx::OnInitDialog();
 
     // TODO:  在此添加额外的初始化
@@ -52,33 +53,31 @@ BOOL CMessage::OnInitDialog() {
     return TRUE;
 }
 
-
-void CMessage::OnTimer(UINT_PTR nIDEvent) {
+void CMessage::OnTimer(UINT_PTR nIDEvent)
+{
     switch (nIDEvent) {
-    case 1: {
-        int time = GetDlgItemInt(IDC_TIME);
-        --time;
-        if (time == 0) {
-            EndDialog(-1);
+        case 1: {
+            int time = GetDlgItemInt(IDC_TIME);
+            --time;
+            if (time == 0) {
+                EndDialog(-1);
+            }
+            SetDlgItemInt(IDC_TIME, time);
         }
-        SetDlgItemInt(IDC_TIME, time);
-    }
-    break;
-
-    default:
         break;
+
+        default:
+            break;
     }
     CDialogEx::OnTimer(nIDEvent);
 }
 
-
-void CMessage::OnBnClickedAgree() {
-    // TODO: 在此添加控件通知处理程序代码
+void CMessage::OnBnClickedAgree()
+{
     EndDialog(1);
 }
 
-
-void CMessage::OnBnClickedRefuse() {
-    // TODO: 在此添加控件通知处理程序代码
+void CMessage::OnBnClickedRefuse()
+{
     EndDialog(-1);
 }
