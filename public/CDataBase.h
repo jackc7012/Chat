@@ -51,11 +51,11 @@ public:
 
     ~DataBaseImpl();
 
-    BOOL initDataBase(const std::string& ip, const std::string& dataBaseName, std::string& errMsg);
+    BOOL initDataBase(const std::string& ip, const std::string& dataBaseName);
 
-    BOOL operSql(const DBTYPE dbType, const std::string& sqlRequest, std::string& errMsg);
+    BOOL operSql(const DBTYPE dbType, const std::string& sqlRequest);
 
-    void selectSql(const std::string& sqlRequest, DataBaseRecord& result, std::string& errMsg);
+    void selectSql(const std::string& sqlRequest, DataBaseRecord& result);
 
     BOOL uninitDataBase();
 

@@ -14,7 +14,7 @@
 #define DEFAULT_LEVEL     logLevel::INFO_LEVEL
 #endif
 
-#define FILE_FORMAT                __FILE__ ,__LINE__
+#define FILE_FORMAT                __FILE__, __LINE__
 namespace cwy {
     enum class LogLevel {
         DEBUG_LEVEL = 0,
@@ -93,5 +93,5 @@ namespace cwy {
     };
 }
 
-static cwy::CLog logClient, logService;
+static cwy::CLog logClient, logService, logServiceNetwork, logServiceDataBase;
 #endif  //__MY_LOG_H__

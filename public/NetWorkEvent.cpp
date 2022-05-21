@@ -1,5 +1,7 @@
 #include "NetWorkEvent.h"
 
+#include "CLog.h"
+
 namespace cwy {
 NetWorkEvent::~NetWorkEvent()
 {
@@ -13,105 +15,160 @@ NetWorkEvent::~NetWorkEvent()
 int NetWorkEvent::InitDataBase(const std::string& ip, const std::string& name)
 {
     if (dataBase == nullptr) {
-        std::string errMsg;
         dataBase = std::make_unique<DataBaseImpl>();
-        dataBase->initDataBase(ip, name, errMsg);
+        dataBase->initDataBase(ip, name);
     }
+    logServiceNetwork.InitLog("../{time}/network");
     return 0;
 }
 
-void NetWorkEvent::NetWorkEventHandle(const s_HandleRecv& taskContent, CommunicationType& type, std::string& msg)
+SOCKET NetWorkEvent::NetWorkEventHandle(const s_HandleRecv& taskContent, CommunicationType& type, std::string& msg)
 {
     s_HandleRecv handleSend;
+    SOCKET socket{INVALID_SOCKET};
     switch (taskContent.type_) {
         case CommunicationType::REGISTER:
         {
-            NetWorkRegisterHandle(taskContent, handleSend);
+            socket = NetWorkRegisterHandle(taskContent, handleSend);
             break;
         }
 
         case CommunicationType::LOGIN:
         {
-            NetWorkLoginHandle(taskContent, handleSend);
+            socket = NetWorkLoginHandle(taskContent, handleSend);
             break;
         }
 
         case CommunicationType::DELETECUSTOMER:
         {
-            NetWorkDelHandle(taskContent);
+            socket = NetWorkDelHandle(taskContent);
             msg = taskContent.Param.delCustomer_.customer;
             type = CommunicationType::DELETECUSTOMER;
+            break;
+        }
+
+        case CommunicationType::CHAT:
+        {
+            socket = NetWorkChatHandle(taskContent, handleSend);
             break;
         }
     }
     msg = ((msg.empty()) ? (EncodeJson(handleSend.type_, handleSend)) : (msg));
     type = ((type == CommunicationType::NULLCOMMUNICATION) ? (handleSend.type_) : (type));
+    logServiceNetwork << msg;
+    logServiceNetwork.PrintlogInfo(FILE_FORMAT);
     UnregisterSpace(handleSend.type_, handleSend);
+    return socket;
 }
 
-void NetWorkEvent::NetWorkRegisterHandle(const s_HandleRecv& taskContent, s_HandleRecv& handleSend)
+SOCKET NetWorkEvent::NetWorkRegisterHandle(const s_HandleRecv& taskContent, s_HandleRecv& handleSend)
 {
-    std::string errMsg;
-    RegisterSpace(&handleSend.Param.registerBack_.customer, taskContent.Param.register_.customer);
-    RegisterSpace(&handleSend.Param.registerBack_.register_result, "failed");
-    SqlRequest sql("select 1 from tb_info where Name = ");
-    sql << ToDbString(taskContent.Param.register_.customer);
-    DataBaseRecord loginInfo;
-    dataBase->selectSql(sql.str(), loginInfo, errMsg);
-    if (loginInfo.size() == 1) {
-        RegisterSpace(&handleSend.Param.registerBack_.description, "user name has already exist");
-    } else if (loginInfo.size() == 0) {
+    try {
+        SqlRequest sql("select max(Id) from tb_info");
+        DataBaseRecord loginInfo;
+        dataBase->selectSql(sql.str(), loginInfo);
+        unsigned long long id = ((loginInfo.size() == 0) ? 10000 : atoll(loginInfo[0][0].c_str()));
         RegisterSpace(&handleSend.Param.registerBack_.register_result, "succeed");
+
         sql.clear();
-        sql << "insert into tb_info(Name, Password, Ip, IsLogin) values"
-            << DbJoin(std::vector<std::string>{taskContent.Param.register_.customer, taskContent.Param.register_.password,
-                                               taskContent.connect_ip_, "0"});
-        dataBase->operSql(DBTYPE::INSERT, sql.str(), errMsg);
+        sql << "insert into tb_info(Id, Name, Password, Ip, IsLogin) values"
+            << DbJoin(StringMap{{1, taskContent.Param.register_.customer}, {2, taskContent.Param.register_.password},
+                                {3, taskContent.connect_ip_}}, IntMap{{0, ++id}, {4, 0}});
+        dataBase->operSql(DBTYPE::INSERT, sql.str());
+
         sql.clear();
-        sql << "create table [" << taskContent.connect_ip_
-            << "] ( Time datetime NOT NULL,"
-            << "   Target varchar(50) NOT NULL,"
-            << "   ChatContent text NOT NULL)";
-        dataBase->operSql(DBTYPE::CREATETABLE, sql.str(), errMsg);
-    } else {
-        RegisterSpace(&handleSend.Param.registerBack_.description, "unkown error");
+        sql << "create table [" << taskContent.Param.register_.customer << "_" << taskContent.connect_ip_
+            << "] ( Time datetime NOT NULL, Source varchar(50) NOT NULL, Target varchar(50) NOT NULL,"
+            << "    TargetIp varchar(50) NOT NULL, ChatContent text NOT NULL)";
+        dataBase->operSql(DBTYPE::CREATETABLE, sql.str());
+
+        handleSend.Param.registerBack_.id = id;
+        handleSend.type_ = ((strcmp(handleSend.Param.registerBack_.register_result, "succeed") == 0)
+            ? CommunicationType::REGISTERBACKSUCCEED : CommunicationType::REGISTERBACKFAILED);
     }
-    handleSend.type_ = ((strcmp(handleSend.Param.registerBack_.register_result, "succeed") == 0)
-        ? CommunicationType::REGISTERBACKSUCCEED : CommunicationType::REGISTERBACKFAILED);
+    catch (...) {
+        return INVALID_SOCKET;
+    }
+    return taskContent.socket_accept_;
 }
 
-void NetWorkEvent::NetWorkLoginHandle(const s_HandleRecv& taskContent, s_HandleRecv& handleSend)
+SOCKET NetWorkEvent::NetWorkLoginHandle(const s_HandleRecv& taskContent, s_HandleRecv& handleSend)
 {
-    std::string errMsg;
-    RegisterSpace(&handleSend.Param.loginBack_.customer, taskContent.Param.login_.customer);
-    RegisterSpace(&handleSend.Param.loginBack_.login_result, "failed");
-    SqlRequest sql("select Password from tb_info where Name = ");
-    sql << ToDbString(taskContent.Param.login_.customer);
-    DataBaseRecord loginInfo;
-    dataBase->selectSql(sql.str(), loginInfo, errMsg);
-    if (loginInfo.size() == 0) {
-        RegisterSpace(&handleSend.Param.loginBack_.description, "no such user name");
-    } else if (loginInfo.size() == 1) {
-        if (loginInfo[0][0] != taskContent.Param.login_.password) {
-            RegisterSpace(&handleSend.Param.loginBack_.description, "password error");
+    try {
+        long long id = taskContent.Param.login_.id;
+        RegisterSpace(&handleSend.Param.loginBack_.login_result, "failed");
+        SqlRequest sql("select Name, Password from tb_info where Id = ");
+        sql << taskContent.Param.login_.id;
+        DataBaseRecord loginInfo;
+        dataBase->selectSql(sql.str(), loginInfo);
+        if (loginInfo.size() == 0) {
+            RegisterSpace(&handleSend.Param.loginBack_.description, "no such id");
+        } else if (loginInfo.size() == 1) {
+            if (loginInfo[0][1] != taskContent.Param.login_.password) {
+                RegisterSpace(&handleSend.Param.loginBack_.description, "password error");
+            } else {
+                RegisterSpace(&handleSend.Param.loginBack_.login_result, "succeed");
+                RegisterSpace(&handleSend.Param.loginBack_.customer, loginInfo[0][0]);
+                sql.clear();
+                sql << "update tb_info set IsLogin = 1 where Id = " << taskContent.Param.login_.id;
+                dataBase->operSql(DBTYPE::MODIFY, sql.str());
+                IpAndSocket ipAndSocket{taskContent.connect_ip_, taskContent.socket_accept_};
+                nameToIpSock.insert(std::make_pair(loginInfo[0][0], ipAndSocket));
+            }
         } else {
-            RegisterSpace(&handleSend.Param.loginBack_.login_result, "succeed");
-            sql.clear();
-            sql << "update tb_info set IsLogin = '1' where Name = " << ToDbString(taskContent.Param.login_.customer);
-            dataBase->operSql(DBTYPE::MODIFY, sql.str(), errMsg);
+            RegisterSpace(&handleSend.Param.loginBack_.description, "unkown error");
         }
-    } else {
-        RegisterSpace(&handleSend.Param.loginBack_.description, "unkown error");
+        handleSend.type_ = ((strcmp(handleSend.Param.loginBack_.login_result, "succeed") == 0)
+            ? CommunicationType::LOGINBACKSUCCEED : CommunicationType::LOGINBACKFAILED);
     }
-    handleSend.type_ = ((strcmp(handleSend.Param.loginBack_.login_result, "succeed") == 0)
-        ? CommunicationType::LOGINBACKSUCCEED : CommunicationType::LOGINBACKFAILED);
+    catch (...) {
+        return INVALID_SOCKET;
+    }
+    return taskContent.socket_accept_;
 }
 
-void NetWorkEvent::NetWorkDelHandle(const s_HandleRecv& taskContent)
+SOCKET NetWorkEvent::NetWorkDelHandle(const s_HandleRecv& taskContent)
 {
-    std::string errMsg;
-    SqlRequest sql("update tb_info set IsLogin = '0' where Name = ");
-    sql << ToDbString(taskContent.Param.delCustomer_.customer);
-    dataBase->operSql(DBTYPE::MODIFY, sql.str(), errMsg);
+    try {
+        SqlRequest sql("update tb_info set IsLogin = 0 where Name = ");
+        sql << ToDbString(taskContent.Param.delCustomer_.customer);
+        dataBase->operSql(DBTYPE::MODIFY, sql.str());
+        auto itor = nameToIpSock.find(taskContent.Param.delCustomer_.customer);
+        if (itor != nameToIpSock.end()) {
+            nameToIpSock.erase(itor);
+        }
+    }
+    catch (...) {
+        return INVALID_SOCKET;
+    }
+    return taskContent.socket_accept_;
+}
+
+SOCKET NetWorkEvent::NetWorkChatHandle(const s_HandleRecv& taskContent, s_HandleRecv& handleSend)
+{
+    SOCKET socket = INVALID_SOCKET;
+    try {
+        auto itor = nameToIpSock.find(taskContent.Param.chat_.target);
+        if (itor == nameToIpSock.end()) {
+            handleSend.type_ = CommunicationType::ERRORCOMMUNICATION;
+            return INVALID_SOCKET;
+        }
+        RegisterSpace(&handleSend.Param.chat_.source, taskContent.Param.chat_.source);
+        RegisterSpace(&handleSend.Param.chat_.target, (std::string(taskContent.Param.chat_.target) + "-" + itor->second.first));
+        RegisterSpace(&handleSend.Param.chat_.content, taskContent.Param.chat_.content);
+        std::string chatTime = GetTime(0);
+        SqlRequest sql("insert into [");
+        sql << taskContent.Param.chat_.source << "_" << taskContent.connect_ip_ << "](Time, Source, Target, TargetIp , ChatContent)"
+            << " values(convert(datetime," << ToDbString(chatTime) << "), " << ToDbString(taskContent.Param.chat_.source)
+            << ", " << ToDbString(taskContent.Param.chat_.target) << ", " << ToDbString(itor->second.first) << ", "
+            << ToDbString(taskContent.Param.chat_.content) << ")";
+        dataBase->operSql(DBTYPE::INSERT, sql.str());
+        handleSend.type_ = CommunicationType::CHAT;
+        socket = itor->second.second;
+    }
+    catch (...) {
+        
+    }
+    return socket;
 }
 }

@@ -7,15 +7,6 @@
 #define WM_SOCKET_TCP               (WM_USER + 1000)
 #define WM_SOCKET_UDP               (WM_USER + 1001)
 
-#include <vector>
-
-#include <mutex>
-#include <queue>
-#include <thread>
-#include <unordered_map>
-
-#include "public.h"
-#include "CLog.h"
 #include "CNetWorkHandle.h"
 
 // CChatServiceDlg 对话框
@@ -39,24 +30,23 @@ class CChatServiceDlg : public CDialogEx {
 
     // 生成的消息映射函数
     virtual BOOL OnInitDialog();
+    virtual BOOL DestroyWindow();
     afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
     afx_msg void OnPaint();
     afx_msg HCURSOR OnQueryDragIcon();
-    DECLARE_MESSAGE_MAP()
-  public:
     afx_msg void OnBnClickedStart();
-    SOCKET socketServiceTcp{ 0 }, socketServiceUdp{ 0 };
-    SOCKADDR_IN addrServiceTcp{ 0 }, addrAccept{ 0 }, addrServiceUdp{ 0 };
+    afx_msg void OnBnClickedKick();
+    afx_msg void OnDestroy();
     afx_msg LRESULT OnSocketTcp(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT OnSocketUdp(WPARAM wParam, LPARAM lParam);
-    std::vector<std::string> ve_accept_name;
-    afx_msg void OnBnClickedKick();
+    afx_msg LRESULT HandleControlUpdate(WPARAM wParam, LPARAM lParam);
+    DECLARE_MESSAGE_MAP()
+  private:
     bool StartTcp();
     bool StartUdp();
-    virtual BOOL DestroyWindow();
-    std::unordered_map<SOCKET, std::string> socket2IpMap;
-    afx_msg void OnDestroy();
-    std::unique_ptr<cwy::CNetWorkHandle> netWorkHandle{nullptr};
+
     CListBox listLoginPeople;
-    LRESULT HandleControlUpdate(WPARAM wParam, LPARAM lParam);
+    SOCKET socketServiceTcp{ 0 }, socketServiceUdp{ 0 };
+    std::unordered_map<SOCKET, std::string> socket2IpMap;
+    std::unique_ptr<cwy::CNetWorkHandle> netWorkHandle{nullptr};
 };

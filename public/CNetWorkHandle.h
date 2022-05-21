@@ -2,10 +2,8 @@
 #define __NET_WORK_HANDLE_H__
 
 #include <string>
-#include <unordered_map>
 #include <queue>
 #include <thread>
-#include <chrono>
 
 #include "CLog.h"
 #define THREAD_CONTROL_UPDATE (WM_USER + 2000)
@@ -72,41 +70,40 @@ private:
     SOCKET socket;
 };
 
-    static const unsigned short TCP_PORT = 6000;
-    static const unsigned short UDP_PORT = 6002;
+static const unsigned short TCP_PORT = 6000;
+static const unsigned short UDP_PORT = 6002;
 
-    static const unsigned short THREAD_NUM = 5;
+static const unsigned short THREAD_NUM = 5;
 
-    class CNetWorkHandle
-    {
-    public:
-        CNetWorkHandle();
+class CNetWorkHandle {
+public:
+    CNetWorkHandle();
 
-        ~CNetWorkHandle();
+    ~CNetWorkHandle();
 
-        std::string GetMainNetworkIp();
+    std::string GetMainNetworkIp();
 
-        void StartThread(HWND hWnd);
+    void StartThread(HWND hWnd);
 
-        void PushEvent(const ClientInfoTcp& clientInfoTcp);
+    void PushEvent(const ClientInfoTcp& clientInfoTcp);
 
-        void ExitThread();
-    private:
-        CNetWorkHandle(const CNetWorkHandle&) = delete;
-        CNetWorkHandle(CNetWorkHandle&&) = delete;
-        CNetWorkHandle& operator=(const CNetWorkHandle&) = delete;
-        CNetWorkHandle& operator=(CNetWorkHandle&&) = delete;
+    void ExitThread();
+private:
+    CNetWorkHandle(const CNetWorkHandle&) = delete;
+    CNetWorkHandle(CNetWorkHandle&&) = delete;
+    CNetWorkHandle& operator=(const CNetWorkHandle&) = delete;
+    CNetWorkHandle& operator=(CNetWorkHandle&&) = delete;
 
-        void HandleNetworkEvent(const unsigned short threadNo);
+    void HandleNetworkEvent(const unsigned short threadNo);
 
-    private:
-        std::queue<ClientInfoTcp> taskQue;
-        std::mutex taskMt;
-        std::thread handleThread[THREAD_NUM];
-        bool isExit{false};
-        HWND hBackWnd{nullptr};
-    };
+private:
+    std::queue<ClientInfoTcp> taskQue;
+    std::mutex taskMt;
+    std::thread handleThread[THREAD_NUM];
+    bool isExit{false};
+    HWND hBackWnd{nullptr};
+};
 
-    static ClientInfoTcp clientSendInfo;
+static ClientInfoTcp clientSendInfo;
 }
 #endif // !__NET_WORK_HANDLE_H__

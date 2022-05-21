@@ -1,5 +1,7 @@
 #include "CLog.h"
 
+#include "public.h"
+
 namespace cwy {
 CLog::CLog(const std::string& path)
     : filePath(GetPath(path)),
@@ -136,9 +138,9 @@ std::string CLog::GetPath(const std::string& filePath)
     std::string temp(filePath);
     std::string logPath = temp.substr(0, temp.find_last_of('/'));
     if (logPath.find("/") != std::string::npos) {
-        return GetServicePath(temp) + ".log";
+        return (GetServicePath(temp) + ".log");
     } else {
-        return GetClientPath(temp) + ".log";
+        return ("../" + GetClientPath(temp) + ".log");
     }
 }
 
@@ -161,14 +163,15 @@ std::string CLog::AssembleFilePath(std::string& filePath)
     char temp[MAX_PATH] = {0};
     SYSTEMTIME st;
     GetLocalTime(&st);
-    sprintf_s(temp, MAX_PATH, "%04d-%02d-%02d.txt", st.wYear, st.wMonth, st.wDay);
+    sprintf_s(temp, MAX_PATH, "%04d-%02d-%02d", st.wYear, st.wMonth, st.wDay);
     int pos = filePath.find("{time}");
     if (pos != std::string::npos) {
         filePath.replace(pos, 6, temp);
         return filePath;
     } else {
-        filePath = temp;
-        return temp;
+        filePath += "/";
+        filePath += temp;
+        return filePath;
     }
 }
 }

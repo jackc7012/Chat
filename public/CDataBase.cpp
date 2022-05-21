@@ -1,5 +1,6 @@
 #include "CDataBase.h"
-#include <unordered_map>
+
+#include "public.h"
 using namespace cwy;
 
 SqlRequest::SqlRequest(const std::string& str)
@@ -57,7 +58,7 @@ DataBaseImpl::~DataBaseImpl()
 {
 }
 
-BOOL DataBaseImpl::initDataBase(const std::string& ip, const std::string& dataBaseName, std::string& errMsg)
+BOOL DataBaseImpl::initDataBase(const std::string& ip, const std::string& dataBaseName)
 {
     try {
         dataBaseName_ = dataBaseName;
@@ -81,12 +82,12 @@ BOOL DataBaseImpl::initDataBase(const std::string& ip, const std::string& dataBa
         return TRUE;
     }
     catch (_com_error e) {
-        errMsg = e.Description();
+        throw e.Description();
         return FALSE;
     }
 }
 
-BOOL DataBaseImpl::operSql(const DBTYPE dbType, const std::string& sqlRequest, std::string& errMsg)
+BOOL DataBaseImpl::operSql(const DBTYPE dbType, const std::string& sqlRequest)
 {
     try {
         if (!judgeCommand(dbType, sqlRequest)) {
@@ -95,13 +96,13 @@ BOOL DataBaseImpl::operSql(const DBTYPE dbType, const std::string& sqlRequest, s
         pRecordset = pMyConnect->Execute(sqlRequest.c_str(), NULL, adCmdText);
     }
     catch (_com_error e) {
-        errMsg = e.Description();
+        throw e.Description();
         return FALSE;
     }
     return TRUE;
 }
 
-void DataBaseImpl::selectSql(const std::string& sqlRequest, DataBaseRecord& result, std::string& errMsg)
+void DataBaseImpl::selectSql(const std::string& sqlRequest, DataBaseRecord& result)
 {
     try {
         pRecordset = pMyConnect->Execute(sqlRequest.c_str(), NULL, adCmdText);
@@ -110,14 +111,19 @@ void DataBaseImpl::selectSql(const std::string& sqlRequest, DataBaseRecord& resu
             std::vector<std::string> fieldRecord;
             for (long j = 0; j < fieldCount; ++j) {
                 _variant_t tmp = pRecordset->GetFields()->GetItem((long)j)->GetValue();
+                if (tmp.vt == VT_NULL) {
+                    continue;
+                }
                 fieldRecord.emplace_back((std::string)(_bstr_t)&tmp);
             }
-            result.emplace_back(fieldRecord);
+            if (fieldRecord.size() != 0) {
+                result.emplace_back(fieldRecord);
+            }
             pRecordset->MoveNext();
         }
     }
     catch (_com_error e) {
-        errMsg = e.Description();
+        throw e.Description();
         return;
     }
 }
