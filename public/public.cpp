@@ -6,82 +6,74 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
 {
     try {
         switch (type) {
-            case CommunicationType::REGISTER:
-            {
+            case CommunicationType::REGISTER: {
                 UnregisterSingleSpace(&field.Param.register_.customer);
                 UnregisterSingleSpace(&field.Param.register_.password);
             }
             break;
 
-            case CommunicationType::REGISTERBACKSUCCEED:
-            {
+            case CommunicationType::REGISTERBACKSUCCEED: {
                 UnregisterSingleSpace(&field.Param.registerBack_.register_result);
             }
             break;
 
-            case CommunicationType::REGISTERBACKFAILED:
-            {
+            case CommunicationType::REGISTERBACKFAILED: {
                 UnregisterSingleSpace(&field.Param.registerBack_.register_result);
                 UnregisterSingleSpace(&field.Param.registerBack_.description);
             }
             break;
 
-            case CommunicationType::LOGIN:
-            {
+            case CommunicationType::LOGIN: {
                 UnregisterSingleSpace(&field.Param.login_.password);
             }
             break;
 
-            case CommunicationType::LOGINBACKSUCCEED:
-            {
+            case CommunicationType::LOGINBACKSUCCEED: {
                 UnregisterSingleSpace(&field.Param.loginBack_.customer);
                 UnregisterSingleSpace(&field.Param.loginBack_.login_result);
             }
             break;
 
-            case CommunicationType::LOGINBACKFAILED:
-            {
+            case CommunicationType::LOGINBACKFAILED: {
                 UnregisterSingleSpace(&field.Param.loginBack_.customer);
                 UnregisterSingleSpace(&field.Param.loginBack_.login_result);
                 UnregisterSingleSpace(&field.Param.loginBack_.description);
             }
             break;
 
-            case CommunicationType::LOGINBOARDCAST:
-            {
+            case CommunicationType::LOGINBOARDCAST: {
                 UnregisterSingleSpace(&field.Param.loginBoardcast_.customer);
             }
             break;
 
-            case CommunicationType::DELETECUSTOMER:
-            {
+            case CommunicationType::DELETECUSTOMER: {
                 UnregisterSingleSpace(&field.Param.delCustomer_.customer);
             }
             break;
 
-            case CommunicationType::CHAT:
-            {
+            case CommunicationType::CHAT: {
                 UnregisterSingleSpace(&field.Param.chat_.source);
                 UnregisterSingleSpace(&field.Param.chat_.target);
                 UnregisterSingleSpace(&field.Param.chat_.content);
             }
             break;
 
-            case CommunicationType::TRANSFERFILEREQUEST:
-            {
+            case CommunicationType::TRANSFERFILEREQUEST: {
                 UnregisterSingleSpace(&field.Param.transferFileRequest_.source);
                 UnregisterSingleSpace(&field.Param.transferFileRequest_.target);
                 UnregisterSingleSpace(&field.Param.transferFileRequest_.file_name);
             }
             break;
 
-            case CommunicationType::TRANSFERFILERESPOND:
-            {
+            case CommunicationType::TRANSFERFILERESPOND: {
+                UnregisterSingleSpace(&field.Param.transferFileRespond_.source);
+                UnregisterSingleSpace(&field.Param.transferFileRespond_.target);
+                UnregisterSingleSpace(&field.Param.transferFileRespond_.file_name);
+                UnregisterSingleSpace(&field.Param.transferFileRespond_.transfer_result);
             }
             break;
 
-            case CommunicationType::TRANSFERFILE:
-            {
+            case CommunicationType::TRANSFERFILE: {
                 UnregisterSingleSpace(&field.Param.transferFile_.source);
                 UnregisterSingleSpace(&field.Param.transferFile_.target);
                 UnregisterSingleSpace(&field.Param.transferFile_.file_name);
@@ -102,24 +94,21 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
     std::string str_json("");
     try {
         switch (type) {
-            case CommunicationType::REGISTER:
-            {
+            case CommunicationType::REGISTER: {
                 js_value["communication_type"] = "register";
                 js_value["customer"] = s_param.Param.register_.customer;
                 js_value["password"] = s_param.Param.register_.password;
             }
             break;
 
-            case CommunicationType::REGISTERBACKSUCCEED:
-            {
+            case CommunicationType::REGISTERBACKSUCCEED: {
                 js_value["communication_type"] = "registerbacksucceed";
                 js_value["id"] = std::to_string(s_param.Param.registerBack_.id).c_str();
                 js_value["register_result"] = s_param.Param.registerBack_.register_result;
             }
             break;
 
-            case CommunicationType::REGISTERBACKFAILED:
-            {
+            case CommunicationType::REGISTERBACKFAILED: {
                 js_value["communication_type"] = "registerbackfailed";
                 js_value["id"] = std::to_string(s_param.Param.registerBack_.id).c_str();
                 js_value["register_result"] = s_param.Param.registerBack_.register_result;
@@ -127,24 +116,21 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
             }
             break;
 
-            case CommunicationType::LOGIN:
-            {
+            case CommunicationType::LOGIN: {
                 js_value["communication_type"] = "login";
                 js_value["id"] = std::to_string(s_param.Param.login_.id).c_str();
                 js_value["password"] = s_param.Param.login_.password;
             }
             break;
 
-            case CommunicationType::LOGINBACKSUCCEED:
-            {
+            case CommunicationType::LOGINBACKSUCCEED: {
                 js_value["communication_type"] = "loginbacksucceed";
                 js_value["customer"] = s_param.Param.loginBack_.customer;
                 js_value["login_result"] = s_param.Param.loginBack_.login_result;
             }
             break;
 
-            case CommunicationType::LOGINBACKFAILED:
-            {
+            case CommunicationType::LOGINBACKFAILED: {
                 js_value["communication_type"] = "loginbackfailed";
                 js_value["customer"] = "";
                 js_value["login_result"] = s_param.Param.loginBack_.login_result;
@@ -152,22 +138,20 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
             }
             break;
 
-            case CommunicationType::LOGINBOARDCAST:
-            {
+            case CommunicationType::LOGINBOARDCAST: {
                 js_value["communication_type"] = "loginboardcast";
                 js_value["customer"] = s_param.Param.loginBoardcast_.customer;
+                js_value["first_login"] = std::to_string(s_param.Param.loginBoardcast_.flag).c_str();
             }
             break;
 
-            case CommunicationType::DELETECUSTOMER:
-            {
+            case CommunicationType::DELETECUSTOMER: {
                 js_value["communication_type"] = "deletecustomer";
                 js_value["customer"] = s_param.Param.delCustomer_.customer;
             }
             break;
 
-            case CommunicationType::CHAT:
-            {
+            case CommunicationType::CHAT: {
                 js_value["communication_type"] = "chat";
                 js_value["content"] = s_param.Param.chat_.content;
                 js_value["target"] = s_param.Param.chat_.target;
@@ -175,8 +159,7 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
             }
             break;
 
-            case CommunicationType::TRANSFERFILEREQUEST:
-            {
+            case CommunicationType::TRANSFERFILEREQUEST: {
                 js_value["communication_type"] = "transferfilerequest";
                 js_value["file_name"] = s_param.Param.transferFileRequest_.file_name;
                 js_value["file_length"] = std::to_string(s_param.Param.transferFile_.file_length).c_str();
@@ -185,8 +168,7 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
             }
             break;
 
-            case CommunicationType::TRANSFERFILERESPOND:
-            {
+            case CommunicationType::TRANSFERFILERESPOND: {
                 js_value["communication_type"] = "transferfilerespond";
                 js_value["file_name"] = s_param.Param.transferFileRespond_.file_name;
                 js_value["target"] = s_param.Param.transferFileRespond_.target;
@@ -195,8 +177,7 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
             }
             break;
 
-            case CommunicationType::TRANSFERFILE:
-            {
+            case CommunicationType::TRANSFERFILE: {
                 js_value["communication_type"] = "transferfile";
                 js_value["file_name"] = s_param.Param.transferFile_.file_name;
                 js_value["file_length"] = std::to_string(s_param.Param.transferFile_.file_length).c_str();
@@ -239,7 +220,7 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
 
         } else if (js_value["communication_type"].asString() == "registerbacksucceed") { // register_succeed
             std::string id = js_value["id"].asString(), register_result = js_value["register_result"].asString();
-            s_return.Param.registerBack_.id = atoll(id.c_str());
+            s_return.Param.registerBack_.id = static_cast<unsigned long long>(atoll(id.c_str()));
             RegisterSpace(&s_return.Param.registerBack_.register_result, register_result);
             s_return.type_ = CommunicationType::REGISTERBACKSUCCEED;
 
@@ -253,7 +234,7 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
 
         } else if (js_value["communication_type"].asString() == "login") { // login
             std::string id = js_value["id"].asString(), password = js_value["password"].asString();
-            s_return.Param.login_.id = atoll(id.c_str());
+            s_return.Param.login_.id = static_cast<unsigned long long>(atoll(id.c_str()));
             RegisterSpace(&s_return.Param.login_.password, password);
             s_return.type_ = CommunicationType::LOGIN;
 
@@ -274,6 +255,7 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
         } else if (js_value["communication_type"].asString() == "loginboardcast") { // show_login
             std::string customer = js_value["customer"].asString();
             RegisterSpace(&s_return.Param.loginBoardcast_.customer, customer);
+            s_return.Param.loginBoardcast_.flag = js_value["first_login"].asBool();
             s_return.type_ = CommunicationType::LOGINBOARDCAST;
 
         } else if (js_value["communication_type"].asString() == "delcustomer") { // delete_customer
@@ -292,6 +274,10 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
         } else if (js_value["communication_type"].asString() == "transferfilerequest") { // transfer_filequest
             std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
                 target = js_value["target"].asString(), file_length = js_value["file_length"].asString();
+            RegisterSpace(&s_return.Param.transferFileRequest_.source, source);
+            RegisterSpace(&s_return.Param.transferFileRequest_.target, target);
+            RegisterSpace(&s_return.Param.transferFileRequest_.file_name, file_name);
+            s_return.Param.transferFileRequest_.file_length = static_cast<unsigned long long>(atoll(file_length.c_str()));
             s_return.type_ = CommunicationType::TRANSFERFILEREQUEST;
 
         } else if (js_value["communication_type"].asString() == "transferfilerespond") { // transfer_filerespond
@@ -307,6 +293,13 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
             std::string file_name = js_value["file_name"].asString(), source = js_value["source"].asString(),
                 target = js_value["target"].asString(), file_content = js_value["file_content"].asString(),
                 file_length = js_value["file_length"].asString();
+            s_return.Param.transferFile_.file_block = js_value["file_block"].asUInt();
+            s_return.Param.transferFile_.current_block = js_value["current_block"].asUInt();
+            RegisterSpace(&s_return.Param.transferFile_.source, source);
+            RegisterSpace(&s_return.Param.transferFile_.target, target);
+            RegisterSpace(&s_return.Param.transferFile_.file_name, file_name);
+            RegisterSpace(&s_return.Param.transferFile_.file_content, file_content);
+            s_return.Param.transferFile_.file_length = static_cast<unsigned long long>(atoll(file_length.c_str()));
             s_return.type_ = CommunicationType::TRANSFERFILE;
 
         } else { // other

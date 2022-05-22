@@ -37,6 +37,7 @@
 #define IDC_CODE2                       1018
 #define IDC_CODE_VERIFY                 1018
 #define IDC_AGREE                       1018
+#define IDC_YES                         1018
 #define IDC_REFUSE                      1019
 #define IDC_TIME                        1020
 #define IDC_FILENAME                    1021
@@ -46,6 +47,7 @@
 #define IDC_EDIT1                       1022
 #define IDC_LOGIN_TIME_OUT              1022
 #define IDC_NICK_NAME                   1022
+#define IDC_SAVEAS                      1022
 #define IDC_REQUESTFILENAME             1023
 #define IDC_STATIC_NICK_NAME            1023
 #define IDC_STATIC_PASSWORD             1024
@@ -59,6 +61,9 @@
 #define IDC_STATICID                    1030
 #define IDC_STATUS                      1031
 #define IDC_STATICSTATUS                1032
+#define IDC_STATICCHATINFO              1033
+#define IDC_FILERECV                    1034
+#define IDC_STATICFILEINFO              1035
 
 // Next default values for new objects
 // 
@@ -66,7 +71,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        148
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1033
+#define _APS_NEXT_CONTROL_VALUE         1036
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

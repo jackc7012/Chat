@@ -145,6 +145,7 @@ struct s_HandleRecv {
         };
         // 用户登录/退出广播
         struct LoginBoardcastType {
+            bool flag;
             char* customer;
         };
         // 用户退出
@@ -168,8 +169,8 @@ struct s_HandleRecv {
         struct TransferFileRespondType {
             char* source;
             char* target;
-            char* transfer_result;
             char* file_name;
+            char* transfer_result;
         };
         // 传送文件
         struct TransferFileType {

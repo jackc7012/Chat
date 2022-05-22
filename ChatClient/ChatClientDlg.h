@@ -53,7 +53,7 @@ class CChatClientDlg : public CDialogEx {
     CComboBox statusCombo;
     bool is_service_open{ false };
 
-    void threadTransFile(CFile fileToTrans, const std::string& target);
+    void threadTransFile(const std::string& filePath, const std::string& target, const bool flag);
     bool can_transfer_file{ false };
     std::mutex mt_read_file;
     

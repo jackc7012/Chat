@@ -27,10 +27,10 @@ void CMessage::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CMessage, CDialogEx)
     ON_WM_TIMER()
-    ON_BN_CLICKED(IDC_AGREE, &CMessage::OnBnClickedAgree)
+    ON_BN_CLICKED(IDC_YES, &CMessage::OnBnClickedYes)
     ON_BN_CLICKED(IDC_REFUSE, &CMessage::OnBnClickedRefuse)
+    ON_BN_CLICKED(IDC_SAVEAS, &CMessage::OnBnClickedSaveas)
 END_MESSAGE_MAP()
-
 
 // CMessage 消息处理程序
 
@@ -42,8 +42,9 @@ BOOL CMessage::OnInitDialog()
     CFont font;
     font.CreatePointFont(150, _T("宋体"), NULL);
     GetDlgItem(IDC_MESSAGE)->SetFont(&font);
-    GetDlgItem(IDC_AGREE)->SetFont(&font);
+    GetDlgItem(IDC_YES)->SetFont(&font);
     GetDlgItem(IDC_REFUSE)->SetFont(&font);
+    GetDlgItem(IDC_SAVEAS)->SetFont(&font);
     GetDlgItem(IDC_TIME)->SetFont(&font);
 
     SetDlgItemInt(IDC_TIME, 30);
@@ -72,12 +73,23 @@ void CMessage::OnTimer(UINT_PTR nIDEvent)
     CDialogEx::OnTimer(nIDEvent);
 }
 
-void CMessage::OnBnClickedAgree()
+void CMessage::OnBnClickedYes()
 {
-    EndDialog(1);
+    EndDialog(0);
 }
 
 void CMessage::OnBnClickedRefuse()
 {
     EndDialog(-1);
+}
+
+void CMessage::OnBnClickedSaveas()
+{
+    TCHAR szFilter[] = _T("所有文件(*.*)|*.*||");
+    CFileDialog fileDlg(FALSE, fileName.substr(fileName.find('.')).c_str(), fileName.c_str(),
+        OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFilter, this);
+    if (IDOK == fileDlg.DoModal()) {
+        filePath = fileDlg.GetPathName();
+    }
+    EndDialog(0);
 }

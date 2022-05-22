@@ -106,6 +106,8 @@ BOOL CChatClientDlg::OnInitDialog()
     // 组框
     GetDlgItem(IDC_STATICINFO)->SetFont(&font);
     GetDlgItem(IDC_STATICLOGIN)->SetFont(&font);
+    GetDlgItem(IDC_STATICCHATINFO)->SetFont(&font);
+    GetDlgItem(IDC_STATICFILEINFO)->SetFont(&font);
     // 用户信息
     GetDlgItem(IDC_STATICNAME)->SetFont(&font);
     GetDlgItem(IDC_NAME)->SetFont(&font);
@@ -118,6 +120,7 @@ BOOL CChatClientDlg::OnInitDialog()
     GetDlgItem(IDC_SEND)->SetFont(&font);
     GetDlgItem(IDC_FILENAME)->SetFont(&font);
     GetDlgItem(IDC_TRANSFERFILE)->SetFont(&font);
+    GetDlgItem(IDC_FILERECV)->SetFont(&font);
 
     statusCombo.SetCurSel(0);
 
@@ -235,7 +238,9 @@ void CChatClientDlg::OnBnClickedTransferfile()
             logClient << "trans file send : " << jsSend;
             logClient.PrintlogDebug(FILE_FORMAT);
             ::send(socketClient, jsSend.c_str(), jsSend.length(), 0);
-            std::thread t(&CChatClientDlg::threadTransFile, this, fileToTrans, strSendTarget.GetBuffer());
+            fileToTrans.Close();
+            std::thread threadToSe(&CChatClientDlg::threadTransFile, this, strFilePath.GetBuffer(), strSendTarget.GetBuffer(), true);
+            threadToSe.join();
         }
     }
 }
@@ -262,17 +267,11 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
             DecodeJson(strRecv, handleRecv);
             switch (handleRecv.type_) {
                 case CommunicationType::LOGINBOARDCAST: {
-                    int index = loginPeopleList.FindString(-1, handleRecv.Param.loginBoardcast_.customer);
-                    auto itor = userToChat.find(handleRecv.Param.loginBoardcast_.customer);
-                    if (index < 0) {
-                        loginPeopleList.AddString(handleRecv.Param.loginBoardcast_.customer);
-                    } else {
-                        loginPeopleList.DeleteString(index);
-                    }
-                    if (itor == userToChat.end()) {
-                        userToChat.insert(std::make_pair(handleRecv.Param.loginBoardcast_.customer, ""));
-                    } else {
-                        userToChat.erase(handleRecv.Param.loginBoardcast_.customer);
+                    std::vector<std::string> customers;
+                    SplitString(handleRecv.Param.loginBoardcast_.customer, '|', customers);
+                    for (const auto& itor : customers) {
+                        loginPeopleList.AddString(itor.c_str());
+                        userToChat.insert(std::make_pair(itor, ""));
                     }
                     break;
                 }
@@ -305,43 +304,35 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                 }
 
                 case CommunicationType::TRANSFERFILEREQUEST: {
-                    /*s_HandleRecv toSend;
+                    s_HandleRecv toSend;
                     std::string targetName = std::string(handleRecv.Param.transferFileRequest_.target);
                     if (nickName.compare(targetName.substr(0, targetName.find_first_of('-'))) != 0) {
                         break;
                     }
-                    CMessage m_dlg;
+                    CMessage confirmDlg;
                     std::ostringstream ss;
                     ss << handleRecv.Param.transferFileRequest_.source << "向你发送"
                         << handleRecv.Param.transferFileRequest_.file_name << "文件，大小为"
-                        << handleRecv.Param.transferFileRequest_.file_length << "字节，\r\n是否接受？";
-                    m_dlg.message = ss.str();
-                    int ret = m_dlg.DoModal();
+                        << handleRecv.Param.transferFileRequest_.file_length << "字节，\r\n是否现在保存？";
                     RegisterSpace(&toSend.Param.transferFileRespond_.source, handleRecv.Param.transferFileRequest_.source);
                     RegisterSpace(&toSend.Param.transferFileRespond_.target, handleRecv.Param.transferFileRequest_.target);
                     RegisterSpace(&toSend.Param.transferFileRespond_.file_name, handleRecv.Param.transferFileRequest_.file_name);
-                    if (ret == 1) {
+                    std::ostringstream filePath("../");
+                    filePath << nickName << "/recv/" << handleRecv.Param.transferFileRequest_.source;
+                    confirmDlg.message = ss.str();
+                    confirmDlg.filePath = filePath.str();
+                    confirmDlg.fileName = handleRecv.Param.transferFileRequest_.file_name;
+                    int ret = confirmDlg.DoModal();
+                    if ((ret == 0) || (ret == 1)) {
                         RegisterSpace(&toSend.Param.transferFileRespond_.transfer_result, "agree");
-                        can_transfer_file = true;
-                        std::string filename(handle_recv.Param.TransferFileRequest.fileName);
-                        std::string filetitle = filename.substr(0, filename.find('.'));
-                        std::string filesuffix = filename.substr(filename.find('.') + 1);
-                        TCHAR szFilter[] = _T("所有文件(*.*)|*.*||");
-                        CFileDialog fileDlg(FALSE, filesuffix.c_str(), filename.c_str(), OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, szFilter, this);
-                        CString strFilePath;
-                        if (IDOK == fileDlg.DoModal()) {
-                            strFilePath = fileDlg.GetPathName();
-                            SetDlgItemText(IDC_REQUESTFILENAME, strFilePath);
-                        }
-                        std::thread c_thread_TransferAccept(&CChatClientDlg::thread_TransferFileAccept, this, m_hWnd, strFilePath.GetBuffer(0), handle_recv);
-                        c_thread_TransferAccept.detach();
-                        strFilePath.ReleaseBuffer();
-                    } else {
+                        std::thread threadToAcc(&CChatClientDlg::threadTransFile, this, confirmDlg.filePath, "", false);
+                        threadToAcc.join();
+                    } else if (ret == -1) {
                         RegisterSpace(&toSend.Param.transferFileRespond_.transfer_result, "refuse");
-                        can_transfer_file = false;
                     }
-                    std::string js_str_send = EncodeJson(TRANSFERFILERESPOND, to_send);
-                    int c = ::send(socket_client, js_str_send.c_str(), js_str_send.length(), 0);*/
+                    std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILERESPOND, toSend);
+                    UnregisterSpace(CommunicationType::TRANSFERFILERESPOND, toSend);
+                    ::send(socketClient, jsSend.c_str(), jsSend.length(), 0);
                 }
                 break;
 
@@ -362,29 +353,36 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-void CChatClientDlg::threadTransFile(CFile fileToTrans, const std::string& target)
+// flag : true 传送文件 false 接受文件
+void CChatClientDlg::threadTransFile(const std::string& filePath, const std::string& target, const bool flag)
 {
     s_HandleRecv toSend;
-    unsigned long long len = fileToTrans.GetLength();
-    unsigned int now_block = 1;
-    char* strSend = new char[DATA_LENGTH];
-    RegisterSpace(&toSend.Param.transferFile_.source, nickName);
-    RegisterSpace(&toSend.Param.transferFile_.target, target);
-    RegisterSpace(&toSend.Param.transferFile_.file_name, fileToTrans.GetFileName().GetBuffer());
-    toSend.Param.transferFile_.file_length = fileToTrans.GetLength();
-    toSend.Param.transferFile_.file_block = static_cast<unsigned int>(ceil(static_cast<double>(len / DATA_LENGTH)));
-    while (now_block <= toSend.Param.transferFile_.file_block) {
-        memset(strSend, 0, DATA_LENGTH);
-        fileToTrans.Read(strSend, DATA_LENGTH);
-        RegisterSpace(&toSend.Param.transferFile_.file_content, strSend);
-        toSend.Param.transferFile_.current_block = now_block++;
-        std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILE, toSend);
-        ::send(socketClient, jsSend.c_str(), jsSend.length(), 0);
-        fileToTrans.Seek(DATA_LENGTH * toSend.Param.transferFile_.current_block, CFile::begin);
-        Sleep(1);
+    CFile fileToTrans;
+    if (flag) {
+        fileToTrans.Open(filePath.c_str(), CFile::modeRead | CFile::typeBinary);
+        unsigned long long len = fileToTrans.GetLength();
+        unsigned int now_block = 1;
+        char* strSend = new char[DATA_LENGTH];
+        RegisterSpace(&toSend.Param.transferFile_.source, nickName);
+        RegisterSpace(&toSend.Param.transferFile_.target, target);
+        RegisterSpace(&toSend.Param.transferFile_.file_name, fileToTrans.GetFileName().GetBuffer());
+        toSend.Param.transferFile_.file_length = len;
+        toSend.Param.transferFile_.file_block = static_cast<unsigned int>(ceil(static_cast<double>(len / DATA_LENGTH)));
+        while (now_block <= toSend.Param.transferFile_.file_block) {
+            memset(strSend, 0, DATA_LENGTH);
+            fileToTrans.Read(strSend, DATA_LENGTH);
+            RegisterSpace(&toSend.Param.transferFile_.file_content, strSend);
+            toSend.Param.transferFile_.current_block = now_block++;
+            std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILE, toSend);
+            ::send(socketClient, jsSend.c_str(), jsSend.length(), 0);
+            fileToTrans.Seek(static_cast<long long>(DATA_LENGTH) * toSend.Param.transferFile_.current_block, CFile::begin);
+            Sleep(1);
+        }
+        UnregisterSpace(CommunicationType::TRANSFERFILE, toSend);
+        delete[]strSend;
+    } else {
+        fileToTrans.Open(filePath.c_str(), CFile::modeWrite | CFile::modeCreate | CFile::typeBinary);
     }
-    UnregisterSpace(CommunicationType::TRANSFERFILE, toSend);
-    delete[]strSend;
     fileToTrans.Close();
 }
 

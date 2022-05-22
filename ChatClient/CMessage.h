@@ -20,11 +20,12 @@ class CMessage : public CDialogEx {
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
     virtual BOOL OnInitDialog();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
-    afx_msg void OnBnClickedAgree();
+    afx_msg void OnBnClickedYes();
     afx_msg void OnBnClickedRefuse();
-
+    afx_msg void OnBnClickedSaveas();
     DECLARE_MESSAGE_MAP()
   public:
     std::string message;
-    
+    std::string filePath;
+    std::string fileName;
 };
