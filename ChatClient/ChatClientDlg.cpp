@@ -9,7 +9,6 @@
 
 #include <sstream>
 #include <math.h>
-#include "public.h"
 #include "CLog.h"
 using namespace cwy;
 
@@ -70,6 +69,7 @@ BEGIN_MESSAGE_MAP(CChatClientDlg, CDialogEx)
     ON_LBN_SELCHANGE(IDC_LOGIN_PEOPLE, &CChatClientDlg::OnSelchangeLoginPeople)
     ON_MESSAGE(WM_SOCKET_CLIENT, OnSocket)
     ON_CBN_SELCHANGE(IDC_STATUS, &CChatClientDlg::OnSelchangeStatus)
+    ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 // CChatClientDlg 消息处理程序
@@ -130,6 +130,8 @@ BOOL CChatClientDlg::OnInitDialog()
         MessageBox(_T("创建异步TCP服务失败，请重试"), _T("错误"), MB_ICONERROR);
     }
     logClient.InitLog(nickName);
+
+    threadToFile = std::thread(&CChatClientDlg::threadTransFile, this);
 
     return TRUE;
 }
@@ -234,13 +236,15 @@ void CChatClientDlg::OnBnClickedTransferfile()
             RegisterSpace(&toSend.Param.transferFileRequest_.file_name, strFileName.GetBuffer());
             toSend.Param.transferFileRequest_.file_length = fileToTrans.GetLength();
             std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILEREQUEST, toSend);
-            UnregisterSpace(CommunicationType::TRANSFERFILEREQUEST, toSend);
             logClient << "trans file send : " << jsSend;
             logClient.PrintlogDebug(FILE_FORMAT);
             ::send(socketClient, jsSend.c_str(), jsSend.length(), 0);
             fileToTrans.Close();
-            std::thread threadToSe(&CChatClientDlg::threadTransFile, this, strFilePath.GetBuffer(), strSendTarget.GetBuffer(), true);
-            threadToSe.join();
+            readFileMt.lock();
+            fileQue.push(std::make_pair(true, File(toSend.Param.transferFileRequest_.source,
+                toSend.Param.transferFileRequest_.target, toSend.Param.transferFileRequest_.file_name)));
+            readFileMt.unlock();
+            UnregisterSpace(CommunicationType::TRANSFERFILEREQUEST, toSend);
         }
     }
 }
@@ -325,8 +329,10 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                     int ret = confirmDlg.DoModal();
                     if ((ret == 0) || (ret == 1)) {
                         RegisterSpace(&toSend.Param.transferFileRespond_.transfer_result, "agree");
-                        std::thread threadToAcc(&CChatClientDlg::threadTransFile, this, confirmDlg.filePath, "", false);
-                        threadToAcc.join();
+                        readFileMt.lock();
+                        fileQue.push(std::make_pair(false, File(toSend.Param.transferFileRespond_.source, toSend.Param.transferFileRespond_.target,
+                            confirmDlg.filePath)));
+                        readFileMt.unlock();
                     } else if (ret == -1) {
                         RegisterSpace(&toSend.Param.transferFileRespond_.transfer_result, "refuse");
                     }
@@ -336,7 +342,7 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                 }
                 break;
 
-                case CommunicationType::TRANSFERFILERESPOND: {
+                case CommunicationType::TRANSFERFILE: {
 
 
                     break;
@@ -353,11 +359,16 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-// flag : true 传送文件 false 接受文件
-void CChatClientDlg::threadTransFile(const std::string& filePath, const std::string& target, const bool flag)
+void CChatClientDlg::threadTransFile()
 {
-    s_HandleRecv toSend;
+    /*s_HandleRecv toSend;
     CFile fileToTrans;
+    readFileMt.lock();
+    if (!fileQue.empty()) {
+        std::pair<bool, cwy::File> &itor = fileQue.front();
+
+    }
+    readFileMt.unlock();
     if (flag) {
         fileToTrans.Open(filePath.c_str(), CFile::modeRead | CFile::typeBinary);
         unsigned long long len = fileToTrans.GetLength();
@@ -366,7 +377,6 @@ void CChatClientDlg::threadTransFile(const std::string& filePath, const std::str
         RegisterSpace(&toSend.Param.transferFile_.source, nickName);
         RegisterSpace(&toSend.Param.transferFile_.target, target);
         RegisterSpace(&toSend.Param.transferFile_.file_name, fileToTrans.GetFileName().GetBuffer());
-        toSend.Param.transferFile_.file_length = len;
         toSend.Param.transferFile_.file_block = static_cast<unsigned int>(ceil(static_cast<double>(len / DATA_LENGTH)));
         while (now_block <= toSend.Param.transferFile_.file_block) {
             memset(strSend, 0, DATA_LENGTH);
@@ -383,7 +393,7 @@ void CChatClientDlg::threadTransFile(const std::string& filePath, const std::str
     } else {
         fileToTrans.Open(filePath.c_str(), CFile::modeWrite | CFile::modeCreate | CFile::typeBinary);
     }
-    fileToTrans.Close();
+    fileToTrans.Close();*/
 }
 
 void CChatClientDlg::OnSelchangeLoginPeople()
@@ -427,5 +437,12 @@ void CChatClientDlg::OnSelchangeStatus()
 
             break;
         }
+    }
+}
+
+void CChatClientDlg::OnDestroy()
+{
+    if (threadToFile.joinable()) {
+        threadToFile.join();
     }
 }

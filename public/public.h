@@ -2,9 +2,7 @@
 #define __PUBLIC_H__
 
 #include <WinSock2.h>
-#include <unordered_map>
-
-#include "../json/json.h"
+#include "CJson.h"
 
 namespace cwy {
 const unsigned int DATA_LENGTH = 1024 * 10;
@@ -16,6 +14,21 @@ static std::unordered_map<std::string, IpAndSocket> nameToIpSock;
 
 using StringMap = std::unordered_map<unsigned int, std::string>;
 using IntMap = std::unordered_map<unsigned int, long long>;
+
+struct File {
+    File(const std::string& source_, const std::string& target_, const std::string& fileName_, const std::string fileContent_ = "",
+        const unsigned int fileBlock_ = 0, const unsigned int currentBlock_ = 0)
+        : source(source_), target(target_), fileName(fileName_), fileContent(fileContent_),
+          fileBlock(fileBlock_), currentBlock(currentBlock_)
+    {
+    }
+    std::string source;
+    std::string target;
+    std::string fileName;
+    std::string fileContent;
+    unsigned int fileBlock;
+    unsigned int currentBlock;
+};
 
 enum class CommunicationType {
     NULLCOMMUNICATION = 0,
@@ -178,7 +191,6 @@ struct s_HandleRecv {
             char* target;
             char* file_name;
             char* file_content;
-            unsigned long long file_length;
             unsigned int file_block;
             unsigned int current_block;
         };

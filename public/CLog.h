@@ -11,7 +11,7 @@
 #ifdef _DEBUG
 #define DEFAULT_LEVEL     LogLevel::DEBUG_LEVEL
 #else
-#define DEFAULT_LEVEL     logLevel::INFO_LEVEL
+#define DEFAULT_LEVEL     LogLevel::INFO_LEVEL
 #endif
 
 #define FILE_FORMAT                __FILE__, __LINE__

@@ -7,7 +7,9 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+#include <queue>
 #include "CMessage.h"
+#include "public.h"
 
 #define WM_SOCKET_CLIENT                 (WM_USER + 2001)
 #define WM_TRANSFERFILEACCEPT     (WM_USER + 1001)
@@ -53,15 +55,16 @@ class CChatClientDlg : public CDialogEx {
     CComboBox statusCombo;
     bool is_service_open{ false };
 
-    void threadTransFile(const std::string& filePath, const std::string& target, const bool flag);
+    std::thread threadToFile;
+    void threadTransFile();
     bool can_transfer_file{ false };
-    std::mutex mt_read_file;
-    
-    
+    std::mutex readFileMt;
+    std::queue<std::pair<bool, cwy::File>> fileQue;
     
     
 public:
     
     
     
+    afx_msg void OnDestroy();
 };

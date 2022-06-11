@@ -264,7 +264,7 @@ LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
         }
 
         case FD_CLOSE: {
-            int c = 3;
+
         }
 
         default:
@@ -307,10 +307,9 @@ LRESULT CChatServiceDlg::HandleControlUpdate(WPARAM wParam, LPARAM lParam)
     // ½çÃæ²Ù×÷
     switch (clientInfoTcp->GetType()) {
         case CommunicationType::LOGINBACKSUCCEED: {
-            Json::Value js_value;
-            Json::Reader js_reader;
-            if (js_reader.parse(clientInfoTcp->GetContent(), js_value)) {
-                std::string userName = js_value["customer"].asString();
+            CJson json(clientInfoTcp->GetContent());
+            std::string userName = json.get("customer");
+            if (!userName.empty()) {
                 listLoginPeople.AddString(userName.c_str());
             }
             break;
