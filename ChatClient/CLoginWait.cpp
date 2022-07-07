@@ -14,7 +14,7 @@ using namespace cwy;
 IMPLEMENT_DYNAMIC(CLoginWait, CDialogEx)
 
 CLoginWait::CLoginWait(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_LOGIN_WAIT, pParent)
+    : CDialogEx(IDD_LOGIN_WAIT, pParent)
 {
 
 }
@@ -25,7 +25,7 @@ CLoginWait::~CLoginWait()
 
 void CLoginWait::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
 }
 
 

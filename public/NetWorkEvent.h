@@ -6,8 +6,7 @@
 #include "CDataBase.h"
 
 namespace cwy {
-class NetWorkEvent
-{
+class NetWorkEvent {
 public:
     ~NetWorkEvent();
 

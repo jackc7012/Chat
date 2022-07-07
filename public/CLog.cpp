@@ -5,9 +5,9 @@
 namespace cwy {
 CLog::CLog(const std::string& path)
     : filePath(GetPath(path)),
-      logLevel(DEFAULT_LEVEL),
-      fileSize(50),
-      autoFlush(true)
+    logLevel(DEFAULT_LEVEL),
+    fileSize(50),
+    autoFlush(true)
 {
 }
 
@@ -104,13 +104,13 @@ void CLog::PrintlogFatal(const std::string& fileName, const int fileLine)
 
 std::string CLog::AssembleString(const std::string& fileName, const int fileLine, const std::string& type)
 {
-    char temp[DATA_LENGTH] = { 0 };
+    char temp[DATA_LENGTH] = {0};
     std::string temp_file_name(fileName);
     SYSTEMTIME st;
     GetLocalTime(&st);
     SplitFileName(temp_file_name);
-    sprintf_s(temp, 1024 * 10, "[%02d:%02d:%02d %03d]: [%5d][%10s][%5d]\t[%s]%s\r\n", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, 
-              GetCurrentThreadId(), temp_file_name.c_str(), fileLine, type.c_str(), strReturnOneLine.c_str());
+    sprintf_s(temp, 1024 * 10, "[%02d:%02d:%02d %03d]: [%5d][%10s][%5d]\t[%s]%s\n", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+        GetCurrentThreadId(), temp_file_name.c_str(), fileLine, type.c_str(), strReturnOneLine.c_str());
     strReturnOneLine = "";
     return temp;
 }
@@ -130,7 +130,7 @@ void CLog::WriteFile(const std::string& content)
     if (rt == 0 && logFile != nullptr) {
         fwrite(content.c_str(), content.length(), 1, logFile);
         fclose(logFile);
-    }  
+    }
 }
 
 std::string CLog::GetPath(const std::string& filePath)
@@ -149,7 +149,7 @@ std::string CLog::GetServicePath(std::string& filePath)
     std::string logPath = filePath.substr(filePath.find_last_of('/'));
     std::string logPathForward = filePath.substr(0, filePath.find_last_of('/'));
     logPathForward = AssembleFilePath(logPathForward);
-    return (logPathForward.substr(0, logPathForward.find_last_of(".")) + logPath);
+    return (logPathForward + logPath);
 }
 
 std::string CLog::GetClientPath(std::string& filePath)

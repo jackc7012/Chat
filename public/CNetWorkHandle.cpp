@@ -57,6 +57,9 @@ void CNetWorkHandle::ExitThread()
 void CNetWorkHandle::HandleNetworkEvent(const unsigned short threadNo)
 {
     std::unique_ptr<NetWorkEvent> networkEvent = std::make_unique<NetWorkEvent>();
+    if (networkEvent == nullptr) {
+        return;
+    }
     taskMt.lock();
     networkEvent->InitDataBase("127.0.0.1", "MyChat");
     taskMt.unlock();
@@ -82,7 +85,7 @@ void CNetWorkHandle::HandleNetworkEvent(const unsigned short threadNo)
             handleRecv.socket_accept_ = clientInfoTcp.GetSocket();
             if (!DecodeJson(clientInfoTcp.GetContent(), handleRecv)) {
                 clientSendInfo.SetInfo(CommunicationType::ERRORCOMMUNICATION, handleRecv.connect_ip_,
-                                       "", handleRecv.socket_accept_);
+                    "", handleRecv.socket_accept_);
                 PostMessage(hBackWnd, THREAD_CONTROL_UPDATE, (WPARAM)&clientSendInfo, 0);
             }
             SOCKET socket = networkEvent->NetWorkEventHandle(handleRecv, type, msg);

@@ -2,17 +2,18 @@
 
 // CRegisterDialog 对话框
 
-class CRegisterDialog : public CDialogEx
-{
+class CRegisterDialog : public CDialogEx {
     DECLARE_DYNAMIC(CRegisterDialog)
 
 public:
     CRegisterDialog(CWnd* pParent = nullptr);   // 标准构造函数
     virtual ~CRegisterDialog();
 
-// 对话框数据
+    // 对话框数据
 #ifdef AFX_DESIGN_TIME
-    enum { IDD = IDD_REGISTER_DIALOG };
+    enum {
+        IDD = IDD_REGISTER_DIALOG
+    };
 #endif
 
 protected:

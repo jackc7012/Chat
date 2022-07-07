@@ -167,7 +167,7 @@ SOCKET NetWorkEvent::NetWorkChatHandle(const s_HandleRecv& taskContent, s_Handle
         socket = itor->second.second;
     }
     catch (...) {
-        
+
     }
     return socket;
 }

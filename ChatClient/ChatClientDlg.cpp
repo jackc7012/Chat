@@ -19,26 +19,30 @@ using namespace cwy;
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx {
-  public:
+public:
     CAboutDlg();
 
-// 对话框数据
+    // 对话框数据
 #ifdef AFX_DESIGN_TIME
-    enum { IDD = IDD_ABOUTBOX };
+    enum {
+        IDD = IDD_ABOUTBOX
+    };
 #endif
 
-  protected:
+protected:
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 // 实现
-  protected:
+protected:
     DECLARE_MESSAGE_MAP()
 };
 
-CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX) {
+CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
+{
 }
 
-void CAboutDlg::DoDataExchange(CDataExchange* pDX) {
+void CAboutDlg::DoDataExchange(CDataExchange* pDX)
+{
     CDialogEx::DoDataExchange(pDX);
 }
 
@@ -270,7 +274,8 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
             s_HandleRecv handleRecv;
             DecodeJson(strRecv, handleRecv);
             switch (handleRecv.type_) {
-                case CommunicationType::LOGINBOARDCAST: {
+                case CommunicationType::LOGINBOARDCAST:
+                {
                     std::vector<std::string> customers;
                     SplitString(handleRecv.Param.loginBoardcast_.customer, '|', customers);
                     for (const auto& itor : customers) {
@@ -280,13 +285,14 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                     break;
                 }
 
-                case CommunicationType::CHAT: {
+                case CommunicationType::CHAT:
+                {
                     std::string source(handleRecv.Param.chat_.source);
                     auto itor = userToChat.find(source);
                     std::ostringstream ss;
                     if (itor != userToChat.end()) {
                         ss << source.substr(0, source.find_first_of('-')) << "  "
-                           << GetTime() << " recv\r\n" << handleRecv.Param.chat_.content << "\r\n\r\n";
+                            << GetTime() << " recv\r\n" << handleRecv.Param.chat_.content << "\r\n\r\n";
                         itor->second += ss.str();
                     }
                     int nowIndex = loginPeopleList.GetCurSel();
@@ -307,7 +313,8 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                     break;
                 }
 
-                case CommunicationType::TRANSFERFILEREQUEST: {
+                case CommunicationType::TRANSFERFILEREQUEST:
+                {
                     s_HandleRecv toSend;
                     std::string targetName = std::string(handleRecv.Param.transferFileRequest_.target);
                     if (nickName.compare(targetName.substr(0, targetName.find_first_of('-'))) != 0) {
@@ -342,7 +349,8 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                 }
                 break;
 
-                case CommunicationType::TRANSFERFILE: {
+                case CommunicationType::TRANSFERFILE:
+                {
 
 
                     break;
@@ -423,17 +431,20 @@ void CChatClientDlg::OnSelchangeStatus()
         return;
     }
     switch (index) {
-        case 0: {
-            
-            break;
-        }
-
-        case 1: {
+        case 0:
+        {
 
             break;
         }
 
-        case 2: {
+        case 1:
+        {
+
+            break;
+        }
+
+        case 2:
+        {
 
             break;
         }

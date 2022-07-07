@@ -11,21 +11,23 @@
 
 // CChatServiceDlg 对话框
 class CChatServiceDlg : public CDialogEx {
-// 构造
-  public:
+    // 构造
+public:
     CChatServiceDlg(CWnd* pParent = NULL);	// 标准构造函数
 
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
-    enum { IDD = IDD_CHATSERVICE_DIALOG };
+    enum {
+        IDD = IDD_CHATSERVICE_DIALOG
+    };
 #endif
 
-  protected:
+protected:
     virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 
 // 实现
-  protected:
+protected:
     HICON m_hIcon;
 
     // 生成的消息映射函数
@@ -41,12 +43,12 @@ class CChatServiceDlg : public CDialogEx {
     afx_msg LRESULT OnSocketUdp(WPARAM wParam, LPARAM lParam);
     afx_msg LRESULT HandleControlUpdate(WPARAM wParam, LPARAM lParam);
     DECLARE_MESSAGE_MAP()
-  private:
+private:
     bool StartTcp();
     bool StartUdp();
 
     CListBox listLoginPeople;
-    SOCKET socketServiceTcp{ 0 }, socketServiceUdp{ 0 };
+    SOCKET socketServiceTcp{0}, socketServiceUdp{0};
     std::unordered_map<SOCKET, std::string> socket2IpMap;
     std::unique_ptr<cwy::CNetWorkHandle> netWorkHandle{nullptr};
 };

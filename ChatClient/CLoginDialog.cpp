@@ -28,7 +28,7 @@ CLoginDialog::~CLoginDialog()
 
 void CLoginDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
 }
 
 

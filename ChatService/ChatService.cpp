@@ -20,7 +20,8 @@ END_MESSAGE_MAP()
 
 // CChatServiceApp 构造
 
-CChatServiceApp::CChatServiceApp() {
+CChatServiceApp::CChatServiceApp()
+{
     // 支持重新启动管理器
     m_dwRestartManagerSupportFlags = AFX_RESTART_MANAGER_SUPPORT_RESTART;
 
@@ -36,7 +37,8 @@ CChatServiceApp theApp;
 
 // CChatServiceApp 初始化
 
-BOOL CChatServiceApp::InitInstance() {
+BOOL CChatServiceApp::InitInstance()
+{
     // 如果一个运行在 Windows XP 上的应用程序清单指定要
     // 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
     //则需要 InitCommonControlsEx()。  否则，将无法创建窗口。
@@ -59,7 +61,7 @@ BOOL CChatServiceApp::InitInstance() {
 
     // 创建 shell 管理器，以防对话框包含
     // 任何 shell 树视图控件或 shell 列表视图控件。
-    CShellManager *pShellManager = new CShellManager;
+    CShellManager* pShellManager = new CShellManager;
 
     // 激活“Windows Native”视觉管理器，以便在 MFC 控件中启用主题
     CMFCVisualManager::SetDefaultManager(RUNTIME_CLASS(CMFCVisualManagerWindows));

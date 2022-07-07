@@ -16,21 +16,23 @@
 
 // CChatClientDlg 对话框
 class CChatClientDlg : public CDialogEx {
-// 构造
-  public:
+    // 构造
+public:
     CChatClientDlg(CWnd* pParent = NULL);	// 标准构造函数
 
 // 对话框数据
 #ifdef AFX_DESIGN_TIME
-    enum { IDD = IDD_CHATCLIENT_DIALOG };
+    enum {
+        IDD = IDD_CHATCLIENT_DIALOG
+    };
 #endif
 
-  protected:
+protected:
     virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 
 // 实现
-  protected:
+protected:
     HICON m_hIcon;
 
     // 生成的消息映射函数
@@ -45,26 +47,26 @@ class CChatClientDlg : public CDialogEx {
     afx_msg void OnSelchangeStatus();
     afx_msg LRESULT OnSocket(WPARAM wParam, LPARAM lParam);
     DECLARE_MESSAGE_MAP()
-  public:
+public:
     std::string nickName;
     SOCKET socketClient{INVALID_SOCKET};
-  private:
+private:
     std::unordered_map<std::string, std::string> userToChat;
-    
+
     CListBox loginPeopleList;
     CComboBox statusCombo;
-    bool is_service_open{ false };
+    bool is_service_open{false};
 
     std::thread threadToFile;
     void threadTransFile();
-    bool can_transfer_file{ false };
+    bool can_transfer_file{false};
     std::mutex readFileMt;
     std::queue<std::pair<bool, cwy::File>> fileQue;
-    
-    
+
+
 public:
-    
-    
-    
+
+
+
     afx_msg void OnDestroy();
 };

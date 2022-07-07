@@ -19,7 +19,7 @@ struct File {
     File(const std::string& source_, const std::string& target_, const std::string& fileName_, const std::string fileContent_ = "",
         const unsigned int fileBlock_ = 0, const unsigned int currentBlock_ = 0)
         : source(source_), target(target_), fileName(fileName_), fileContent(fileContent_),
-          fileBlock(fileBlock_), currentBlock(currentBlock_)
+        fileBlock(fileBlock_), currentBlock(currentBlock_)
     {
     }
     std::string source;
@@ -215,7 +215,7 @@ struct s_HandleRecv {
 inline void RegisterSpace(char** field, const std::string& message)
 {
     if (*field != nullptr) {
-        delete[] *field;
+        delete[] * field;
         *field = nullptr;
     }
     size_t len = message.length();
@@ -229,7 +229,7 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field);
 inline void UnregisterSingleSpace(char** field)
 {
     if (*field != nullptr) {
-        delete[] *field;
+        delete[] * field;
         *field = nullptr;
     }
 }

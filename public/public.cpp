@@ -7,80 +7,80 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
 {
     try {
         switch (type) {
-            case CommunicationType::REGISTER: {
+            case CommunicationType::REGISTER:
+            {
                 UnregisterSingleSpace(&field.Param.register_.customer);
                 UnregisterSingleSpace(&field.Param.register_.password);
-            }
-            break;
+            } break;
 
-            case CommunicationType::REGISTERBACKSUCCEED: {
+            case CommunicationType::REGISTERBACKSUCCEED:
+            {
                 UnregisterSingleSpace(&field.Param.registerBack_.register_result);
-            }
-            break;
+            } break;
 
-            case CommunicationType::REGISTERBACKFAILED: {
+            case CommunicationType::REGISTERBACKFAILED:
+            {
                 UnregisterSingleSpace(&field.Param.registerBack_.register_result);
                 UnregisterSingleSpace(&field.Param.registerBack_.description);
-            }
-            break;
+            } break;
 
-            case CommunicationType::LOGIN: {
+            case CommunicationType::LOGIN:
+            {
                 UnregisterSingleSpace(&field.Param.login_.password);
-            }
-            break;
+            } break;
 
-            case CommunicationType::LOGINBACKSUCCEED: {
+            case CommunicationType::LOGINBACKSUCCEED:
+            {
                 UnregisterSingleSpace(&field.Param.loginBack_.customer);
                 UnregisterSingleSpace(&field.Param.loginBack_.login_result);
-            }
-            break;
+            } break;
 
-            case CommunicationType::LOGINBACKFAILED: {
+            case CommunicationType::LOGINBACKFAILED:
+            {
                 UnregisterSingleSpace(&field.Param.loginBack_.customer);
                 UnregisterSingleSpace(&field.Param.loginBack_.login_result);
                 UnregisterSingleSpace(&field.Param.loginBack_.description);
-            }
-            break;
+            } break;
 
-            case CommunicationType::LOGINBOARDCAST: {
+            case CommunicationType::LOGINBOARDCAST:
+            {
                 UnregisterSingleSpace(&field.Param.loginBoardcast_.customer);
-            }
-            break;
+            } break;
 
-            case CommunicationType::DELETECUSTOMER: {
+            case CommunicationType::DELETECUSTOMER:
+            {
                 UnregisterSingleSpace(&field.Param.delCustomer_.customer);
-            }
-            break;
+            } break;
 
-            case CommunicationType::CHAT: {
+            case CommunicationType::CHAT:
+            {
                 UnregisterSingleSpace(&field.Param.chat_.source);
                 UnregisterSingleSpace(&field.Param.chat_.target);
                 UnregisterSingleSpace(&field.Param.chat_.content);
-            }
-            break;
+            } break;
 
-            case CommunicationType::TRANSFERFILEREQUEST: {
+            case CommunicationType::TRANSFERFILEREQUEST:
+            {
                 UnregisterSingleSpace(&field.Param.transferFileRequest_.source);
                 UnregisterSingleSpace(&field.Param.transferFileRequest_.target);
                 UnregisterSingleSpace(&field.Param.transferFileRequest_.file_name);
-            }
-            break;
+            } break;
 
-            case CommunicationType::TRANSFERFILERESPOND: {
+            case CommunicationType::TRANSFERFILERESPOND:
+            {
                 UnregisterSingleSpace(&field.Param.transferFileRespond_.source);
                 UnregisterSingleSpace(&field.Param.transferFileRespond_.target);
                 UnregisterSingleSpace(&field.Param.transferFileRespond_.file_name);
                 UnregisterSingleSpace(&field.Param.transferFileRespond_.transfer_result);
-            }
-            break;
+            } break;
 
-            case CommunicationType::TRANSFERFILE: {
+            case CommunicationType::TRANSFERFILE:
+            {
                 UnregisterSingleSpace(&field.Param.transferFile_.source);
                 UnregisterSingleSpace(&field.Param.transferFile_.target);
                 UnregisterSingleSpace(&field.Param.transferFile_.file_name);
                 UnregisterSingleSpace(&field.Param.transferFile_.file_content);
-            }
-            break;
+            } break;
         }
     }
     catch (...) {
@@ -88,95 +88,99 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
     }
 }
 
-std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param)
+std::string EncodeJson(const CommunicationType type,
+    const s_HandleRecv& s_param)
 {
     CJson json;
     try {
         switch (type) {
-            case CommunicationType::REGISTER: {
+            case CommunicationType::REGISTER:
+            {
                 json.set("communication_type", "register");
                 json.set("customer", s_param.Param.register_.customer);
                 json.set("password", s_param.Param.register_.password);
-            }
-            break;
+            } break;
 
-            case CommunicationType::REGISTERBACKSUCCEED: {
+            case CommunicationType::REGISTERBACKSUCCEED:
+            {
                 json.set("communication_type", "registerbacksucceed");
                 json.set("id", std::to_string(s_param.Param.registerBack_.id).c_str());
                 json.set("register_result", s_param.Param.registerBack_.register_result);
-            }
-            break;
+            } break;
 
-            case CommunicationType::REGISTERBACKFAILED: {
+            case CommunicationType::REGISTERBACKFAILED:
+            {
                 json.set("communication_type", "registerbackfailed");
                 json.set("id", std::to_string(s_param.Param.registerBack_.id).c_str());
                 json.set("register_result", s_param.Param.registerBack_.register_result);
                 json.set("description", s_param.Param.registerBack_.description);
-            }
-            break;
+            } break;
 
-            case CommunicationType::LOGIN: {
+            case CommunicationType::LOGIN:
+            {
                 json.set("communication_type", "login");
                 json.set("id", std::to_string(s_param.Param.login_.id).c_str());
                 json.set("password", s_param.Param.login_.password);
-            }
-            break;
+            } break;
 
-            case CommunicationType::LOGINBACKSUCCEED: {
+            case CommunicationType::LOGINBACKSUCCEED:
+            {
                 json.set("communication_type", "loginbacksucceed");
                 json.set("customer", s_param.Param.loginBack_.customer);
                 json.set("login_result", s_param.Param.loginBack_.login_result);
-            }
-            break;
+            } break;
 
-            case CommunicationType::LOGINBACKFAILED: {
+            case CommunicationType::LOGINBACKFAILED:
+            {
                 json.set("communication_type", "loginbackfailed");
                 json.set("customer", "");
                 json.set("login_result", s_param.Param.loginBack_.login_result);
                 json.set("description", s_param.Param.loginBack_.description);
-            }
-            break;
+            } break;
 
-            case CommunicationType::LOGINBOARDCAST: {
+            case CommunicationType::LOGINBOARDCAST:
+            {
                 json.set("communication_type", "loginboardcast");
                 json.set("customer", s_param.Param.loginBoardcast_.customer);
-                json.set("first_login", std::to_string(s_param.Param.loginBoardcast_.flag).c_str());
-            }
-            break;
+                json.set("first_login",
+                    std::to_string(s_param.Param.loginBoardcast_.flag).c_str());
+            } break;
 
-            case CommunicationType::DELETECUSTOMER: {
+            case CommunicationType::DELETECUSTOMER:
+            {
                 json.set("communication_type", "deletecustomer");
                 json.set("customer", s_param.Param.delCustomer_.customer);
-            }
-            break;
+            } break;
 
-            case CommunicationType::CHAT: {
+            case CommunicationType::CHAT:
+            {
                 json.set("communication_type", "chat");
                 json.set("content", s_param.Param.chat_.content);
                 json.set("target", s_param.Param.chat_.target);
                 json.set("source", s_param.Param.chat_.source);
-            }
-            break;
+            } break;
 
-            case CommunicationType::TRANSFERFILEREQUEST: {
+            case CommunicationType::TRANSFERFILEREQUEST:
+            {
                 json.set("communication_type", "transferfilerequest");
                 json.set("file_name", s_param.Param.transferFileRequest_.file_name);
                 json.set("target", s_param.Param.transferFileRequest_.target);
                 json.set("source", s_param.Param.transferFileRequest_.source);
                 json.set("source", s_param.Param.transferFileRequest_.file_length);
-            }
-            break;
+            } break;
 
-            case CommunicationType::TRANSFERFILERESPOND: {
+            case CommunicationType::TRANSFERFILERESPOND:
+            {
                 json.set("communication_type", "transferfilerespond");
                 json.set("file_name", s_param.Param.transferFileRespond_.file_name);
                 json.set("target", s_param.Param.transferFileRespond_.target);
                 json.set("source", s_param.Param.transferFileRespond_.source);
-                json.set("transfer_result", s_param.Param.transferFileRespond_.transfer_result);
-            }
-            break;
+                json.set("transfer_result",
+                    s_param.Param.transferFileRespond_.transfer_result);
+            } break;
 
-            case CommunicationType::TRANSFERFILE: {
+            case CommunicationType::TRANSFERFILE:
+            {
                 json.set("communication_type", "transferfile");
                 json.set("file_name", s_param.Param.transferFile_.file_name);
                 json.set("file_content", s_param.Param.transferFile_.file_content);
@@ -184,8 +188,7 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
                 json.set("current_block", s_param.Param.transferFile_.current_block);
                 json.set("target", s_param.Param.transferFile_.target);
                 json.set("source", s_param.Param.transferFile_.source);
-            }
-            break;
+            } break;
         }
     }
     catch (...) {
@@ -203,87 +206,115 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
         CJson json(value);
 
         if (json.get("communication_type") == "register") { // register
-            std::string customer = json.get("customer"), password = json.get("password");
+            std::string customer = json.get("customer"),
+                password = json.get("password");
             RegisterSpace(&s_return.Param.register_.customer, customer);
             RegisterSpace(&s_return.Param.register_.password, password);
             s_return.type_ = CommunicationType::REGISTER;
 
-        } else if (json.get("communication_type") == "registerbacksucceed") { // register_succeed
-            std::string id = json.get("id"), register_result = json.get("register_result");
-            s_return.Param.registerBack_.id = static_cast<unsigned long long>(atoll(id.c_str()));
-            RegisterSpace(&s_return.Param.registerBack_.register_result, register_result);
+        } else if (json.get("communication_type") ==
+            "registerbacksucceed") { // register_succeed
+            std::string id = json.get("id"),
+                register_result = json.get("register_result");
+            s_return.Param.registerBack_.id =
+                static_cast<unsigned long long>(atoll(id.c_str()));
+            RegisterSpace(&s_return.Param.registerBack_.register_result,
+                register_result);
             s_return.type_ = CommunicationType::REGISTERBACKSUCCEED;
 
-        } else if (json.get("communication_type") == "registerbackfailed") { // register_failed
-            std::string id = json.get("id"), register_result = json.get("register_result"),
+        } else if (json.get("communication_type") ==
+            "registerbackfailed") { // register_failed
+            std::string id = json.get("id"),
+                register_result = json.get("register_result"),
                 description = json.get("description");
             s_return.Param.registerBack_.id = 0;
-            RegisterSpace(&s_return.Param.registerBack_.register_result, register_result);
+            RegisterSpace(&s_return.Param.registerBack_.register_result,
+                register_result);
             RegisterSpace(&s_return.Param.registerBack_.description, description);
             s_return.type_ = CommunicationType::REGISTERBACKFAILED;
 
         } else if (json.get("communication_type") == "login") { // login
             std::string id = json.get("id"), password = json.get("password");
-            s_return.Param.login_.id = static_cast<unsigned long long>(atoll(id.c_str()));
+            s_return.Param.login_.id =
+                static_cast<unsigned long long>(atoll(id.c_str()));
             RegisterSpace(&s_return.Param.login_.password, password);
             s_return.type_ = CommunicationType::LOGIN;
 
-        } else if (json.get("communication_type") == "loginbacksucceed") { // login_succeed
-            std::string customer = json.get("customer"), login_result = json.get("login_result");
+        } else if (json.get("communication_type") ==
+            "loginbacksucceed") { // login_succeed
+            std::string customer = json.get("customer"),
+                login_result = json.get("login_result");
             RegisterSpace(&s_return.Param.loginBack_.customer, customer);
             RegisterSpace(&s_return.Param.loginBack_.login_result, login_result);
             s_return.type_ = CommunicationType::LOGINBACKSUCCEED;
 
-        } else if (json.get("communication_type") == "loginbackfailed") { // login_failed
-            std::string customer = json.get("customer"), login_result = json.get("login_result"),
+        } else if (json.get("communication_type") ==
+            "loginbackfailed") { // login_failed
+            std::string customer = json.get("customer"),
+                login_result = json.get("login_result"),
                 description = json.get("description");
             RegisterSpace(&s_return.Param.loginBack_.customer, customer);
             RegisterSpace(&s_return.Param.loginBack_.login_result, login_result);
             RegisterSpace(&s_return.Param.loginBack_.description, description);
             s_return.type_ = CommunicationType::LOGINBACKFAILED;
 
-        } else if (json.get("communication_type") == "loginboardcast") { // show_login
+        } else if (json.get("communication_type") ==
+            "loginboardcast") { // show_login
             std::string customer = json.get("customer");
             RegisterSpace(&s_return.Param.loginBoardcast_.customer, customer);
-            s_return.Param.loginBoardcast_.flag = ((json.get("first_login") == "0") ? true : false);
+            s_return.Param.loginBoardcast_.flag =
+                ((json.get("first_login") == "0") ? true : false);
             s_return.type_ = CommunicationType::LOGINBOARDCAST;
 
-        } else if (json.get("communication_type") == "delcustomer") { // delete_customer
+        } else if (json.get("communication_type") ==
+            "delcustomer") { // delete_customer
             std::string customer = json.get("customer");
             RegisterSpace(&s_return.Param.delCustomer_.customer, customer);
             s_return.type_ = CommunicationType::DELETECUSTOMER;
 
         } else if (json.get("communication_type") == "chat") { // chat
-            std::string content = json.get("content"), source = json.get("source"), target = json.get("target");
+            std::string content = json.get("content"), source = json.get("source"),
+                target = json.get("target");
             RegisterSpace(&s_return.Param.chat_.content, content);
             RegisterSpace(&s_return.Param.chat_.source, source);
             RegisterSpace(&s_return.Param.chat_.target, target);
             s_return.type_ = CommunicationType::CHAT;
 
-        } else if (json.get("communication_type") == "transferfilerequest") { // transfer_filequest
-            std::string file_name = json.get("file_name"), source = json.get("source"),
-                target = json.get("target"), file_length = json.get("file_length");
+        } else if (json.get("communication_type") ==
+            "transferfilerequest") { // transfer_filequest
+            std::string file_name = json.get("file_name"),
+                source = json.get("source"), target = json.get("target"),
+                file_length = json.get("file_length");
             RegisterSpace(&s_return.Param.transferFileRequest_.source, source);
             RegisterSpace(&s_return.Param.transferFileRequest_.target, target);
             RegisterSpace(&s_return.Param.transferFileRequest_.file_name, file_name);
-            s_return.Param.transferFileRequest_.file_length = static_cast<unsigned long long>(atoll(file_length.c_str()));
+            s_return.Param.transferFileRequest_.file_length =
+                static_cast<unsigned long long>(atoll(file_length.c_str()));
             s_return.type_ = CommunicationType::TRANSFERFILEREQUEST;
 
-        } else if (json.get("communication_type") == "transferfilerespond") { // transfer_filerespond
-            std::string file_name = json.get("file_name"), source = json.get("source"),
-                target = json.get("target"), transfer_result = json.get("transfer_result");
+        } else if (json.get("communication_type") ==
+            "transferfilerespond") { // transfer_filerespond
+            std::string file_name = json.get("file_name"),
+                source = json.get("source"), target = json.get("target"),
+                transfer_result = json.get("transfer_result");
             RegisterSpace(&s_return.Param.transferFileRespond_.source, source);
             RegisterSpace(&s_return.Param.transferFileRespond_.target, target);
             RegisterSpace(&s_return.Param.transferFileRespond_.file_name, file_name);
-            RegisterSpace(&s_return.Param.transferFileRespond_.transfer_result, transfer_result);
+            RegisterSpace(&s_return.Param.transferFileRespond_.transfer_result,
+                transfer_result);
             s_return.type_ = CommunicationType::TRANSFERFILERESPOND;
 
-        } else if (json.get("communication_type") == "transferfile") { // transfer_file
-            std::string file_name = json.get("file_name"), source = json.get("source"),
-                target = json.get("target"), file_content = json.get("file_content"),
-                file_block = json.get("file_block"), current_block = json.get("current_block");
-            s_return.Param.transferFile_.file_block = static_cast<unsigned int>(atoi(file_block.c_str()));
-            s_return.Param.transferFile_.current_block = static_cast<unsigned int>(atoi(current_block.c_str()));
+        } else if (json.get("communication_type") ==
+            "transferfile") { // transfer_file
+            std::string file_name = json.get("file_name"),
+                source = json.get("source"), target = json.get("target"),
+                file_content = json.get("file_content"),
+                file_block = json.get("file_block"),
+                current_block = json.get("current_block");
+            s_return.Param.transferFile_.file_block =
+                static_cast<unsigned int>(atoi(file_block.c_str()));
+            s_return.Param.transferFile_.current_block =
+                static_cast<unsigned int>(atoi(current_block.c_str()));
             RegisterSpace(&s_return.Param.transferFile_.source, source);
             RegisterSpace(&s_return.Param.transferFile_.target, target);
             RegisterSpace(&s_return.Param.transferFile_.file_name, file_name);
@@ -391,7 +422,8 @@ std::string CombineString(char** be_combined, const int size)
     return s_return.substr(0, s_return.length() - 1);
 }
 
-void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest)
+void SplitString(const std::string& be_converted, const char separator,
+    std::vector<std::string>& dest)
 {
     int pos = -1, old_pos = 0;
     pos = be_converted.find(separator, pos + 1);
@@ -405,7 +437,8 @@ void SplitString(const std::string& be_converted, const char separator, std::vec
     return;
 }
 
-void SplitString(const char* be_converted, const char separator, char** dest, int& size)
+void SplitString(const char* be_converted, const char separator, char** dest,
+    int& size)
 {
     int pos = -1, old_pos = 0, i = 0;
     std::string temp(be_converted);
@@ -427,8 +460,8 @@ void SplitString(const char* be_converted, const char separator, char** dest, in
     }
     dest[i] = new char[temp.substr(old_pos).length() + 1];
     memset(dest[i], 0, temp.substr(old_pos).length() + 1);
-    memcpy_s(dest[i++], temp.substr(old_pos).length() + 1, temp.substr(old_pos).c_str(),
-        temp.substr(old_pos).length() + 1);
+    memcpy_s(dest[i++], temp.substr(old_pos).length() + 1,
+        temp.substr(old_pos).c_str(), temp.substr(old_pos).length() + 1);
     size = i;
 
     return;
@@ -473,7 +506,8 @@ std::string DbJoin(const std::vector<std::string>& srcList)
     return result;
 }
 
-std::string DbJoin(const StringMap& stringMap, const IntMap& intMap, bool hasBrackets/* = true*/)
+std::string DbJoin(const StringMap& stringMap, const IntMap& intMap,
+    bool hasBrackets /* = true*/)
 {
     std::string result;
     result += (hasBrackets ? "(" : "");
@@ -519,7 +553,8 @@ bool CheckSqlValid(const std::string& src)
 
 bool CheckValid(const std::string& src)
 {
-    std::string key[14] = {"and", "*", "=", " ", "%0a", "%", "/", "union", "|", "&", "^", "#", "/*", "*/"};
+    std::string key[14] = {"and",   "*", "=", " ", "%0a", "%",  "/",
+                           "union", "|", "&", "^", "#",   "/*", "*/"};
     for (int i = 0; i < 14; i++) {
         if (src.find(key[i]) != std::string::npos) {
             return false;
@@ -543,8 +578,9 @@ bool CheckJsonValid(const std::string& src)
             ++colon;
         } else if (src[i] == ',') {
             ++comma;
-        } else if ((src[i] >= 'a' && src[i] <= 'z') || (src[i] >= 'A' || src[i] <= 'Z') || (src[i] >= '0' || src[i] <= '9')
-            || src[i] == ' ') {
+        } else if ((src[i] >= 'a' && src[i] <= 'z') ||
+            (src[i] >= 'A' || src[i] <= 'Z') ||
+            (src[i] >= '0' || src[i] <= '9') || src[i] == ' ') {
             ++character;
         } else {
             return false;
@@ -555,4 +591,4 @@ bool CheckJsonValid(const std::string& src)
     }
     return true;
 }
-}
+} // namespace cwy

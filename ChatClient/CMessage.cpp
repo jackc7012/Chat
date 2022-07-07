@@ -57,7 +57,8 @@ BOOL CMessage::OnInitDialog()
 void CMessage::OnTimer(UINT_PTR nIDEvent)
 {
     switch (nIDEvent) {
-        case 1: {
+        case 1:
+        {
             int time = GetDlgItemInt(IDC_TIME);
             --time;
             if (time == 0) {

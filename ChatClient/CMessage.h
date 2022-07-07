@@ -7,16 +7,18 @@
 class CMessage : public CDialogEx {
     DECLARE_DYNAMIC(CMessage)
 
-  public:
+public:
     CMessage(CWnd* pParent = nullptr);   // 标准构造函数
     virtual ~CMessage();
 
-// 对话框数据
+    // 对话框数据
 #ifdef AFX_DESIGN_TIME
-    enum { IDD = IDD_REQUEST };
+    enum {
+        IDD = IDD_REQUEST
+    };
 #endif
 
-  protected:
+protected:
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
     virtual BOOL OnInitDialog();
     afx_msg void OnTimer(UINT_PTR nIDEvent);
@@ -24,7 +26,7 @@ class CMessage : public CDialogEx {
     afx_msg void OnBnClickedRefuse();
     afx_msg void OnBnClickedSaveas();
     DECLARE_MESSAGE_MAP()
-  public:
+public:
     std::string message;
     std::string filePath;
     std::string fileName;
