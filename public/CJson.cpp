@@ -21,6 +21,8 @@ void CJson::parse(const std::string& src)
         int endQut = src.find('\"', beginQut + 1);
         if (beginQut != std::string::npos && endQut != std::string::npos) {
             key = src.substr(beginQut + 1, endQut - beginQut - 1);
+        } else {
+            break;
         }
         // find value
         beginQut = src.find('\"', endQut + 1);
@@ -60,7 +62,8 @@ void CJson::set(const std::string& key, const unsigned long long value)
 
 std::string CJson::write() const
 {
-    std::ostringstream ss("{");
+    std::ostringstream ss;
+    ss << "{";
     auto itor = jsonValue.cbegin();
     for (unsigned int i = 0; i < jsonValue.size(); ++i) {
         std::string key = itor->first;
@@ -83,7 +86,7 @@ bool CJson::CheckValid(const std::string& src)
     if (index1 == std::string::npos || index2 == std::string::npos) {
         return false;
     }
-    for (size_t i = index1; i < index2; ++i) {
+    for (size_t i = index1 + 1; i < index2; ++i) {
         if (src[i] == '\"') {
             ++quotation;
         } else if (src[i] == ':') {

@@ -47,11 +47,6 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
                 UnregisterSingleSpace(&field.Param.loginBoardcast_.customer);
             } break;
 
-            case CommunicationType::DELETECUSTOMER:
-            {
-                UnregisterSingleSpace(&field.Param.delCustomer_.customer);
-            } break;
-
             case CommunicationType::CHAT:
             {
                 UnregisterSingleSpace(&field.Param.chat_.source);
@@ -149,7 +144,7 @@ std::string EncodeJson(const CommunicationType type,
             case CommunicationType::DELETECUSTOMER:
             {
                 json.set("communication_type", "deletecustomer");
-                json.set("customer", s_param.Param.delCustomer_.customer);
+                json.set("customer", s_param.Param.delCustomer_.id);
             } break;
 
             case CommunicationType::CHAT:
@@ -268,8 +263,9 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
 
         } else if (json.get("communication_type") ==
             "delcustomer") { // delete_customer
-            std::string customer = json.get("customer");
-            RegisterSpace(&s_return.Param.delCustomer_.customer, customer);
+            std::string id = json.get("id");
+            s_return.Param.delCustomer_.id =
+                static_cast<unsigned long long>(atoll(id.c_str()));
             s_return.type_ = CommunicationType::DELETECUSTOMER;
 
         } else if (json.get("communication_type") == "chat") { // chat
@@ -465,6 +461,16 @@ void SplitString(const char* be_converted, const char separator, char** dest,
     size = i;
 
     return;
+}
+
+std::string ToDbString(const unsigned long long src)
+{
+    std::ostringstream result;
+    std::string tmp = std::to_string(src);
+    if (cwy::CheckSqlValid(tmp)) {
+        result << "'" << tmp << "'";
+    }
+    return result.str();
 }
 
 std::string ToDbString(const std::string& src)

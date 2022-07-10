@@ -10,7 +10,6 @@ const unsigned int DATA_LENGTH = 1024 * 10;
 const std::string VERIFY_CODE = "1234567890ABCDEFGHJKLMNPQRSTUVVWXYZabcdefghijkmnpqrstuvwxyz";
 
 using IpAndSocket = std::pair<std::string, SOCKET>;
-static std::unordered_map<std::string, IpAndSocket> nameToIpSock;
 
 using StringMap = std::unordered_map<unsigned int, std::string>;
 using IntMap = std::unordered_map<unsigned int, long long>;
@@ -163,7 +162,7 @@ struct s_HandleRecv {
         };
         // 用户退出
         struct DelCustomerType {
-            char* customer;
+            unsigned long long id;
         };
         // 聊天
         struct ChatType {
@@ -253,6 +252,8 @@ std::string CombineString(char** be_combined, const int size);
 void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest);
 
 void SplitString(const char* be_converted, const char separator, char** dest, int& size);
+
+std::string ToDbString(const unsigned long long src);
 
 std::string ToDbString(const std::string& src);
 

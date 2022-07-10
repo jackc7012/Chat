@@ -42,7 +42,7 @@ SOCKET NetWorkEvent::NetWorkEventHandle(const s_HandleRecv& taskContent, Communi
         case CommunicationType::DELETECUSTOMER:
         {
             socket = NetWorkDelHandle(taskContent);
-            msg = taskContent.Param.delCustomer_.customer;
+            msg = taskContent.Param.delCustomer_.id;
             type = CommunicationType::DELETECUSTOMER;
             break;
         }
@@ -67,7 +67,7 @@ SOCKET NetWorkEvent::NetWorkRegisterHandle(const s_HandleRecv& taskContent, s_Ha
         SqlRequest sql("select max(Id) from tb_info");
         DataBaseRecord loginInfo;
         dataBase->selectSql(sql.str(), loginInfo);
-        unsigned long long id = ((loginInfo.size() == 0) ? 10000 : atoll(loginInfo[0][0].c_str()));
+        unsigned long long id = ((loginInfo.size() == 0) ? 9999 : atoll(loginInfo[0][0].c_str()));
         RegisterSpace(&handleSend.Param.registerBack_.register_result, "succeed");
 
         sql.clear();
@@ -77,7 +77,7 @@ SOCKET NetWorkEvent::NetWorkRegisterHandle(const s_HandleRecv& taskContent, s_Ha
         dataBase->operSql(DBTYPE::INSERT, sql.str());
 
         sql.clear();
-        sql << "create table [" << taskContent.Param.register_.customer << "_" << taskContent.connect_ip_
+        sql << "create table [" << id << "_" << taskContent.connect_ip_
             << "] ( Time datetime NOT NULL, Source varchar(50) NOT NULL, Target varchar(50) NOT NULL,"
             << "    TargetIp varchar(50) NOT NULL, ChatContent text NOT NULL)";
         dataBase->operSql(DBTYPE::CREATETABLE, sql.str());
@@ -97,23 +97,23 @@ SOCKET NetWorkEvent::NetWorkLoginHandle(const s_HandleRecv& taskContent, s_Handl
     try {
         long long id = taskContent.Param.login_.id;
         RegisterSpace(&handleSend.Param.loginBack_.login_result, "failed");
-        SqlRequest sql("select Name, Password from tb_info where Id = ");
+        SqlRequest sql("select Id, Name, Password from tb_info where Id = ");
         sql << taskContent.Param.login_.id;
         DataBaseRecord loginInfo;
         dataBase->selectSql(sql.str(), loginInfo);
         if (loginInfo.size() == 0) {
             RegisterSpace(&handleSend.Param.loginBack_.description, "no such id");
         } else if (loginInfo.size() == 1) {
-            if (loginInfo[0][1] != taskContent.Param.login_.password) {
+            if (loginInfo[0][2] != taskContent.Param.login_.password) {
                 RegisterSpace(&handleSend.Param.loginBack_.description, "password error");
             } else {
                 RegisterSpace(&handleSend.Param.loginBack_.login_result, "succeed");
-                RegisterSpace(&handleSend.Param.loginBack_.customer, loginInfo[0][0]);
+                RegisterSpace(&handleSend.Param.loginBack_.customer, loginInfo[0][1]);
                 sql.clear();
                 sql << "update tb_info set IsLogin = 1 where Id = " << taskContent.Param.login_.id;
                 dataBase->operSql(DBTYPE::MODIFY, sql.str());
                 IpAndSocket ipAndSocket{taskContent.connect_ip_, taskContent.socket_accept_};
-                nameToIpSock.insert(std::make_pair(loginInfo[0][0], ipAndSocket));
+                idToIpSock.insert(std::make_pair(loginInfo[0][0], ipAndSocket));
             }
         } else {
             RegisterSpace(&handleSend.Param.loginBack_.description, "unkown error");
@@ -130,12 +130,13 @@ SOCKET NetWorkEvent::NetWorkLoginHandle(const s_HandleRecv& taskContent, s_Handl
 SOCKET NetWorkEvent::NetWorkDelHandle(const s_HandleRecv& taskContent)
 {
     try {
-        SqlRequest sql("update tb_info set IsLogin = 0 where Name = ");
-        sql << ToDbString(taskContent.Param.delCustomer_.customer);
+        std::string delTime = GetTime(0);
+        SqlRequest sql("update tb_info set IsLogin = 0, LastLoginTime = convert(datetime, ");
+        sql << ToDbString(delTime) << ") where Id = " << ToDbString(taskContent.Param.delCustomer_.id);
         dataBase->operSql(DBTYPE::MODIFY, sql.str());
-        auto itor = nameToIpSock.find(taskContent.Param.delCustomer_.customer);
-        if (itor != nameToIpSock.end()) {
-            nameToIpSock.erase(itor);
+        auto itor = idToIpSock.find(std::to_string(taskContent.Param.delCustomer_.id));
+        if (itor != idToIpSock.end()) {
+            idToIpSock.erase(itor);
         }
     }
     catch (...) {
@@ -148,8 +149,8 @@ SOCKET NetWorkEvent::NetWorkChatHandle(const s_HandleRecv& taskContent, s_Handle
 {
     SOCKET socket = INVALID_SOCKET;
     try {
-        auto itor = nameToIpSock.find(taskContent.Param.chat_.target);
-        if (itor == nameToIpSock.end()) {
+        auto itor = idToIpSock.find(taskContent.Param.chat_.target);
+        if (itor == idToIpSock.end()) {
             handleSend.type_ = CommunicationType::ERRORCOMMUNICATION;
             return INVALID_SOCKET;
         }
@@ -158,8 +159,8 @@ SOCKET NetWorkEvent::NetWorkChatHandle(const s_HandleRecv& taskContent, s_Handle
         RegisterSpace(&handleSend.Param.chat_.content, taskContent.Param.chat_.content);
         std::string chatTime = GetTime(0);
         SqlRequest sql("insert into [");
-        sql << taskContent.Param.chat_.source << "_" << taskContent.connect_ip_ << "](Time, Source, Target, TargetIp , ChatContent)"
-            << " values(convert(datetime," << ToDbString(chatTime) << "), " << ToDbString(taskContent.Param.chat_.source)
+        sql << taskContent.Param.chat_.source << "_" << taskContent.connect_ip_ << "](Time, Source, Target, TargetIp, ChatContent)"
+            << " values(convert(datetime, " << ToDbString(chatTime) << "), " << ToDbString(taskContent.Param.chat_.source)
             << ", " << ToDbString(taskContent.Param.chat_.target) << ", " << ToDbString(itor->second.first) << ", "
             << ToDbString(taskContent.Param.chat_.content) << ")";
         dataBase->operSql(DBTYPE::INSERT, sql.str());

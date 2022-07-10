@@ -25,6 +25,7 @@ private:
 
 private:
     std::unique_ptr<DataBaseImpl> dataBase{nullptr};
+    static std::unordered_map<std::string, IpAndSocket> idToIpSock;
 };
 
 }
