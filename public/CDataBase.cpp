@@ -1,142 +1,162 @@
 #include "CDataBase.h"
+
+#include "public.h"
 using namespace cwy;
 
-CDataBase::CDataBase()
+SqlRequest::SqlRequest(const std::string& str)
 {
-    logDataBase.InitLog("../{time}/database");
+    str_ << str;
 }
 
-CDataBase* CDataBase::CreateInstance()
+SqlRequest::SqlRequest()
 {
-    static CDataBase* ptr = nullptr;
-    if (ptr == nullptr) {
-        ptr = new CDataBase();
-    }
-    return ptr;
+    str_.str("");
 }
 
-CDataBase::~CDataBase()
+SqlRequest::~SqlRequest()
 {
-    CoUninitialize();
+    str_.clear();
 }
 
-int CDataBase::InitDataBase(const std::string& dataBaseName)
+SqlRequest& SqlRequest::operator<<(const std::string& sqlRequest)
 {
-    HRESULT result =  CoInitialize(NULL);
-    if (result != S_OK) {
-        logDataBase << "init com error";
-        logDataBase.PrintlogError(FILE_FORMAT);
-        return -1;
+    if (CheckSqlValid(sqlRequest)) {
+        str_ << sqlRequest;
+    } else {
+        errType_ = ERRTYPE::COMMANDINJECTION;
     }
-    if (pMyConnect.CreateInstance(__uuidof(Connection)) != 0) {
-        logDataBase << "ConnectionPtr create failed";
-        logDataBase.PrintlogError(FILE_FORMAT);
-        return -1;
-    }
-    if (pRecordset.CreateInstance(__uuidof(Recordset)) != 0) {
-        logDataBase << "RecordsetPtr create failed";
-        logDataBase.PrintlogError(FILE_FORMAT);
-        return -1;
-    }
-    char connectionString[100] = { 0 };
-    sprintf_s(connectionString, 100, "Driver={sql server};server=192.168.0.103;uid=sa;pwd=chen931125;database=%s;", dataBaseName.c_str());
-    if (pMyConnect->Open(connectionString, "", "", adModeUnknown) != 0) {
-        logDataBase << "open database" << dataBaseName.c_str() << "failed";
-        logDataBase.PrintlogError(FILE_FORMAT);
-        return -1;
-    }
-    GetId();
-    return 0;
+    return *this;
 }
 
-void CDataBase::GetId()
+SqlRequest& SqlRequest::operator<<(const long long sqlRequest)
 {
-    char sql[100] = { 0 };
-    sprintf_s(sql, 100, "select ID from tb_info order by ID desc");
-    try
-    {
-        pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
-        _variant_t id = pRecordset->GetFields()->GetItem((long)0)->GetValue();
-        presentId = atoll(((std::string)(_bstr_t)&id).c_str());
+    std::string tmp = std::to_string(sqlRequest);
+    if (CheckSqlValid(tmp)) {
+        str_ << tmp;
+    } else {
+        errType_ = ERRTYPE::COMMANDINJECTION;
     }
-    catch (_com_error e)
-    {
-        logDataBase << "GetId failed descripton :" << (std::string)e.Description();
-        logDataBase.PrintlogError(FILE_FORMAT);
-    }
-    return ;
+    return *this;
 }
 
-int CDataBase::SearchDataBaseLogin(const long long loginID, std::string& name, std::string& ip, char* password, int& loginStatus)
+void SqlRequest::clear()
 {
-    int result = 0;
-    char sql[100] = { 0 };
-    sprintf_s(sql, 100, "select Name, Password, Ip, IsLogin from tb_info where ID = %lld", loginID);
-    try
-    {
-        logDataBase << "sql :" << sql;
-        logDataBase.PrintlogDebug(FILE_FORMAT);
-        pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
-        _variant_t sqlName = pRecordset->GetFields()->GetItem((long)0)->GetValue();
-        _variant_t sqlPassword = pRecordset->GetFields()->GetItem((long)1)->GetValue();
-        _variant_t sqlIp = pRecordset->GetFields()->GetItem((long)2)->GetValue();
-        _variant_t sqlIsLogin = pRecordset->GetFields()->GetItem((long)3)->GetValue();
-        memcpy_s(password, 50, (char*)(_bstr_t)&sqlPassword, strlen((_bstr_t)&sqlPassword) + 1);
-        name = (std::string)(_bstr_t)&sqlName;
-        ip = (std::string)(_bstr_t)&sqlIp;
-        loginStatus = atoi(((std::string)(_bstr_t)&sqlIsLogin).c_str());
-    }
-    catch (_com_error e)
-    {
-        logDataBase << "SearchDataBaseLogin failed descripton :" << (std::string)e.Description();
-        logDataBase.PrintlogError(FILE_FORMAT);
-        result = -1;
-    }
-    return result;
+    str_.str("");
 }
 
-int CDataBase::UpdateLoginStatus(const int type/* = 0*/, const long long loginID/* = -1*/)
+std::string SqlRequest::str() const
 {
-    int result = 0;
-    char sql[100] = { 0 };
-    if (loginID == -1) {
-        sprintf_s(sql, 100, "update tb_info set IsLogin = %d ", type);
-    }
-    else {
-        sprintf_s(sql, 100, "update tb_info set IsLogin = %d where ID = %lld", type, loginID);
-    }
-    try
-    {
-        logDataBase << "sql :" << sql;
-        logDataBase.PrintlogDebug(FILE_FORMAT);
-        pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
-    }
-    catch (_com_error e)
-    {
-        logDataBase << "UpdateLoginStatus " << type << " failed descripton :" << (std::string)e.Description();
-        logDataBase.PrintlogError(FILE_FORMAT);
-        result = -1;
-    }
-    return result;
+    return str_.str();
 }
 
-long long CDataBase::InsertRegister(const std::string& registerName, const char* password, const std::string ip)
+DataBaseImpl::DataBaseImpl()
 {
-    long long result = 0;
-    char sql[100] = { 0 };
-    sprintf_s(sql, 100, "insert into tb_info values(%lld, '%s', '%s', '%s', 0)", ++presentId, registerName.c_str(), password, ip.c_str());
-    try
-    {
-        logDataBase << "sql :" << sql;
-        logDataBase.PrintlogDebug(FILE_FORMAT);
-        pRecordset = pMyConnect->Execute(sql, NULL, adCmdText);
-        result = presentId;
+
+}
+
+DataBaseImpl::~DataBaseImpl()
+{
+}
+
+BOOL DataBaseImpl::initDataBase(const std::string& ip, const std::string& dataBaseName)
+{
+    try {
+        dataBaseName_ = dataBaseName;
+        dataBaseIp_ = ip;
+        HRESULT result = CoInitialize(NULL);
+        if (result != S_OK) {
+            return FALSE;
+        }
+        if (pMyConnect.CreateInstance(__uuidof(Connection)) != 0) {
+            return FALSE;
+        }
+        if (pRecordset.CreateInstance(__uuidof(Recordset)) != 0) {
+            return FALSE;
+        }
+        char connectionString[100] = {0};
+        sprintf_s(connectionString, 100, "Driver={sql server};server=%s;uid=sa;pwd=sa;database=%s;",
+            ip.c_str(), dataBaseName.c_str());
+        if (pMyConnect->Open(connectionString, "", "", adModeUnknown) != 0) {
+            return FALSE;
+        }
+        return TRUE;
     }
-    catch (_com_error e)
-    {
-        logDataBase << "InsertRegister failed descripton :" << (std::string)e.Description();
-        logDataBase.PrintlogError(FILE_FORMAT);
-        result = -1;
+    catch (_com_error e) {
+        throw e.Description();
+        return FALSE;
     }
-    return result;
+}
+
+BOOL DataBaseImpl::operSql(const DBTYPE dbType, const std::string& sqlRequest)
+{
+    try {
+        if (!judgeCommand(dbType, sqlRequest)) {
+            return FALSE;
+        }
+        pRecordset = pMyConnect->Execute(sqlRequest.c_str(), NULL, adCmdText);
+    }
+    catch (_com_error e) {
+        throw e.Description();
+        return FALSE;
+    }
+    return TRUE;
+}
+
+void DataBaseImpl::selectSql(const std::string& sqlRequest, DataBaseRecord& result)
+{
+    try {
+        pRecordset = pMyConnect->Execute(sqlRequest.c_str(), NULL, adCmdText);
+        while (!pRecordset->adoEOF) {
+            long fieldCount = pRecordset->GetFields()->Count;
+            std::vector<std::string> fieldRecord;
+            for (long j = 0; j < fieldCount; ++j) {
+                _variant_t tmp = pRecordset->GetFields()->GetItem((long)j)->GetValue();
+                if (tmp.vt == VT_NULL) {
+                    continue;
+                }
+                fieldRecord.emplace_back((std::string)(_bstr_t)&tmp);
+            }
+            if (fieldRecord.size() != 0) {
+                result.emplace_back(fieldRecord);
+            }
+            pRecordset->MoveNext();
+        }
+    }
+    catch (_com_error e) {
+        throw e.Description();
+        return;
+    }
+}
+
+BOOL DataBaseImpl::uninitDataBase()
+{
+    try {
+        pRecordset.Release();
+        pRecordset = nullptr;
+        pMyConnect->Close();
+        pMyConnect.Release();
+        pMyConnect = nullptr;
+        CoUninitialize();
+    }
+    catch (_com_error e) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+BOOL DataBaseImpl::judgeCommand(const DBTYPE dbType, const std::string& command)
+{
+    static std::unordered_map<DBTYPE, std::string> typeMap{
+        {DBTYPE::CREATETABLE, "create table"},
+        {DBTYPE::DROPTABLE, "drop table"},
+        {DBTYPE::INSERT, "insert into"},
+        {DBTYPE::MODIFY, "update"},
+        {DBTYPE::DEL, "delete from"}
+    };
+    if (command.substr(0, typeMap[dbType].length()) == typeMap[dbType]) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
 }
