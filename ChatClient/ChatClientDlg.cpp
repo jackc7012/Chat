@@ -121,16 +121,16 @@ BOOL CChatClientDlg::OnInitDialog() {
 
     GetDlgItem(IDC_REQUESTFILENAME)->ShowWindow(SW_HIDE);
 
-    SetDlgItemText(IDC_IP, cwy::SERVER_IP.c_str());
+    SetDlgItemText(IDC_IP, _T("127.0.0.1"));
     SetDlgItemText(IDC_PORT, _T("6000"));
 
     srand((unsigned int)time(NULL));
     int code_rand = 0;
     std::string verify_code("");
-    for (int i = 0; i < 4; ++i) {
+    /*for (int i = 0; i < 4; ++i) {
         code_rand = rand() % 62;
         verify_code += VERIFY_CODE[code_rand];
-    }
+    }*/
     SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
 
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
@@ -189,19 +189,19 @@ void CChatClientDlg::OnBnClickedRegister() {
         MessageBox(_T("IP或端口号不能为空"), _T("错误"), MB_ICONERROR);
     } else if (str_name == "") {
         MessageBox(_T("昵称不能为空"), _T("错误"), MB_ICONERROR);
-    } else if (!cwy::VerifyCode(str_code.GetBuffer(0), str_code_verify.GetBuffer(0))) {
+    } else if (!VerifyCode(str_code.GetBuffer(0), str_code_verify.GetBuffer(0))) {
         MessageBox(_T("验证码错误"), _T("错误"), MB_ICONERROR);
 
         int code_rand = 0;
         std::string verify_code("");
-        for (int i = 0; i < 4; ++i) {
+        /*for (int i = 0; i < 4; ++i) {
             code_rand = rand() % 62;
             verify_code += cwy::VERIFY_CODE[code_rand];
-        }
+        }*/
 
         SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
     } else {
-        cwy::s_HandleRecv to_send;
+        s_HandleRecv to_send;
         int port = atoi(str_port.GetBuffer(0));
         const char *ip = str_ip.GetBuffer(0);
         const char *name = str_name.GetBuffer(0);
@@ -226,8 +226,8 @@ void CChatClientDlg::OnBnClickedRegister() {
         }
 
         //std::string encry_psd = Encryption(password);
-        to_send.param.Register.customer = const_cast<char *>(name);
-        to_send.param.Register.password = const_cast<char *>(password);
+        //to_send.param.Register.customer = const_cast<char *>(name);
+        //to_send.param.Register.password = const_cast<char *>(password);
         std::string send_data = EncodeJson(CommunicationType::REGISTER, to_send);
         ::send(socket_client, send_data.c_str(), send_data.length(), 0);
     }
@@ -241,7 +241,7 @@ void CChatClientDlg::OnBnClickedRegister() {
     std::string verify_code("");
     for (int i = 0; i < 4; ++i) {
         code_rand = rand() % 62;
-        verify_code += cwy::VERIFY_CODE[code_rand];
+        //verify_code += cwy::VERIFY_CODE[code_rand];
     }
 
     SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());
@@ -301,8 +301,8 @@ void CChatClientDlg::OnBnClickedConnect() {
             }
 
             //std::string encry_psd = Encryption(password);
-            to_send.param.Login.customer = const_cast<char *>(name);
-            to_send.param.Login.password = const_cast<char *>(password);
+            //to_send.param.Login.customer = const_cast<char *>(name);
+            //to_send.param.Login.password = const_cast<char *>(password);
             std::string send_data = EncodeJson(CommunicationType::LOGIN, to_send);
             ::send(socket_client, send_data.c_str(), send_data.length(), 0);
             nick_name = str_name.GetBuffer(0);
@@ -332,7 +332,7 @@ void CChatClientDlg::OnBnClickedConnect() {
         std::string verify_code("");
         for (int i = 0; i < 4; ++i) {
             code_rand = rand() % 62;
-            verify_code += VERIFY_CODE[code_rand];
+            //verify_code += VERIFY_CODE[code_rand];
         }
 
         SetDlgItemText(IDC_CODE_VERIFY, verify_code.c_str());

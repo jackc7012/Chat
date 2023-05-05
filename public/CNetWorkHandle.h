@@ -11,6 +11,8 @@
 #include "CDataBase.h"
 #include "CLog.h"
 
+#include "protocol.h"
+
 namespace cwy {
     static const unsigned short TCP_PORT = 6000;
     static const unsigned short UDP_PORT = 6002;
@@ -61,7 +63,7 @@ namespace cwy {
         SOCKET udpSocket_;
         std::unordered_map<SOCKET, ClientInfoTcp> socketToClientInfoTcp_;
         std::unordered_map<long long, SOCKADDR_IN> idToSockaddrinUdp_;
-        std::queue<s_TaskQueue> taskQueue_;
+        //std::queue<s_TaskQueue> taskQueue_;
         std::thread myHandleThread_[THREAD_NUM];
         bool isExit_{ false };
         std::mutex mtServerHandle_;

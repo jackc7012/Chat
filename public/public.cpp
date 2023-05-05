@@ -62,15 +62,23 @@ void ToLow(std::string& code)
     return;
 }
 
-std::string CombineString(char** be_combined, const int size)
+std::string CombineString(const DataRecords& dataRecords)
 {
-    std::string s_return("");
-    for (int i = 0; i < size; ++i)
+    std::string result;
+    for (size_t i = 0; i < dataRecords.size(); ++i)
     {
-        s_return += be_combined[i];
-        s_return += "|";
+        DataRecordLine dataRecordLine = dataRecords.at(i);
+        for (size_t j = 0; j < dataRecordLine.size(); ++j)
+        {
+            result += dataRecordLine.at(0);
+            result += ":";
+            result += dataRecordLine.at(1);
+            result += ":";
+            result += dataRecordLine.at(2);
+        }
+        result += "|";
     }
-    return s_return.substr(0, s_return.length() - 1);
+    return result;
 }
 
 void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest)
@@ -193,4 +201,15 @@ bool checkSqlValid(const std::string& src)
         }
     }
     return true;
+}
+
+std::string trim(const std::string& src)
+{
+    std::string temp(src);
+    if (!temp.empty())
+    {
+        temp.erase(0, temp.find_first_not_of(" "));
+        temp.erase(temp.find_last_not_of(" ") + 1);
+    }
+    return temp;
 }

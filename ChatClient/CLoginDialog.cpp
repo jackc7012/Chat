@@ -5,6 +5,8 @@
 #include "ChatClient.h"
 #include "CLoginDialog.h"
 #include "afxdialogex.h"
+
+#include "protocol.h"
 using namespace cwy;
 
 // CLoginDialog 对话框
@@ -23,7 +25,7 @@ CLoginDialog::~CLoginDialog()
 
 void CLoginDialog::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+    CDialogEx::DoDataExchange(pDX);
 }
 
 
@@ -51,16 +53,18 @@ BOOL CLoginDialog::OnInitDialog()
     GetDlgItem(IDC_REGISTER)->SetFont(&font);
 
     socketClient = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (INVALID_SOCKET == socketClient) {
+    if (INVALID_SOCKET == socketClient)
+    {
         MessageBox(_T("创建服务失败,请重试！"), _T("错误"), MB_ICONERROR);
         return FALSE;
     }
 
     addr.sin_family = AF_INET;
     addr.sin_port = ntohs(cwy::TCP_PORT);
-    addr.sin_addr.S_un.S_addr = inet_addr(cwy::SERVER_IP.c_str());
+    addr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
 
-    if (::connect(socketClient, (SOCKADDR*)&addr, sizeof(addr)) != 0) {
+    if (::connect(socketClient, (SOCKADDR*)&addr, sizeof(addr)) != 0)
+    {
         MessageBox(_T("连接失败，请重试！"), _T("错误"), MB_ICONERROR);
         return FALSE;
     }
@@ -69,7 +73,7 @@ BOOL CLoginDialog::OnInitDialog()
     int nNetTimeout = GET_TOKEN_TIMEOUT;
     ::setsockopt(socketClient, SOL_SOCKET, SO_RCVTIMEO, (char*)&nNetTimeout, sizeof(int));
     ::recv(socketClient, buf, DATA_LENGTH, 0);
-    client_token = CHandleJson::CHandleJson(buf).GetJsonValueString("content");
+    //client_token = CHandleJson::CHandleJson(buf).GetJsonValueString("content");
     delete[]buf;
     return TRUE;
 }
@@ -84,28 +88,32 @@ void CLoginDialog::OnBnClickedLogin()
     const char* id = str_id.GetBuffer(0);
     const char* password = str_password.GetBuffer(0);
 
-    to_send.param_.login_.id_ = atoll(id);
-    to_send.param_.login_.password_ = const_cast<char*>(password);
+    //to_send.param_.login_.id_ = atoll(id);
+    //to_send.param_.login_.password_ = const_cast<char*>(password);
     std::string send_data = EncodeJson(CommunicationType::LOGIN, to_send);
     ::send(socketClient, send_data.c_str(), send_data.length(), 0);
-    client_nick_name = str_name.GetBuffer(0);
+    //client_nick_name = str_name.GetBuffer(0);
     CLoginWait dlg1;
     dlg1.socketClient = socketClient;
     int rt = dlg1.DoModal();
-    if (rt == 1) {
-        logClient.InitLog(name);
+    if (rt == 1)
+    {
+        //logClient.InitLog(name);
         ShowWindow(SW_HIDE);
         CChatClientDlg dlg2;
         dlg2.DoModal();
         EndDialog(0);
     }
-    else if (rt == 2) {
+    else if (rt == 2)
+    {
         MessageBox(_T("登录失败，请输入正确的昵称和密码"), _T("错误"), MB_ICONERROR);
     }
-    else if (rt == 3) {
+    else if (rt == 3)
+    {
         MessageBox(_T("该用户已经登录，请勿重复登录"), _T("错误"), MB_ICONERROR);
     }
-    else if (rt == -1) {
+    else if (rt == -1)
+    {
         MessageBox(_T("登录超时，请检查网络状态"), _T("错误"), MB_ICONERROR);
     }
 }

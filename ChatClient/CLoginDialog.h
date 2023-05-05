@@ -12,15 +12,14 @@
 
 const int GET_TOKEN_TIMEOUT = 3000;
 
-class CLoginDialog : public CDialogEx
-{
+class CLoginDialog : public CDialogEx {
     DECLARE_DYNAMIC(CLoginDialog)
 
 public:
     CLoginDialog(CWnd* pParent = nullptr);   // 标准构造函数
     virtual ~CLoginDialog();
 
-// 对话框数据
+    // 对话框数据
 #ifdef AFX_DESIGN_TIME
     enum { IDD = IDD_LOGIN_DIALOG };
 #endif

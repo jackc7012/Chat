@@ -5,7 +5,7 @@
 
 #include <Windows.h>
 
-#include "../json/json.h"
+#include "json/json.h"
 
 enum class CommunicationType {
     NULLCOMMUNICATION = 0,
@@ -14,13 +14,15 @@ enum class CommunicationType {
     /*
         { "communication_type":"register"
         , "customer" : "aaa"
-        , "password" : "******"} // 加密
+        , "password" : "******"
+        , "mac" : "AAAAA-BBBBB-CCCCC-DDDDD"
+        , "ip" : "192.168.0.1"} // 加密
     */
     REGISTERBACKSUCCEED,
     /*
         { "communication_type":"registerbacksucceed"
         , "customer" : "aaa"
-        , "id" : 60001
+        , "id" : 10000
         , "register_result" : "succeed"}
     */
     REGISTERBACKFAILED,
@@ -28,12 +30,12 @@ enum class CommunicationType {
         { "communication_type":"registerbackfailed"
         , "customer" : "aaa"
         , "register_result" : "failed"
-        , "description" : "user name is already have"}
+        , "description" : "unkown error"}
     */
     LOGIN,
     /*
         { "communication_type":"login"
-        , "customer" : "aaa"
+        , "id" : 10000
         , "password" : "******"} // 加密
     */
     LOGINBACKSUCCEED,
@@ -53,18 +55,18 @@ enum class CommunicationType {
     /*
         { "communication_type":"showlogin"
         , "customer" : "aaa|bbb|ccc"
-        . "customer_num" : 3}
+        . "show_login_type" : 0}
     */
     DELETECUSTOMER,
     /*
         { "communication_type":"deletecustomer"
-        , "customer" : "aaa"}
+        , "id" : 10000}
     */
     CHAT,
     /*
         { "communication_type":"chat"
-        , "source" : "aaa"
-        , "target" : "bbb"
+        , "source" : 10000
+        , "targetid" : 10001
         , "content" : "hello"}
     */
     TRANSFERFILEREQUEST,
@@ -99,6 +101,11 @@ enum class CommunicationType {
         { "communication_type":"forcedelete"
         , "customer" : "bbb"}
     */
+    GETPEOPLELIST,
+    /*
+        { "communication_type":"getpeoplelist"
+        , "customer_list" : "10000:aaa, 10001:bbb"}
+    */
 };
 
 struct s_HandleRecv {
@@ -114,6 +121,8 @@ struct s_HandleRecv {
         struct RegisterType {
             char* customer;
             char* password;
+            char* mac;
+            char* ip;
         };
         // 注册用户应答
         struct RegisterBackType {
@@ -129,24 +138,23 @@ struct s_HandleRecv {
         };
         // 用户登录应答
         struct LoginBackType {
-            unsigned long long id;
             char* customer;
             char* login_result;
             char* description;
         };
         // 显示用户
         struct ShowLoginType {
-            char** customer;
-            unsigned int customer_num;
+            char* customer;
+            int show_login_type;
         };
         // 用户退出
         struct DelCustomerType {
-            char* customer;
+            unsigned long long id;
         };
         // 聊天
         struct ChatType {
-            char* source;
-            char* target;
+            unsigned long long sourceid;
+            unsigned long long targetid;
             char* content;
         };
         // 传送文件请求
@@ -196,6 +204,12 @@ inline void RegisterSpace(char** field, const std::string& message)
     *field = new char[len + 1];
     memset(*field, 0, len + 1);
     memcpy_s(*field, len, message.c_str(), len);
+}
+
+inline void DeleteSpace(char** field)
+{
+    delete[]*field;
+    *field = nullptr;
 }
 
 void UnregisterSpace(CommunicationType type, s_HandleRecv& field);

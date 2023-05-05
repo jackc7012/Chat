@@ -8,62 +8,62 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
         {
         case CommunicationType::REGISTER:
         {
-            delete[]field.Param.register_.customer;
-            delete[]field.Param.register_.password;
+            DeleteSpace(&field.Param.register_.customer);
+            DeleteSpace(&field.Param.register_.password);
+            DeleteSpace(&field.Param.register_.mac);
+            DeleteSpace(&field.Param.register_.ip);
         }
         break;
 
         case CommunicationType::REGISTERBACKSUCCEED:
         {
-            delete[]field.Param.registerBack_.customer;
-            delete[]field.Param.registerBack_.register_result;
+            DeleteSpace(&field.Param.registerBack_.customer);
+            DeleteSpace(&field.Param.registerBack_.register_result);
         }
         break;
 
         case CommunicationType::REGISTERBACKFAILED:
         {
-            delete[]field.Param.registerBack_.customer;
-            delete[]field.Param.registerBack_.register_result;
-            delete[]field.Param.registerBack_.description;
+            DeleteSpace(&field.Param.registerBack_.customer);
+            DeleteSpace(&field.Param.registerBack_.register_result);
+            DeleteSpace(&field.Param.registerBack_.description);
         }
         break;
 
         case CommunicationType::LOGIN:
         {
-            delete[]field.Param.login_.password;
+            DeleteSpace(&field.Param.login_.password);
         }
         break;
 
         case CommunicationType::LOGINBACKSUCCEED:
         {
-            delete[]field.Param.loginBack_.customer;
-            delete[]field.Param.loginBack_.login_result;
+            DeleteSpace(&field.Param.loginBack_.customer);
+            DeleteSpace(&field.Param.loginBack_.login_result);
         }
         break;
 
         case CommunicationType::LOGINBACKFAILED:
         {
-            delete[]field.Param.loginBack_.login_result;
-            delete[]field.Param.loginBack_.description;
+            DeleteSpace(&field.Param.loginBack_.login_result);
+            DeleteSpace(&field.Param.loginBack_.description);
         }
         break;
 
         case CommunicationType::SHOWLOGIN:
         {
+            DeleteSpace(&field.Param.showLogin_.customer);
         }
         break;
 
         case CommunicationType::DELETECUSTOMER:
         {
-            delete[]field.Param.delCustomer_.customer;
         }
         break;
 
         case CommunicationType::CHAT:
         {
-            delete[]field.Param.chat_.content;
-            delete[]field.Param.chat_.source;
-            delete[]field.Param.chat_.target;
+            DeleteSpace(&field.Param.chat_.content);
         }
         break;
 
@@ -94,8 +94,9 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
 std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param)
 {
     Json::Value js_value;
-    Json::FastWriter js_write;
-    std::string str_json("");
+    Json::StreamWriterBuilder js_write_builder;
+    Json::StreamWriter* js_write(js_write_builder.newStreamWriter());
+    std::stringstream str_json("");
     try
     {
         switch (type)
@@ -105,6 +106,8 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
             js_value["communication_type"] = "register";
             js_value["customer"] = s_param.Param.register_.customer;
             js_value["password"] = s_param.Param.register_.password;
+            js_value["mac"] = s_param.Param.register_.mac;
+            js_value["ip"] = s_param.Param.register_.ip;
         }
         break;
 
@@ -145,7 +148,6 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
         case CommunicationType::LOGINBACKFAILED:
         {
             js_value["communication_type"] = "loginbackfailed";
-            js_value["customer"] = s_param.Param.loginBack_.customer;
             js_value["login_result"] = s_param.Param.loginBack_.login_result;
             js_value["description"] = s_param.Param.loginBack_.description;
         }
@@ -154,16 +156,15 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
         case CommunicationType::SHOWLOGIN:
         {
             js_value["communication_type"] = "showlogin";
-            std::string temp = CombineString(s_param.Param.showLogin_.customer, s_param.Param.showLogin_.customer_num);
-            js_value["customer"] = temp.c_str();
-            js_value["customer_num"] = s_param.Param.showLogin_.customer_num;
+            js_value["customer"] = s_param.Param.showLogin_.customer;
+            js_value["show_login_type"] = std::to_string(s_param.Param.showLogin_.show_login_type);
         }
         break;
 
         case CommunicationType::DELETECUSTOMER:
         {
             js_value["communication_type"] = "deletecustomer";
-            js_value["customer"] = s_param.Param.delCustomer_.customer;
+            js_value["id"] = std::to_string(s_param.Param.delCustomer_.id);
         }
         break;
 
@@ -171,8 +172,8 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
         {
             js_value["communication_type"] = "chat";
             js_value["content"] = s_param.Param.chat_.content;
-            js_value["target"] = s_param.Param.chat_.target;
-            js_value["source"] = s_param.Param.chat_.source;
+            js_value["sourceid"] = std::to_string(s_param.Param.chat_.sourceid);
+            js_value["targetid"] = std::to_string(s_param.Param.chat_.targetid);
         }
         break;
 
@@ -217,16 +218,18 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
         return "";
     }
 
-    str_json = js_write.write(js_value);
+    js_write->write(js_value, &str_json);
 
-    return str_json;
+    return str_json.str();
 }
 
 bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
 {
     Json::Value js_value;
-    Json::Reader js_reader;
-    js_reader.parse(value, js_value);
+    JSONCPP_STRING err;
+    Json::CharReaderBuilder js_reader_build;
+    Json::CharReader* js_reader(js_reader_build.newCharReader());
+    js_reader->parse(&value[0], &value[0] + value.length(), &js_value, &err);
     if (!js_value.isMember("communication_type"))
     {
         return false;
@@ -234,9 +237,12 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
 
     if (js_value["communication_type"].asString() == "register")
     { // register
-        std::string customer = js_value["customer"].asString(), password = js_value["password"].asString();
+        std::string customer = js_value["customer"].asString(), password = js_value["password"].asString(),
+            mac = js_value["mac"].asString(), ip = js_value["ip"].asString();
         RegisterSpace(&s_return.Param.register_.customer, customer.c_str());
         RegisterSpace(&s_return.Param.register_.password, password.c_str());
+        RegisterSpace(&s_return.Param.register_.mac, mac.c_str());
+        RegisterSpace(&s_return.Param.register_.ip, ip.c_str());
         s_return.type_ = CommunicationType::REGISTER;
 
     }
@@ -276,37 +282,21 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
     }
     else if (js_value["communication_type"].asString() == "showlogin")
     { // show_login
-        std::string customer = js_value["customer"].asString();
-        int size = 0;
-        if (size != js_value["customer_num"].asInt())
-        {
-            s_return.type_ = CommunicationType::ERRORCOMMUNICATION;
-            for (int i = 0; i < size; ++i)
-            {
-                delete[]s_return.Param.showLogin_.customer[i];
-            }
-            delete[]s_return.Param.showLogin_.customer;
-        }
-        else
-        {
-            s_return.type_ = CommunicationType::SHOWLOGIN;
-        }
-
+        
     }
     else if (js_value["communication_type"].asString() == "delcustomer")
     { // delete_customer
         std::string customer = js_value["customer"].asString();
-        RegisterSpace(&s_return.Param.delCustomer_.customer, customer.c_str());
+        s_return.Param.delCustomer_.id = atoll(js_value["id"].asString().c_str());
         s_return.type_ = CommunicationType::DELETECUSTOMER;
 
     }
     else if (js_value["communication_type"].asString() == "chat")
     { // chat
-        std::string content = js_value["content"].asString(), source = js_value["source"].asString(),
-            target = js_value["target"].asString();
+        std::string content = js_value["content"].asString();
         RegisterSpace(&s_return.Param.chat_.content, content.c_str());
-        RegisterSpace(&s_return.Param.chat_.source, source.c_str());
-        RegisterSpace(&s_return.Param.chat_.target, target.c_str());
+        s_return.Param.chat_.sourceid = atoll(js_value["sourceid"].asString().c_str());
+        s_return.Param.chat_.targetid = atoll(js_value["targetid"].asString().c_str());
         s_return.type_ = CommunicationType::CHAT;
 
     }

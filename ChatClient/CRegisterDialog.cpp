@@ -75,15 +75,15 @@ void CRegisterDialog::OnBnClickedRegisterUser()
     if (strcmp(str_password, str_password_confirm) != 0) {
 	    MessageBox(_T("两次输入密码不一致"), _T("错误"), MB_ICONERROR);
     }
-    else if (!cwy::VerifyCode(str_verify.GetBuffer(0), str_verify_code.GetBuffer(0))) {
+    else if (!VerifyCode(str_verify.GetBuffer(0), str_verify_code.GetBuffer(0))) {
 	    MessageBox(_T("验证码错误"), _T("错误"), MB_ICONERROR);
 	    SetVerify();
     }
     else {
-	    cwy::s_HandleRecv toSend;
+	    /*s_HandleRecv toSend;
 	    toSend.param_.register_.customer_ = const_cast<char*>(str_name.GetBuffer(0));
 	    toSend.param_.register_.password_ = const_cast<char*>(str_password.GetBuffer(0));
-	    SendRegisterMessage(toSend);
+	    SendRegisterMessage(toSend);*/
     }
     str_name.ReleaseBuffer();
     str_password.ReleaseBuffer();
@@ -93,16 +93,16 @@ void CRegisterDialog::SetVerify()
 {
     int code_rand = 0;
     std::string verify_code("");
-    for (int i = 0; i < 4; ++i) {
+    /*for (int i = 0; i < 4; ++i) {
         code_rand = rand() % strlen(cwy::VERIFY_CODE);
         verify_code += cwy::VERIFY_CODE[code_rand];
-    }
+    }*/
     SetDlgItemText(IDC_STATIC_VERIFY_CODE, verify_code.c_str());
 }
 
-void CRegisterDialog::SendRegisterMessage(const cwy::s_HandleRecv& toSend)
+void CRegisterDialog::SendRegisterMessage(const s_HandleRecv& toSend)
 {
-    std::string rt = cwy::EncodeJson(cwy::CommunicationType::REGISTER, toSend);
+    /*std::string rt = EncodeJson(CommunicationType::REGISTER, toSend);
     ::send(socketClient, rt.c_str(), rt.length(), 0);
     char* buf = new char[DATA_LENGTH];
     memset(buf, 0, DATA_LENGTH);
@@ -125,5 +125,5 @@ void CRegisterDialog::SendRegisterMessage(const cwy::s_HandleRecv& toSend)
     else {
         MessageBox(_T("网络连接错误，请稍后再试"), _T("错误"), MB_ICONERROR);
     }
-    delete[]buf;
+    delete[]buf;*/
 }

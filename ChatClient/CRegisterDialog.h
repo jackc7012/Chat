@@ -26,6 +26,6 @@ public:
     virtual BOOL OnInitDialog();
     afx_msg void OnBnClickedRegisterUser();
     void SetVerify();
-    void SendRegisterMessage(const cwy::s_HandleRecv& toSend);
+    void SendRegisterMessage(const s_HandleRecv& toSend);
     SOCKET socketClient{ 0 };
 };

@@ -45,13 +45,16 @@ namespace cwy {
 
         void NetWorkEvent(const std::string& taskParam, const SOCKET socket);
 
-        std::string HandleRegister(const s_HandleRecv& handleRecv, const std::string& ip, s_HandleRecv& handleSend);
+        std::string HandleRegister(const s_HandleRecv& handleRecv, s_HandleRecv& handleSend);
 
-        std::string HandleLogin(const s_HandleRecv& handleRecv, s_HandleRecv& handleSend, bool& isLoginSucceed);
+        std::string HandleLogin(const s_HandleRecv& handleRecv, s_HandleRecv& handleSend,
+            bool& isLoginSucceed, std::string& customerName);
 
-        void HandleExit(const std::string& customer);
+        void HandleExit(const unsigned long long id);
 
-        std::string HandleChat(const s_HandleRecv& handleRecv, s_HandleRecv& handleSend);
+        std::string HandleChat(const s_HandleRecv& handleRecv, const bool isOnline, s_HandleRecv& handleSend);
+
+        std::string HandleShowLogin(const unsigned long long id = -1, const int type = 0);
 
         inline int JudgeCallBack() const
         {
@@ -67,16 +70,17 @@ namespace cwy {
         std::vector<std::thread> threadHandle_;
         CallBack callBack_{ nullptr };
         SOCKET socketServiceTcp_{ 0 };
-        SOCKADDR_IN addrServiceTcp_{ 0 }, addrAccept_{ 0 }, addrServiceUdp_{ 0 };
+        SOCKADDR_IN addrServiceTcp_{ 0 }, addrAccept_{ 0 };
         std::vector<SOCKET> socketAccept_;
         Info info_;
-        std::thread threadAcc_, threadTcp_, threadUdp_, threadHeartBeat_;
+        std::thread threadAcc_, threadTcp_, threadHeartBeat_;
         std::mutex mutexHandle_, mutexPush_;
-        std::unordered_map<std::string, SOCKET> loginCustomer_;
-        std::unordered_map<SOCKET, std::string> acceptCustomer_;
+        // id : {name : socket}
+        std::unordered_map<unsigned long long, std::pair<std::string, SOCKET>> loginCustomer_;
         std::queue<std::pair<std::string, SOCKET>> taskQue_;
         unsigned long long loginCount_{ 0 };
         long long maxRegistered_{ DEFAULT_REGISTER_ID };
+        bool exitFlag{ false };
     };
 }
 

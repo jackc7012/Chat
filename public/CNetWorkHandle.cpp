@@ -7,24 +7,24 @@ CNetWorkHandle::CNetWorkHandle()
 : mainWnd_(nullptr)
 , udpSocket_(0)
 {
-    logNetWork_.InitLog("../{time}/network");
+    /*logNetWork_.InitLog("../{time}/network");
     dataBase_ = CDataBase::CreateInstance();
-    dataBase_->InitDataBase(DATABASE_NAME);
+    dataBase_->InitDataBase(DATABASE_NAME);*/
 }
 
 CNetWorkHandle* CNetWorkHandle::CreateInstance()
 {
     static CNetWorkHandle* ptr = nullptr;
-    if (ptr == nullptr) {
+    /*if (ptr == nullptr) {
         ptr = new CNetWorkHandle();
-    }
+    }*/
 
     return ptr;
 }
 
 CNetWorkHandle::~CNetWorkHandle()
 {
-    isExit_ = true;
+    /*isExit_ = true;
     for (unsigned short i = 0; i < THREAD_NUM; ++i) {
         if (myHandleThread_[i].joinable()) {
             myHandleThread_[i].join();
@@ -33,7 +33,7 @@ CNetWorkHandle::~CNetWorkHandle()
     dataBase_->UpdateLoginStatus();
     if (dataBase_ != nullptr) {
         delete dataBase_;
-    }
+    }*/
 }
 
 std::vector<std::string> CNetWorkHandle::InitNetWork(const HWND hWnd)
@@ -51,7 +51,7 @@ std::vector<std::string> CNetWorkHandle::InitNetWork(const HWND hWnd)
             return std::vector<std::string>{};
         }
         in_addr* pAddr = (in_addr*)*host->h_addr_list;
-        for (int i = 0; i < (strlen((char*)*host->h_addr_list) - strlen(host->h_name)) / 4 && pAddr; i++) {
+        for (size_t i = 0; i < (strlen((char*)*host->h_addr_list) - strlen(host->h_name)) / 4 && pAddr; i++) {
             std::string addr = inet_ntoa(pAddr[i]);
             result.push_back(addr);
         }
@@ -69,7 +69,7 @@ void CNetWorkHandle::SetUdpSocket(SOCKET udpSocket)
 
 void CNetWorkHandle::threadTask(unsigned short taskNum)
 {
-    s_HandleRecv temp;
+    /*s_HandleRecv temp;
     std::string message;
     CommunicationType type = CommunicationType::NULLCOMMUNICATION;
     std::string result_message;
@@ -109,7 +109,7 @@ void CNetWorkHandle::threadTask(unsigned short taskNum)
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-    }
+    }*/
 }
 
 bool CNetWorkHandle::ClientAccept(const SOCKET& socket, const SOCKADDR_IN& sockAddr)
@@ -129,7 +129,7 @@ bool CNetWorkHandle::ClientAccept(const SOCKET& socket, const SOCKADDR_IN& sockA
 
 void CNetWorkHandle::HandleRecvTcp()
 {
-    char* strRecv = new char[DATA_LENGTH];
+    /*char* strRecv = new char[DATA_LENGTH];
     memset(strRecv, 0, DATA_LENGTH);
     int i = socketAccept_.size() - 1;
     for (; i >= 0; --i) {
@@ -143,12 +143,12 @@ void CNetWorkHandle::HandleRecvTcp()
     auto itor = socketToClientInfoTcp_.find(socketAccept_[i]);
     handleRecv.ip_ = itor->second.ip_;
     taskQueue_.push(s_TaskQueue(handleRecv, strRecv));
-    delete[]strRecv;
+    delete[]strRecv;*/
 }
 
 void CNetWorkHandle::HandleRecvUdp()
 {
-    char* strRecv = new char[DATA_LENGTH];
+    /*char* strRecv = new char[DATA_LENGTH];
     memset(strRecv, 0, DATA_LENGTH);
     SOCKADDR_IN addrClient = { 0 };
     int addrLen = sizeof(SOCKADDR);
@@ -161,12 +161,12 @@ void CNetWorkHandle::HandleRecvUdp()
         handleRecv.ip_ = ::inet_ntoa(addrClient.sin_addr);
         taskQueue_.push(s_TaskQueue(handleRecv, strRecv));
     }
-    delete[]strRecv;
+    delete[]strRecv;*/
 }
 
 CommunicationType CNetWorkHandle::HandleRecv(const std::string& message, s_HandleRecv& handleRecv, std::string& strToSend)
 {
-    CommunicationType result = CommunicationType::NULLCOMMUNICATION;
+    /*CommunicationType result = CommunicationType::NULLCOMMUNICATION;
     logNetWork_ << "recv " << (handleRecv.connectionType_ == ConnectionType::TCP ? "TCP" : "UDP") <<
         " message from " << handleRecv.ip_ << " , message content = " << message;
     logNetWork_.PrintlogInfo(FILE_FORMAT);
@@ -238,14 +238,14 @@ CommunicationType CNetWorkHandle::HandleRecv(const std::string& message, s_Handl
     }
     toSend.type_ = result;
     strToSend = EncodeJson(result, toSend);
-    DeleteMemory(handleRecv.type_, handleRecv);
+    DeleteMemory(handleRecv.type_, handleRecv);*/
 
-    return result;
+    return CommunicationType::NULLCOMMUNICATION;
 }
 
 void CNetWorkHandle::SetSocketInfo(const SOCKET& socket, const std::string& ip)
 {
-    std::string token;
+    /*std::string token;
     int tokenLength = 0;
     GetToken(token, tokenLength);
     socketAccept_.push_back(socket);
@@ -254,5 +254,5 @@ void CNetWorkHandle::SetSocketInfo(const SOCKET& socket, const std::string& ip)
     toSend.param_.token_.tokenLength_ = tokenLength;
     toSend.param_.token_.content_ = const_cast<char *>(token.c_str());
     std::string strToSend = EncodeJson(CommunicationType::TOKEN, toSend);
-    ::send(socket, strToSend.c_str(), strToSend.length(), 0);
+    ::send(socket, strToSend.c_str(), strToSend.length(), 0);*/
 }

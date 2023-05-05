@@ -5,10 +5,9 @@
 #include <string>
 #include <vector>
 
-#import "C:\Program Files\Common Files\System\ado\msado15.dll" no_namespace rename("EOF", "adoEOF")
+#include "public.h"
 
-typedef std::vector<std::string>    DataRecordLine;
-typedef std::vector<DataRecordLine> DataRecords;
+#import "C:\Program Files\Common Files\System\ado\msado15.dll" no_namespace rename("EOF", "adoEOF")
 
 enum class DBTYPE {
     CREATETABLE,
@@ -53,9 +52,6 @@ namespace cwy {
         {
             return errMessage_;
         }
-
-    private:
-        BOOL judgeCommand(const DBTYPE dbType, const std::string& command);
 
     private:
         DataBaseImpl();

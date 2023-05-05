@@ -5,32 +5,48 @@
 #include <vector>
 #include <sstream>
 
+// 网络通信数据量长度
 const unsigned int DATA_LENGTH = 1024 * 10;
 
+typedef std::vector<std::string>    DataRecordLine;
+typedef std::vector<DataRecordLine> DataRecords;
+
+// 密码加密
 std::string Encryption(const std::string& pwd);
 
+// 密码解密
 std::string Decryption(const std::string& pwd);
 
+// 验证码验证
 bool VerifyCode(const std::string& code, const std::string& code_verify);
 
+// 字符小写
 void ToLow(std::string& code);
 
-std::string CombineString(char** be_combined, const int size);
+// 
+std::string CombineString(const DataRecords& dataRecords);
 
+// 分割字符串
 void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest);
 
 void SplitString(const char* be_converted, const char separator, char** dest, int& size);
 
+// 获取系统时间
 std::string GetSystemTime();
 
+// 
 std::string toDbString(const std::string& src);
 
 std::string dbJoin(const std::vector<long long>& srcList);
 
 std::string dbJoin(const std::vector<std::string>& srcList);
 
+// sql注入过滤
 bool checkValid(const std::string& src);
 
 bool checkSqlValid(const std::string& src);
+
+// 字符串去除收尾空格
+std::string trim(const std::string& src);
 
 #endif  //__PUBLIC_H__

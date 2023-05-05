@@ -5,7 +5,6 @@
 #include <sstream>
 #include <vector>
 
-#include "public.h"
 #include "data_interface.h"
 
 namespace cwy {

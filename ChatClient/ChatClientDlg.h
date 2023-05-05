@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "public.h"
+#include "protocol.h"
 #include "CLog.h"
 #include <iostream>
 #include <fstream>
@@ -58,8 +58,8 @@ class CChatClientDlg : public CDialogEx {
     afx_msg void OnBnClickedTransferfile();
     bool can_transfer_file{ false };
     int thread_TransferFile(const HWND &hwnd, const std::string &file_name, const std::string &target);
-    int thread_TransferFileAccept(const HWND &hwnd, const std::string &file_name, const cwy::s_HandleRecv &handle_recv);
+    int thread_TransferFileAccept(const HWND &hwnd, const std::string &file_name, const s_HandleRecv &handle_recv);
     std::mutex mt_read_file;
-    std::queue<cwy::s_HandleRecv> q_transfer_file;
+    std::queue<s_HandleRecv> q_transfer_file;
     cwy::CLog g_log;
 };

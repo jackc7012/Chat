@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <thread>
-#include "public.h"
+#include "protocol.h"
 // CLoginWait 对话框
 
 class CLoginWait : public CDialogEx

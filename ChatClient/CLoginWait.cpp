@@ -5,7 +5,6 @@
 #include "ChatClient.h"
 #include "CLoginWait.h"
 #include "afxdialogex.h"
-using namespace cwy;
 
 // CLoginWait 对话框
 
@@ -100,7 +99,7 @@ void CLoginWait::socketRecvThread()
     ::recv(socketClient, buf, DATA_LENGTH, 0);
     if (buf[0] != '\0') {
         s_HandleRecv rt;
-        DecodeJson(buf, rt);
+        /*DecodeJson(buf, rt);
         if (strcmp(rt.param.LoginBack.login_result, "succeed") == 0) {
             flag = 1;
         }
@@ -110,7 +109,7 @@ void CLoginWait::socketRecvThread()
         else if (strcmp(rt.param.LoginBack.login_result, "isLogin") == 0) {
             flag = 3;
         }
-        DeleteMemory(CommunicationType::LOGINBACK,  rt);
+        DeleteMemory(CommunicationType::LOGINBACK,  rt);*/
     }
     else {
         flag = -1;

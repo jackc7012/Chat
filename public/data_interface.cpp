@@ -69,7 +69,7 @@ BOOL DataBaseImpl::operSql(const DBTYPE dbType, const std::string& sqlRequest)
     } catch (_com_error e)
     {
         errMessage_.clear();
-        errMessage_ = e.Description();
+        errMessage_ = e.ErrorMessage();
         return FALSE;
     }
     return TRUE;
@@ -95,7 +95,7 @@ BOOL DataBaseImpl::selectSql(const std::string& sqlRequest, DataRecords& result)
     } catch (_com_error e)
     {
         errMessage_.clear();
-        errMessage_ = e.Description();
+        errMessage_ = e.ErrorMessage();
         return FALSE;
     }
     return TRUE;
