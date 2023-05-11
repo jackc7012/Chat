@@ -3,6 +3,20 @@
 #include <sstream>
 using namespace cwy;
 
+const std::string cwy::GetServerIp()
+{
+    char ip[50];
+    memset(ip, 0, 50);
+    GetPrivateProfileString("CommonInfo", "ServerIp", "127.0.0.1", ip, 50, "./chat.ini");
+    return ip;
+}
+
+const unsigned int cwy::GetServerTcpPort()
+{
+    unsigned int port = GetPrivateProfileInt("CommonInfo", "TcpPort", 6000, "./chat.ini");
+    return port;
+}
+
 CNetWorkHandle::CNetWorkHandle()
 : mainWnd_(nullptr)
 , udpSocket_(0)

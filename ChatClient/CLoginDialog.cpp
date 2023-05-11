@@ -2,9 +2,15 @@
 //
 
 #include "stdafx.h"
-#include "ChatClient.h"
-#include "CLoginDialog.h"
+
 #include "afxdialogex.h"
+
+#include "CLoginDialog.h"
+#include "ChatClient.h"
+#include "ChatClientDlg.h"
+#include "CRegisterDialog.h"
+#include "CLoginWait.h"
+#include "CLog.h"
 
 #include "protocol.h"
 using namespace cwy;
@@ -32,6 +38,7 @@ void CLoginDialog::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CLoginDialog, CDialogEx)
     ON_BN_CLICKED(IDC_LOGIN, &CLoginDialog::OnBnClickedLogin)
     ON_BN_CLICKED(IDC_REGISTER, &CLoginDialog::OnBnClickedRegister)
+    ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 BOOL CLoginDialog::OnInitDialog()
@@ -52,77 +59,135 @@ BOOL CLoginDialog::OnInitDialog()
     GetDlgItem(IDC_LOGIN)->SetFont(&font);
     GetDlgItem(IDC_REGISTER)->SetFont(&font);
 
-    socketClient = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (INVALID_SOCKET == socketClient)
+    socketClient_ = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (INVALID_SOCKET == socketClient_)
     {
         MessageBox(_T("创建服务失败,请重试！"), _T("错误"), MB_ICONERROR);
         return FALSE;
     }
 
-    addr.sin_family = AF_INET;
-    addr.sin_port = ntohs(cwy::TCP_PORT);
-    addr.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+    char ip[20];
+    memset(ip, 0, 20);
+    GetPrivateProfileString("CommonInfo", "ServerIp", "127.0.0.1", ip, 20, "./chat.ini");
+    unsigned int port = GetPrivateProfileInt("CommonInfo", "TcpPort", 6000, "./chat.ini");
 
-    if (::connect(socketClient, (SOCKADDR*)&addr, sizeof(addr)) != 0)
+    SOCKADDR_IN addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = ntohs(port);
+    addr.sin_addr.S_un.S_addr = inet_addr(ip);
+
+    if (::connect(socketClient_, (SOCKADDR*)&addr, sizeof(addr)) != 0)
     {
         MessageBox(_T("连接失败，请重试！"), _T("错误"), MB_ICONERROR);
         return FALSE;
     }
-    char* buf = new char[DATA_LENGTH];
-    memset(buf, 0, DATA_LENGTH);
-    int nNetTimeout = GET_TOKEN_TIMEOUT;
-    ::setsockopt(socketClient, SOL_SOCKET, SO_RCVTIMEO, (char*)&nNetTimeout, sizeof(int));
-    ::recv(socketClient, buf, DATA_LENGTH, 0);
-    //client_token = CHandleJson::CHandleJson(buf).GetJsonValueString("content");
-    delete[]buf;
     return TRUE;
 }
 
 // CLoginDialog 消息处理程序
 void CLoginDialog::OnBnClickedLogin()
 {
-    CString str_id, str_password, str_text;
-    GetDlgItemText(IDC_ID, str_id);
-    GetDlgItemText(IDC_PASSWORD, str_password);
-    s_HandleRecv to_send;
-    const char* id = str_id.GetBuffer(0);
-    const char* password = str_password.GetBuffer(0);
+    CString strId, strPassword;
+    GetDlgItemText(IDC_ID, strId);
+    GetDlgItemText(IDC_PASSWORD, strPassword);
+    s_HandleRecv toSend;
+    const char* id = strId.GetBuffer(0);
+    const char* password = strPassword.GetBuffer(0);
+    UINT64 idNum = static_cast<UINT64>(atoll(id));
+    if (strcmp(id, "") == 0)
+    {
+        MessageBox(_T("账号不能为空"), _T("错误"), MB_ICONERROR);
+        return;
+    }
 
-    //to_send.param_.login_.id_ = atoll(id);
-    //to_send.param_.login_.password_ = const_cast<char*>(password);
-    std::string send_data = EncodeJson(CommunicationType::LOGIN, to_send);
-    ::send(socketClient, send_data.c_str(), send_data.length(), 0);
-    //client_nick_name = str_name.GetBuffer(0);
+    /*ShowWindow(SW_HIDE);
+    CChatClientDlg dlg2;
+    dlg2.customerId_ = idNum;
+    dlg2.socketClient_ = socketClient_;
+    dlg2.DoModal();
+    EndDialog(0);*/
+
+    toSend.Param.login_.id = idNum;
+    RegisterSpace(&toSend.Param.login_.password, Encryption(password));
+    std::string sendData = EncodeJson(CommunicationType::LOGIN, toSend);
+    ::send(socketClient_, sendData.c_str(), sendData.length(), 0);
+    UnregisterSpace(CommunicationType::LOGIN, toSend);
     CLoginWait dlg1;
-    dlg1.socketClient = socketClient;
-    int rt = dlg1.DoModal();
-    if (rt == 1)
+    dlg1.socketClient_ = socketClient_;
+    dlg1.mode_ = 0;
+    LoginResult rt = static_cast<LoginResult>(dlg1.DoModal());
+    if ((rt == LoginResult::SUCCEED) || (rt == LoginResult::ALREADYLOGININ))
     {
-        //logClient.InitLog(name);
-        ShowWindow(SW_HIDE);
-        CChatClientDlg dlg2;
-        dlg2.DoModal();
-        EndDialog(0);
+        bool loginInFlag = true;
+        if (rt == LoginResult::ALREADYLOGININ)
+        {
+            char message[70];
+            memset(message, 0, 70);
+            sprintf_s(message, 70, "该用户已在 %s 登录，此操作将会强制下线,是否继续", dlg1.ip_.c_str());
+            if (MessageBox(message, _T("提示"), MB_YESNO) == IDYES)
+            {
+                toSend.Clear();
+                toSend.Param.forceDelete_.id = idNum;
+                sendData = EncodeJson(CommunicationType::FORCEDELETE, toSend);
+                ::send(socketClient_, sendData.c_str(), sendData.length(), 0);
+            }
+            else
+            {
+                loginInFlag = false;
+            }
+        }
+        if (loginInFlag)
+        {
+            ShowWindow(SW_HIDE);
+            CChatClientDlg dlg2;
+            dlg2.loginFlag_ = ((rt == LoginResult::SUCCEED) ? true : false);
+            dlg2.customerId_ = idNum;
+            dlg2.customerName_ = dlg1.customerName_;
+            dlg2.socketClient_ = socketClient_;
+            dlg2.DoModal();
+            EndDialog(0);
+        }
     }
-    else if (rt == 2)
+    else if (rt == LoginResult::NOUSER)
     {
-        MessageBox(_T("登录失败，请输入正确的昵称和密码"), _T("错误"), MB_ICONERROR);
+        MessageBox(_T("登录失败，请输入正确账号"), _T("错误"), MB_ICONERROR);
     }
-    else if (rt == 3)
+    else if (rt == LoginResult::PASSWORDERROR)
     {
-        MessageBox(_T("该用户已经登录，请勿重复登录"), _T("错误"), MB_ICONERROR);
+        MessageBox(_T("登录失败，请输入正确密码"), _T("错误"), MB_ICONERROR);
     }
-    else if (rt == -1)
+    else if (rt == LoginResult::OUTLIMIT)
     {
         MessageBox(_T("登录超时，请检查网络状态"), _T("错误"), MB_ICONERROR);
     }
+    else if (rt == LoginResult::UNKNOWNERROR)
+    {
+        MessageBox(_T("未知错误,请重试"), _T("错误"), MB_ICONERROR);
+    }
+    strId.ReleaseBuffer();
+    strPassword.ReleaseBuffer();
 }
 
 void CLoginDialog::OnBnClickedRegister()
 {
     ShowWindow(SW_HIDE);
     CRegisterDialog dlg;
-    dlg.socketClient = socketClient;
+    dlg.socketClient_ = socketClient_;
     dlg.DoModal();
     ShowWindow(SW_SHOW);
+}
+
+void CLoginDialog::OnOK()
+{
+    // TODO: 在此添加专用代码和/或调用基类
+    OnBnClickedLogin();
+}
+
+
+void CLoginDialog::OnDestroy()
+{
+    CDialogEx::OnDestroy();
+
+    // TODO: 在此处添加消息处理程序代码
+    closesocket(socketClient_);
 }

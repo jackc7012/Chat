@@ -81,6 +81,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <OutDir>../obj/ChatClient/Debug_X64/</OutDir>
+    <IntDir>../bin/ChatClient/</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -121,8 +123,9 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;_DEBUG;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32_LEAN_AND_MEAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>../public</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -199,13 +202,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\public\CLog.h" />
-    <ClInclude Include="..\public\CNetWorkHandle.h" />
-    <ClInclude Include="..\public\data_base.h" />
-    <ClInclude Include="..\public\data_interface.h" />
     <ClInclude Include="..\public\json\json-forwards.h" />
     <ClInclude Include="..\public\json\json.h" />
     <ClInclude Include="..\public\protocol.h" />
     <ClInclude Include="..\public\public.h" />
+    <ClInclude Include="CChangePassword.h" />
     <ClInclude Include="ChatClient.h" />
     <ClInclude Include="ChatClientDlg.h" />
     <ClInclude Include="CLoginDialog.h" />
@@ -220,15 +221,6 @@
     <ClCompile Include="..\public\CLog.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\public\CNetWorkHandle.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\public\data_base.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\public\data_interface.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\public\jsoncpp.cpp" />
     <ClCompile Include="..\public\protocol.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -236,6 +228,7 @@
     <ClCompile Include="..\public\public.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="CChangePassword.cpp" />
     <ClCompile Include="ChatClient.cpp" />
     <ClCompile Include="ChatClientDlg.cpp" />
     <ClCompile Include="CLoginDialog.cpp" />

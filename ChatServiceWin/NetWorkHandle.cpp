@@ -210,7 +210,7 @@ std::string NetWorkHandle::HandleLogin(const s_HandleRecv& handleRecv, s_HandleR
     return result;
 }
 
-void NetWorkHandle::HandleExit(const unsigned long long id)
+void NetWorkHandle::HandleExit(const UINT64 id)
 {
     SqlRequest sql;
     sql << "update tb_info set IsLogin = 0, LastLoginTime = " << toDbString(GetSystemTime())
@@ -258,7 +258,7 @@ std::string NetWorkHandle::HandleChat(const s_HandleRecv& handleRecv, const bool
     return "";
 }
 
-std::string NetWorkHandle::HandleShowLogin(const unsigned long long id/* = -1*/, const int type/* = 0*/)
+std::string NetWorkHandle::HandleShowLogin(const UINT64 id/* = -1*/, const int type/* = 0*/)
 {
     std::string loginInfos;
     s_HandleRecv handleSend;
@@ -271,7 +271,7 @@ std::string NetWorkHandle::HandleShowLogin(const unsigned long long id/* = -1*/,
         {
             return "";
         }
-        loginInfos = CombineString({ {std::to_string(id), itor->second.first, ((type == -1) ? "0" : "1")}});
+        loginInfos = CombineString({ {std::to_string(id), itor->second.first, ((type == -1) ? "0" : "1")} });
     }
     else
     {

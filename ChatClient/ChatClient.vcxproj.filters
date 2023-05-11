@@ -51,16 +51,7 @@
     <ClInclude Include="CRegisterDialog.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\public\CNetWorkHandle.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="CLoginWait.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\public\data_base.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\public\data_interface.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="..\public\protocol.h">
@@ -71,6 +62,9 @@
     </ClInclude>
     <ClInclude Include="..\public\json\json-forwards.h">
       <Filter>json</Filter>
+    </ClInclude>
+    <ClInclude Include="CChangePassword.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -98,22 +92,16 @@
     <ClCompile Include="CRegisterDialog.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\public\CNetWorkHandle.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="CLoginWait.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="..\public\data_base.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="..\public\data_interface.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\public\protocol.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\public\jsoncpp.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="CChangePassword.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

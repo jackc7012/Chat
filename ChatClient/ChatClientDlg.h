@@ -3,24 +3,40 @@
 //
 
 #pragma once
-
-#include "protocol.h"
-#include "CLog.h"
-#include <iostream>
-#include <fstream>
-#include <math.h>
-#include "CMessage.h"
-#include <thread>
-#include <mutex>
+#include <vector>
 #include <queue>
+#include <unordered_map>
+
+#include "CLog.h"
+#include "CChangePassword.h"
+
 
 #define WM_SOCKET                 (WM_USER + 1000)
-#define WM_TRANSFERFILEACCEPT     (WM_USER + 1001)
+#define WM_TRANSFERFILEPROGRESS   (WM_USER + 1001)
+
+struct TransFile {
+    TransFile()
+        : mode_(0), id_(0), fileLength_(0), fileBlock_(0)
+    {
+
+    }
+    TransFile(const int mode, const std::string& fileName, const UINT64 id, const UINT64 fileLength = 0,
+        const unsigned long long fileBlock = 0)
+        : mode_(mode), fileName_(fileName), id_(id), fileLength_(fileLength), fileBlock_(fileBlock)
+    {
+
+    }
+    int mode_; // 0 upload 1 download
+    std::string fileName_;
+    UINT64 id_;
+    UINT64 fileLength_;
+    UINT64 fileBlock_;
+};
 
 // CChatClientDlg 对话框
 class CChatClientDlg : public CDialogEx {
-// 构造
-  public:
+    // 构造
+public:
     CChatClientDlg(CWnd* pParent = NULL);	// 标准构造函数
 
 // 对话框数据
@@ -28,38 +44,59 @@ class CChatClientDlg : public CDialogEx {
     enum { IDD = IDD_CHATCLIENT_DIALOG };
 #endif
 
-  protected:
+protected:
     virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
+    DECLARE_MESSAGE_MAP()
 
-// 实现
-  protected:
-    HICON m_hIcon;
-
-    // 生成的消息映射函数
+public:
     virtual BOOL OnInitDialog();
+    virtual void OnOK();
+
+public:
     afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
     afx_msg void OnPaint();
     afx_msg HCURSOR OnQueryDragIcon();
-    DECLARE_MESSAGE_MAP()
-  public:
-    afx_msg void OnBnClickedConnect();
-    afx_msg LRESULT OnSocket(WPARAM wParam, LPARAM lParam);
-    afx_msg LRESULT OnTransferFileAccept(WPARAM wParam, LPARAM lParam);
-  public:
-    SOCKET socket_client;
-    SOCKADDR_IN addr;
+    afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
+    afx_msg void OnDropFiles(HDROP hDropInfo);
+    afx_msg void OnDestroy();
+
+    afx_msg void OnLbnSelchangeLoginPeople();
+    afx_msg void OnCbnSelchangeStatus();
     afx_msg void OnBnClickedSend();
-    virtual void OnOK();
-    CListBox m_list_login_people;
-    std::string nick_name;
-    afx_msg void OnBnClickedRegister();
-    bool is_service_open{ false };
     afx_msg void OnBnClickedTransferfile();
-    bool can_transfer_file{ false };
-    int thread_TransferFile(const HWND &hwnd, const std::string &file_name, const std::string &target);
-    int thread_TransferFileAccept(const HWND &hwnd, const std::string &file_name, const s_HandleRecv &handle_recv);
-    std::mutex mt_read_file;
-    std::queue<s_HandleRecv> q_transfer_file;
+    afx_msg void OnStnClickedInfo();
+
+public:
+    afx_msg LRESULT OnSocket(WPARAM wParam, LPARAM lParam);
+    afx_msg LRESULT OnTransferFileProgress(WPARAM wParam, LPARAM lParam);
+
+private:
+    void InitControl();
+    inline void UpdateListBox(int pos, const std::string& newMessage);
+
+    void ThreadHandler(const unsigned short threadNum);
+
+public:
+    UINT64 customerId_{ 0 };
+    std::string customerName_;
+    SOCKET socketClient_{ 0 };
+    bool loginFlag_{ true }; // true 登录 false 其他ip已登录
+
+protected:
+    HICON m_hIcon;
+    CListBox m_list_login_people;
+    CComboBox m_status;
+    CProgressCtrl m_transfer_progress;
+
+private:
+    std::unordered_map<UINT64, std::string> chatMessage_; // id : chatmessage
+    std::unordered_map<UINT64, std::pair<std::string, std::string>> loginInfo_; // id : {nick_name, status}
+    std::unordered_map<UINT64, long> progressNum_;
+    std::vector<std::thread> fileTrans_;
+    std::queue<TransFile> transferFile_;
+    std::mutex quMu_;
+    bool threadExit_{ false };
+
     cwy::CLog g_log;
 };

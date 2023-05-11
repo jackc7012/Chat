@@ -5,8 +5,13 @@
 #include <vector>
 #include <sstream>
 
-// 网络通信数据量长度
-const unsigned int DATA_LENGTH = 1024 * 10;
+// 文本网络通信数据量长度
+const unsigned int DATA_LENGTH = 1024 * 1;
+
+// 传送文件网络通信数据量长度
+const unsigned int FILE_DATA_LENGTH = 1024 * 10;
+
+const std::string VERIFY_CODE = "abcdefghjklmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 
 typedef std::vector<std::string>    DataRecordLine;
 typedef std::vector<DataRecordLine> DataRecords;
@@ -23,7 +28,7 @@ bool VerifyCode(const std::string& code, const std::string& code_verify);
 // 字符小写
 void ToLow(std::string& code);
 
-// 
+// 字符串组合
 std::string CombineString(const DataRecords& dataRecords);
 
 // 分割字符串

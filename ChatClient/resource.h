@@ -15,7 +15,9 @@
 #define IDD_DIALOG2                     141
 #define IDD_REGISTER_DIALOG             143
 #define IDD_LOGIN_WAIT                  145
+#define IDD_CHANGEPASSWORD              147
 #define IDC_STATICIP                    1000
+#define IDC_STATICID_LOGIN              1000
 #define IDC_STATICPORT                  1001
 #define IDC_IP                          1002
 #define IDC_PORT                        1003
@@ -52,19 +54,26 @@
 #define IDC_STATIC_PASSWORD_CONFIRM     1025
 #define IDC_STATIC_VERIFY               1026
 #define IDC_REGISTER_USER               1027
+#define IDC_STATIC_NICK_NAME2           1027
 #define IDC_STATIC_VERIFY_CODE          1028
 #define IDC_VERIFY                      1029
 #define IDC_ID                          1029
 #define IDC_PASSWORD_CONFIRM            1030
 #define IDC_STATICID                    1030
+#define IDC_CP_ID                       1032
+#define IDC_CHANGE_PASSWORD             1033
+#define IDC_INFO                        1034
+#define IDC_OLD_PASSWORD                1034
+#define IDC_STATUS                      1035
+#define IDC_TRANSFILEPROGRESS           1036
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        147
+#define _APS_NEXT_RESOURCE_VALUE        149
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1031
+#define _APS_NEXT_CONTROL_VALUE         1038
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

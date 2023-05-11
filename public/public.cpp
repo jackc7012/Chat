@@ -83,15 +83,15 @@ std::string CombineString(const DataRecords& dataRecords)
 
 void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest)
 {
-    int pos = -1, old_pos = 0;
+    int pos = -1, old_pos = -1;
     pos = be_converted.find(separator, pos + 1);
     while (pos != be_converted.npos)
     {
-        dest.push_back(be_converted.substr(old_pos, pos - old_pos - 1));
+        dest.emplace_back(be_converted.substr(old_pos + 1, pos - old_pos - 1));
         old_pos = pos;
-        pos = be_converted.find(pos + 1, separator);
+        pos = be_converted.find(separator, pos + 1);
     }
-    dest.push_back(be_converted.substr(old_pos + 1));
+    dest.emplace_back(be_converted.substr(old_pos + 1));
 
     return;
 }

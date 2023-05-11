@@ -14,6 +14,10 @@
 #include "protocol.h"
 
 namespace cwy {
+    const std::string GetServerIp();
+
+    const unsigned int GetServerTcpPort();
+
     static const unsigned short TCP_PORT = 6000;
     static const unsigned short UDP_PORT = 6002;
 

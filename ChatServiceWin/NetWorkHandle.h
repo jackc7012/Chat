@@ -50,11 +50,11 @@ namespace cwy {
         std::string HandleLogin(const s_HandleRecv& handleRecv, s_HandleRecv& handleSend,
             bool& isLoginSucceed, std::string& customerName);
 
-        void HandleExit(const unsigned long long id);
+        void HandleExit(const UINT64 id);
 
         std::string HandleChat(const s_HandleRecv& handleRecv, const bool isOnline, s_HandleRecv& handleSend);
 
-        std::string HandleShowLogin(const unsigned long long id = -1, const int type = 0);
+        std::string HandleShowLogin(const UINT64 id = -1, const int type = 0);
 
         inline int JudgeCallBack() const
         {
@@ -76,10 +76,10 @@ namespace cwy {
         std::thread threadAcc_, threadTcp_, threadHeartBeat_;
         std::mutex mutexHandle_, mutexPush_;
         // id : {name : socket}
-        std::unordered_map<unsigned long long, std::pair<std::string, SOCKET>> loginCustomer_;
+        std::unordered_map<UINT64, std::pair<std::string, SOCKET>> loginCustomer_;
         std::queue<std::pair<std::string, SOCKET>> taskQue_;
-        unsigned long long loginCount_{ 0 };
-        long long maxRegistered_{ DEFAULT_REGISTER_ID };
+        UINT64 loginCount_{ 0 };
+        INT64 maxRegistered_{ DEFAULT_REGISTER_ID };
         bool exitFlag{ false };
     };
 }
