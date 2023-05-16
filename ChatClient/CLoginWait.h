@@ -28,7 +28,7 @@ public:
     afx_msg void OnTimer(UINT_PTR nIDEvent);
 
 public:
-    SOCKET socketClient_{ 0 };
+    SOCKET socketClient_{ INVALID_SOCKET };
     int mode_{ -1 }; // 0 login, 1 register, 2 change password
     std::string customerName_;
     std::string ip_;

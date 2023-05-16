@@ -66,16 +66,17 @@ BEGIN_MESSAGE_MAP(CChatClientDlg, CDialogEx)
     ON_WM_SYSCOMMAND()
     ON_WM_PAINT()
     ON_WM_QUERYDRAGICON()
-    ON_BN_CLICKED(IDC_SEND, &CChatClientDlg::OnBnClickedSend)
-    ON_MESSAGE(WM_SOCKET, OnSocket)
-    ON_BN_CLICKED(IDC_TRANSFERFILE, &CChatClientDlg::OnBnClickedTransferfile)
-    ON_MESSAGE(WM_TRANSFERFILEPROGRESS, OnTransferFileProgress)
-    ON_LBN_SELCHANGE(IDC_LOGIN_PEOPLE, &CChatClientDlg::OnLbnSelchangeLoginPeople)
     ON_WM_CTLCOLOR()
-    ON_CBN_SELCHANGE(IDC_STATUS, &CChatClientDlg::OnCbnSelchangeStatus)
     ON_WM_DROPFILES()
     ON_WM_DESTROY()
+    ON_LBN_SELCHANGE(IDC_LOGIN_PEOPLE, &CChatClientDlg::OnLbnSelchangeLoginPeople)
+    ON_CBN_SELCHANGE(IDC_STATUS, &CChatClientDlg::OnCbnSelchangeStatus)
+    ON_BN_CLICKED(IDC_SEND, &CChatClientDlg::OnBnClickedSend)
+    ON_BN_CLICKED(IDC_TRANSFERFILE, &CChatClientDlg::OnBnClickedTransferfile)
     ON_STN_CLICKED(IDC_INFO, &CChatClientDlg::OnStnClickedInfo)
+    ON_MESSAGE(WM_SOCKET, OnSocket)
+    ON_MESSAGE(WM_TRANSFERFILEPROGRESS, OnTransferFileProgress)
+    ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 // CChatClientDlg 消息处理程序
@@ -111,6 +112,7 @@ BOOL CChatClientDlg::OnInitDialog()
 
     // TODO: 在此添加额外的初始化代码
     InitControl();
+    InitTransferFileSocket();
     ::WSAAsyncSelect(socketClient_, this->m_hWnd, WM_SOCKET, FD_READ);
 
     if (!loginFlag_)
@@ -123,11 +125,23 @@ BOOL CChatClientDlg::OnInitDialog()
             dlg.DoModal();
         }
     }
-    for (unsigned short i = 0; i < 5; ++i)
+    int uploadThread = GetPrivateProfileInt("CommonInfo", "UploadThread", 2, "./chat.ini");
+    int downloadThread = GetPrivateProfileInt("CommonInfo", "DownloadThread", 2, "./chat.ini");
+    for (unsigned short i = 0; i < uploadThread; ++i)
     {
-        fileTrans_.emplace_back(std::thread(&CChatClientDlg::ThreadHandler, this, i));
+        fileTransUpload_.emplace_back(std::thread(&CChatClientDlg::ThreadHandlerUpload, this, i));
+    }
+    for (unsigned short i = 0; i < downloadThread; ++i)
+    {
+        fileTransDownload_.emplace_back(std::thread(&CChatClientDlg::ThreadHandlerDownload, this, i));
     }
     return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+}
+
+void CChatClientDlg::OnOK()
+{
+    // TODO: 在此添加专用代码和/或调用基类
+    OnBnClickedSend();
 }
 
 void CChatClientDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -179,11 +193,108 @@ HCURSOR CChatClientDlg::OnQueryDragIcon()
     return static_cast<HCURSOR>(m_hIcon);
 }
 
+HBRUSH CChatClientDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+
+    // TODO:  在此更改 DC 的任何特性
+    if (pWnd->GetDlgCtrlID() == IDC_INFO)
+    {
+        pDC->SetTextColor(RGB(255, 0, 0));
+        pDC->SetBkMode(TRANSPARENT);
+    }
+
+    // TODO:  如果默认的不是所需画笔，则返回另一个画笔
+    return hbr;
+}
+
+void CChatClientDlg::OnDropFiles(HDROP hDropInfo)
+{
+    // TODO: 在此添加消息处理程序代码和/或调用默认值
+    TCHAR filePath[MAX_PATH] = { 0 };
+    DragQueryFile(hDropInfo, 0, filePath, sizeof(filePath));
+    SetDlgItemText(IDC_TRANSFERFILE, filePath);
+    DragFinish(hDropInfo);
+    CDialogEx::OnDropFiles(hDropInfo);
+
+    return;
+}
+
+void CChatClientDlg::OnDestroy()
+{
+    CDialogEx::OnDestroy();
+
+    // TODO: 在此处添加消息处理程序代码
+    int uploadThread = GetPrivateProfileInt("CommonInfo", "UploadThread", 2, "./chat.ini");
+    int downloadThread = GetPrivateProfileInt("CommonInfo", "DownloadThread", 2, "./chat.ini");
+    threadExit_ = true;
+    for (int i = 0; i < uploadThread; ++i)
+    {
+        if (fileTransUpload_[i].joinable())
+        {
+            fileTransUpload_[i].join();
+        }
+    }
+    for (int i = 0; i < downloadThread; ++i)
+    {
+        if (fileTransDownload_[i].joinable())
+        {
+            fileTransDownload_[i].join();
+        }
+    }
+
+    return;
+}
+
+void CChatClientDlg::OnLbnSelchangeLoginPeople()
+{
+    // TODO: 在此添加控件通知处理程序代码
+    UpdateData(TRUE);
+    SetDlgItemText(IDC_INFO, _T(""));
+    SetDlgItemText(IDC_SENDTEXT, _T(""));
+    SetDlgItemText(IDC_FILENAME, _T(""));
+    m_transfer_progress.SetPos(0);
+    CString strTarget;
+    int curSel = m_list_login_people.GetCurSel();
+    m_list_login_people.GetText(curSel, strTarget);
+    int pos = strTarget.Find('\t', 0);
+    if (pos != -1)
+    {
+        CString newString = strTarget.Right(3);
+        if (strcmp(newString, "new") == 0)
+        {
+            CString newShow = strTarget.Left(strTarget.GetLength() - 3);
+            UpdateListBox(pos, newShow.GetBuffer(0));
+            m_list_login_people.SetCurSel(curSel);
+            newShow.ReleaseBuffer();
+        }
+        UINT64 id = strtoull(strTarget.Left(pos).GetBuffer(0), nullptr, 10);
+        auto itor1 = chatMessage_.find(id);
+        if (itor1 != chatMessage_.end())
+        {
+            SetDlgItemText(IDC_TEXT, itor1->second.c_str());
+        }
+        auto itor2 = progressNum_.find(id);
+        if (itor2 != progressNum_.end())
+        {
+            m_transfer_progress.SetPos(itor2->second);
+        }
+    }
+    strTarget.ReleaseBuffer();
+    UpdateData(FALSE);
+
+    return;
+}
+
+void CChatClientDlg::OnCbnSelchangeStatus()
+{
+    // TODO: 在此添加控件通知处理程序代码
+
+}
+
 void CChatClientDlg::OnBnClickedSend()
 {
     // TODO: 在此添加控件通知处理程序代码
-    CString strText, strSend, strSendTarget;
-    s_HandleRecv toSend;
     int curSel = m_list_login_people.GetCurSel();
     if (curSel == CB_ERR)
     {
@@ -191,6 +302,8 @@ void CChatClientDlg::OnBnClickedSend()
     }
     else
     {
+        CString strText, strSend, strSendTarget;
+        s_HandleRecv toSend;
         m_list_login_people.GetText(curSel, strSendTarget);
         GetDlgItemText(IDC_SENDTEXT, strSend);
         if (strSend == "")
@@ -224,10 +337,12 @@ void CChatClientDlg::OnBnClickedSend()
                 MessageBox(_T("内部错误,请重试!!!"), _T("错误"), MB_ICONERROR);
             }
         }
+        strText.ReleaseBuffer();
+        strSend.ReleaseBuffer();
+        strSendTarget.ReleaseBuffer();
     }
-    strText.ReleaseBuffer();
-    strSend.ReleaseBuffer();
-    strSendTarget.ReleaseBuffer();
+
+    return;
 }
 
 void CChatClientDlg::OnBnClickedTransferfile()
@@ -256,24 +371,46 @@ void CChatClientDlg::OnBnClickedTransferfile()
         int pos = strSendTarget.Find('\t', 0);
         if (pos != -1)
         {
-            std::lock_guard<std::mutex> lg(quMu_);
-            transferFile_.push(TransFile(0, strFilePath.GetBuffer(0), strtoull(strSendTarget.Left(pos).GetBuffer(0), nullptr, 10)));
+            std::lock_guard<std::mutex> lg(quMuUp_);
+            transferFileUpload_.push(TransFile(strFilePath.GetBuffer(0), strtoull(strSendTarget.Left(pos).GetBuffer(0), nullptr, 10)));
         }
         strFilePath.ReleaseBuffer();
         strSendTarget.ReleaseBuffer();
     }
+
+    return;
 }
 
-void CChatClientDlg::OnOK()
+void CChatClientDlg::OnStnClickedInfo()
 {
-    // TODO: 在此添加专用代码和/或调用基类
-    OnBnClickedSend();
+    // TODO: 在此添加控件通知处理程序代码
+    CString strInfo;
+    GetDlgItemText(IDC_INFO, strInfo);
+    if (strInfo != "")
+    {
+        int pos1 = strInfo.Find(' ');
+        int pos2 = strInfo.ReverseFind(' ');
+        CString strId = strInfo.Mid(pos1 + 1, pos2 - pos1 - 1);
+        UINT64 id = strtoull(strId.GetBuffer(0), nullptr, 10);
+        auto itor1 = loginInfo_.find(id);
+        int distance = std::distance(loginInfo_.begin(), itor1);
+        char temp[50];
+        memset(temp, 0, 50);
+        sprintf_s(temp, 50, "%llu\t\t%s\t\t\t%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
+        UpdateListBox(distance, temp);
+        m_list_login_people.SetCurSel(distance);
+        SetDlgItemText(IDC_TEXT, chatMessage_[id].c_str());
+        SetDlgItemText(IDC_INFO, _T(""));
+        strId.ReleaseBuffer();
+    }
+    strInfo.ReleaseBuffer();
+
+    return;
 }
 
 LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
 {
     char* strRecv = new char[DATA_LENGTH];
-    CString strText;
     memset(strRecv, 0, DATA_LENGTH);
     if (lParam == FD_READ)
     {
@@ -394,8 +531,8 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
         {
             if (handleRecv.Param.transferFileInfo_.targetid == customerId_)
             {
-                std::lock_guard<std::mutex> lg(quMu_);
-                transferFile_.push(TransFile(1, handleRecv.Param.transferFileInfo_.file_name, handleRecv.Param.transferFileInfo_.sourceid,
+                std::lock_guard<std::mutex> lg(quMuDown_);
+                transferFileDownload_.push(TransFile(handleRecv.Param.transferFileInfo_.file_name, handleRecv.Param.transferFileInfo_.sourceid,
                     handleRecv.Param.transferFileInfo_.file_length, handleRecv.Param.transferFileInfo_.file_block));
             }
         }
@@ -407,6 +544,7 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
     }
     delete[]strRecv;
     strRecv = nullptr;
+
     return 0;
 }
 
@@ -414,68 +552,13 @@ LRESULT CChatClientDlg::OnTransferFileProgress(WPARAM wParam, LPARAM lParam)
 {
     UpdateData(TRUE);
     double progress = (double)wParam;
-    m_transfer_progress.SetPos(static_cast<int>(progress * 100));
+    UINT64 id = (UINT64)lParam;
+    int pos = progress * 100;
+    m_transfer_progress.SetPos(pos);
+    progressNum_[id] = ((pos == 100) ? 0 : pos);
     UpdateData(FALSE);
 
     return 0;
-}
-
-void CChatClientDlg::OnLbnSelchangeLoginPeople()
-{
-    // TODO: 在此添加控件通知处理程序代码
-    UpdateData(TRUE);
-    SetDlgItemText(IDC_INFO, _T(""));
-    SetDlgItemText(IDC_SENDTEXT, _T(""));
-    SetDlgItemText(IDC_FILENAME, _T(""));
-    m_transfer_progress.SetPos(0);
-    CString strTarget;
-    int curSel = m_list_login_people.GetCurSel();
-    m_list_login_people.GetText(curSel, strTarget);
-    int pos = strTarget.Find('\t', 0);
-    if (pos != -1)
-    {
-        CString newString = strTarget.Right(3);
-        if (strcmp(newString, "new") == 0)
-        {
-            CString newShow = strTarget.Left(strTarget.GetLength() - 3);
-            UpdateListBox(pos, newShow.GetBuffer(0));
-            m_list_login_people.SetCurSel(curSel);
-            newShow.ReleaseBuffer();
-        }
-        UINT64 id = strtoull(strTarget.Left(pos).GetBuffer(0), nullptr, 10);
-        auto itor1 = chatMessage_.find(id);
-        if (itor1 != chatMessage_.end())
-        {
-            SetDlgItemText(IDC_TEXT, itor1->second.c_str());
-        }
-        auto itor2 = progressNum_.find(id);
-        if (itor2 != progressNum_.end())
-        {
-            m_transfer_progress.SetPos(itor2->second);
-        }
-    }
-    strTarget.ReleaseBuffer();
-    UpdateData(FALSE);
-}
-
-HBRUSH CChatClientDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
-{
-    HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
-
-    // TODO:  在此更改 DC 的任何特性
-    if (pWnd->GetDlgCtrlID() == IDC_INFO)
-    {
-        pDC->SetTextColor(RGB(255, 0, 0));
-        pDC->SetBkMode(TRANSPARENT);
-    }
-
-    // TODO:  如果默认的不是所需画笔，则返回另一个画笔
-    return hbr;
-}
-
-void CChatClientDlg::OnCbnSelchangeStatus()
-{
-    // TODO: 在此添加控件通知处理程序代码
 }
 
 void CChatClientDlg::InitControl()
@@ -514,6 +597,37 @@ void CChatClientDlg::InitControl()
     m_status.SetCurSel(0);
 
     DragAcceptFiles(TRUE);
+
+    return;
+}
+
+void CChatClientDlg::InitTransferFileSocket()
+{
+    socketTranserFile_ = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (INVALID_SOCKET == socketTranserFile_)
+    {
+        MessageBox(_T("创建文件传输服务失败,请重试！"), _T("错误"), MB_ICONERROR);
+        return;
+    }
+
+    char ip[20];
+    memset(ip, 0, 20);
+    GetPrivateProfileString("CommonInfo", "ServerIp", "127.0.0.1", ip, 20, "./chat.ini");
+    unsigned int port = GetPrivateProfileInt("CommonInfo", "TransferPort", 6004, "./chat.ini");
+
+    SOCKADDR_IN addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = ntohs(port);
+    addr.sin_addr.S_un.S_addr = inet_addr(ip);
+
+    if (::connect(socketTranserFile_, (SOCKADDR*)&addr, sizeof(addr)) != 0)
+    {
+        MessageBox(_T("连接文件传输端口失败，请重试！"), _T("错误"), MB_ICONERROR);
+        return;
+    }
+    ::WSAAsyncSelect(socketTranserFile_, this->m_hWnd, WM_SOCKET_FILE, FD_READ);
+
+    return;
 }
 
 inline void CChatClientDlg::UpdateListBox(int pos, const std::string& newMessage)
@@ -522,7 +636,7 @@ inline void CChatClientDlg::UpdateListBox(int pos, const std::string& newMessage
     m_list_login_people.InsertString(pos, newMessage.c_str());
 }
 
-void CChatClientDlg::ThreadHandler(const unsigned short threadNum)
+void CChatClientDlg::ThreadHandlerUpload(const unsigned short threadNum)
 {
     while (1)
     {
@@ -532,147 +646,130 @@ void CChatClientDlg::ThreadHandler(const unsigned short threadNum)
         }
         TransFile transFile;
         {
-            std::lock_guard<std::mutex> lg(quMu_);
-            if (transferFile_.empty())
+            std::lock_guard<std::mutex> lg(quMuUp_);
+            if (transferFileUpload_.empty())
             {
                 Sleep(1);
                 continue;
             }
-            transFile = transferFile_.front();
-            transferFile_.pop();
+            transFile = transferFileUpload_.front();
+            transferFileUpload_.pop();
         }
         GetDlgItem(IDC_TRANSFILEPROGRESS)->ShowWindow(true);
-        if (transFile.mode_ == 0)
+        CFile file;
+        file.Open(transFile.fileName_.c_str(), CFile::modeRead | CFile::typeBinary);
+        UINT64 len = file.GetLength();
+        s_HandleRecv toSend;
+        toSend.Param.transferFileInfo_.sourceid = this->customerId_;
+        toSend.Param.transferFileInfo_.targetid = transFile.id_;
+        std::string fileName = transFile.fileName_.substr(transFile.fileName_.find_last_of('\\') + 1);
+        RegisterSpace(&toSend.Param.transferFileInfo_.file_name, fileName);
+        toSend.Param.transferFileInfo_.file_length = len;
+        UINT64 fileSize = (UINT64)ceil((double)((float)len / FILE_DATA_LENGTH));
+        toSend.Param.transferFileInfo_.file_block = fileSize;
+        RegisterSpace(&toSend.Param.transferFileInfo_.transfer_time, GetSystemTime());
+        std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILEINFO, toSend);
+        UnregisterSpace(CommunicationType::TRANSFERFILEINFO, toSend);
+        ::send(socketClient_, jsSend.c_str(), jsSend.length(), 0);
+        Sleep(100);
+        toSend.Clear();
+        char* getStr = new char[FILE_DATA_LENGTH];
+        for (unsigned int nowBlock = 0; nowBlock < fileSize; ++nowBlock)
         {
-            CFile file;
-            file.Open(transFile.fileName_.c_str(), CFile::modeRead | CFile::typeBinary);
-            UINT64 len = file.GetLength();
-            s_HandleRecv toSend;
-            toSend.Param.transferFileInfo_.sourceid = this->customerId_;
-            toSend.Param.transferFileInfo_.targetid = transFile.id_;
-            std::string fileName = transFile.fileName_.substr(transFile.fileName_.find_last_of('\\') + 1);
-            RegisterSpace(&toSend.Param.transferFileInfo_.file_name, fileName);
-            toSend.Param.transferFileInfo_.file_length = len;
-            UINT64 fileSize = (UINT64)ceil((double)((float)len / FILE_DATA_LENGTH));
-            toSend.Param.transferFileInfo_.file_block = fileSize;
-            RegisterSpace(&toSend.Param.transferFileInfo_.transfer_time, GetSystemTime());
-            std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILEINFO, toSend);
-            UnregisterSpace(CommunicationType::TRANSFERFILEINFO, toSend);
+            memset(getStr, 0, FILE_DATA_LENGTH);
+            file.Read(getStr, FILE_DATA_LENGTH);
+            RegisterSpace(&toSend.Param.transferFileContent_.file_content, getStr);
+            toSend.Param.transferFileContent_.now_block = nowBlock++;
+            std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILECONTENT, toSend);
+            UnregisterSpace(CommunicationType::TRANSFERFILECONTENT, toSend);
             ::send(socketClient_, jsSend.c_str(), jsSend.length(), 0);
-            Sleep(100);
-            toSend.Clear();
-            char* getStr = new char[FILE_DATA_LENGTH];
-            for (unsigned int nowBlock = 0; nowBlock < fileSize; ++nowBlock)
-            {
-                memset(getStr, 0, FILE_DATA_LENGTH);
-                file.Read(getStr, FILE_DATA_LENGTH);
-                RegisterSpace(&toSend.Param.transferFileContent_.file_content, getStr);
-                toSend.Param.transferFileContent_.now_block = nowBlock++;
-                std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILECONTENT, toSend);
-                UnregisterSpace(CommunicationType::TRANSFERFILECONTENT, toSend);
-                ::send(socketClient_, jsSend.c_str(), jsSend.length(), 0);
-                file.Seek(FILE_DATA_LENGTH * toSend.Param.transferFileContent_.now_block, CFile::begin);
-                double progress = static_cast<double>(nowBlock / static_cast<double>(fileSize));
-                PostMessage(WM_TRANSFERFILEPROGRESS, (WPARAM)progress, 0);
-                Sleep(500);
-            }
+            file.Seek(FILE_DATA_LENGTH * toSend.Param.transferFileContent_.now_block, CFile::begin);
+            double progress = static_cast<double>(nowBlock / static_cast<double>(fileSize));
+            PostMessage(WM_TRANSFERFILEPROGRESS, (WPARAM)progress, 0);
+            Sleep(500);
+        }
 
-            delete[]getStr;
-            getStr = nullptr;
-            file.Close();
-            Sleep(1000);
-        }
-        else if (transFile.mode_ == 1)
-        {
-            CString pathName;
-            TCHAR szFilter[] = _T("文本文件(*.txt)|*.txt|所有文件(*.*)|*.*||");
-            CFileDialog fileDlg(FALSE, transFile.fileName_.substr(transFile.fileName_.find_last_of('.') + 1).c_str(), transFile.fileName_.c_str(),
-                0, szFilter, this);
-            if (IDOK == fileDlg.DoModal())
-            {
-                pathName = fileDlg.GetPathName();
-            }
-            Sleep(100);
-            CFile file;
-            file.Open(pathName, CFile::modeCreate | CFile::modeWrite | CFile::typeBinary);
-            char* getStr = new char[FILE_DATA_LENGTH];
-            s_HandleRecv handleRecv;
-            for (unsigned int nowBlock = 0; nowBlock < transFile.fileBlock_; ++nowBlock)
-            {
-               /* memset(getStr, 0, FILE_DATA_LENGTH);
-                ::recv(socketClient_, getStr, FILE_DATA_LENGTH, 0);
-                if (!DecodeJson(getStr, handleRecv))
-                {
-                    continue;
-                }
-                file.Write(getStr, FILE_DATA_LENGTH);
-                RegisterSpace(&toSend.Param.transferFileContent_.file_content, getStr);
-                toSend.Param.transferFileContent_.now_block = nowBlock++;
-                std::string jsSend = EncodeJson(CommunicationType::TRANSFERFILECONTENT, toSend);
-                UnregisterSpace(CommunicationType::TRANSFERFILECONTENT, toSend);
-                ::send(socketClient_, jsSend.c_str(), jsSend.length(), 0);
-                m_file.Seek(FILE_DATA_LENGTH * toSend.Param.transferFileContent_.now_block, CFile::begin);
-                double progress = static_cast<double>(nowBlock / static_cast<double>(fileSize));
-                PostMessage(WM_TRANSFERFILEPROGRESS, (WPARAM)progress, 0);*/
-                Sleep(500);
-            }
-            delete[]getStr;
-            getStr = nullptr;
-            file.Close();
-            Sleep(1000);
-        }
+        delete[]getStr;
+        getStr = nullptr;
+        file.Close();
+        Sleep(1000);
         GetDlgItem(IDC_TRANSFILEPROGRESS)->ShowWindow(false);
 
         Sleep(1);
     }
+
+    return;
 }
 
-void CChatClientDlg::OnDropFiles(HDROP hDropInfo)
+void CChatClientDlg::ThreadHandlerDownload(const unsigned short threadNum)
+{
+    while (1)
+    {
+        if (threadExit_)
+        {
+            break;
+        }
+        TransFile transFile;
+        {
+            std::lock_guard<std::mutex> lg(quMuDown_);
+            if (transferFileDownload_.empty())
+            {
+                Sleep(1);
+                continue;
+            }
+            transFile = transferFileDownload_.front();
+            transferFileDownload_.pop();
+        }
+        CString pathName;
+        TCHAR szFilter[] = _T("所有文件(*.*)|*.*||");
+        CFileDialog fileDlg(FALSE, transFile.fileName_.substr(transFile.fileName_.find_last_of('.') + 1).c_str(), transFile.fileName_.c_str(),
+            0, szFilter, this);
+        if (IDOK == fileDlg.DoModal())
+        {
+            pathName = fileDlg.GetPathName();
+        }
+        GetDlgItem(IDC_TRANSFILEPROGRESS)->ShowWindow(true);
+        std::vector<std::string> fileSequence(transFile.fileBlock_);
+        char* getStr = new char[FILE_DATA_LENGTH];
+        for (UINT64 i = 0; i < transFile.fileBlock_; ++i)
+        {
+            memset(getStr, 0, FILE_DATA_LENGTH);
+            ::recv(socketTranserFile_, getStr, FILE_DATA_LENGTH, 0);
+            s_HandleRecv handleRecv;
+            if (!DecodeJson(getStr, handleRecv))
+            {
+                continue;
+            }
+            fileSequence[handleRecv.Param.transferFileContent_.now_block] = std::string(handleRecv.Param.transferFileContent_.file_content);
+            UnregisterSpace(CommunicationType::TRANSFERFILECONTENT, handleRecv);
+            double progress = static_cast<double>(i / static_cast<double>(transFile.fileBlock_ * 2));
+            PostMessage(WM_TRANSFERFILEPROGRESS, (WPARAM)progress, 0);
+            Sleep(500);
+        }
+        delete[]getStr;
+        getStr = nullptr;
+        CFile file;
+        file.Open(transFile.fileName_.c_str(), CFile::modeCreate | CFile::modeWrite | CFile::typeBinary);
+        for (size_t i = 0; i < fileSequence.size(); ++i)
+        {
+            file.Write(fileSequence.at(i).c_str(), fileSequence.at(i).length());
+            file.SeekToEnd();
+            double progress = static_cast<double>((i + transFile.fileBlock_) / static_cast<double>(transFile.fileBlock_ * 2));
+            PostMessage(WM_TRANSFERFILEPROGRESS, (WPARAM)progress, 0);
+        }
+        file.Close();
+        Sleep(1);
+        GetDlgItem(IDC_TRANSFILEPROGRESS)->ShowWindow(false);
+    }
+
+    return;
+}
+
+
+void CChatClientDlg::OnLButtonDown(UINT nFlags, CPoint point)
 {
     // TODO: 在此添加消息处理程序代码和/或调用默认值
-    TCHAR filePath[MAX_PATH] = { 0 };
-    DragQueryFile(hDropInfo, 0, filePath, sizeof(filePath));
-    SetDlgItemText(IDC_TRANSFERFILE, filePath);
-    DragFinish(hDropInfo);
-    CDialogEx::OnDropFiles(hDropInfo);
-}
 
-
-void CChatClientDlg::OnDestroy()
-{
-    CDialogEx::OnDestroy();
-
-    // TODO: 在此处添加消息处理程序代码
-    threadExit_ = true;
-    for (int i = 0; i < 5; ++i)
-    {
-        if (fileTrans_[i].joinable())
-        {
-            fileTrans_[i].join();
-        }
-    }
-}
-
-void CChatClientDlg::OnStnClickedInfo()
-{
-    // TODO: 在此添加控件通知处理程序代码
-    CString strInfo;
-    GetDlgItemText(IDC_INFO, strInfo);
-    if (strInfo != "")
-    {
-        int pos1 = strInfo.Find(' ');
-        int pos2 = strInfo.ReverseFind(' ');
-        CString strId = strInfo.Mid(pos1 + 1, pos2 - pos1 - 1);
-        UINT64 id = strtoull(strId.GetBuffer(0), nullptr, 10);
-        auto itor1 = loginInfo_.find(id);
-        int distance = std::distance(loginInfo_.begin(), itor1);
-        char temp[50];
-        memset(temp, 0, 50);
-        sprintf_s(temp, 50, "%llu\t\t%s\t\t\t%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
-        UpdateListBox(distance, temp);
-        m_list_login_people.SetCurSel(distance);
-        SetDlgItemText(IDC_TEXT, chatMessage_[id].c_str());
-        SetDlgItemText(IDC_INFO, _T(""));
-    }
-    strInfo.ReleaseBuffer();
+    CDialogEx::OnLButtonDown(nFlags, point);
+    IDC_TEXT;
 }

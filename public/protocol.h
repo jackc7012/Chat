@@ -5,7 +5,7 @@
 
 #include <Windows.h>
 
-#include "json/json.h"
+#include "json.h"
 
 enum class LoginResult {
     SUCCEED,
@@ -26,7 +26,6 @@ enum class CommunicationType {
         { "communication_type":"register"
         , "customer" : "aaa"
         , "password" : "******"
-        , "mac" : "AAAAA-BBBBB-CCCCC-DDDDD"
         , "ip" : "192.168.0.1"} // 加密
     */
     REGISTERBACKSUCCEED,
@@ -137,6 +136,7 @@ struct s_HandleRecv {
         struct RegisterType {
             char* customer;
             char* password;
+            char* ip;
         };
         // 注册用户应答
         struct RegisterBackType {

@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="json">
-      <UniqueIdentifier>{d8e9e6b0-f606-41d5-a25b-8798c77d5a8c}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChatServiceWin.cpp">
@@ -39,7 +36,10 @@
     <ClCompile Include="..\public\protocol.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\public\jsoncpp.cpp">
+    <ClCompile Include="..\public\json.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\public\CLog.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -62,11 +62,11 @@
     <ClInclude Include="..\public\protocol.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Administrator\Downloads\json\json-forwards.h">
-      <Filter>json</Filter>
+    <ClInclude Include="..\public\json.h">
+      <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="C:\Users\Administrator\Downloads\json\json.h">
-      <Filter>json</Filter>
+    <ClInclude Include="..\public\CLog.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

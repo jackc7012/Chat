@@ -37,8 +37,14 @@ int NetWorkHandle::Init(CallBack callBack, const std::string& infoFileName)
     SetEvent(callBack);
     GetInfo(infoFileName);
     InitThread();
-    StartNetWork();
-    InitDataBase();
+    if (StartNetWork() != 0)
+    {
+        return -1;
+    }
+    if (InitDataBase() != 0)
+    {
+        return -1;
+    }
     SqlRequest sql("select max(ID) from tb_info");
     DataRecords loginInfo;
     dataBase_->execSql(sql, &loginInfo);
@@ -53,9 +59,9 @@ int NetWorkHandle::Init(CallBack callBack, const std::string& infoFileName)
         }
     }
     ++maxRegistered_;
+
     return 0;
 }
-
 
 int NetWorkHandle::SetEvent(CallBack callBack)
 {
@@ -63,6 +69,14 @@ int NetWorkHandle::SetEvent(CallBack callBack)
     {
         callBack_ = callBack;
     }
+
+    return 0;
+}
+
+int NetWorkHandle::GetInfo(const std::string& infoFileName)
+{
+    info_.GetInfoFromFile(infoFileName);
+
     return 0;
 }
 
@@ -72,6 +86,7 @@ int NetWorkHandle::InitThread()
     {
         threadHandle_.emplace_back(std::thread(&NetWorkHandle::ThreadHandler, this, i));
     }
+
     return 0;
 }
 
@@ -99,9 +114,8 @@ int NetWorkHandle::StartNetWork()
     {
         return callBack_("本地ip获取失败，程序将退出！", true);
     }
-    StartTcp();
 
-    return 0;
+    return StartTcp();
 }
 
 int NetWorkHandle::InitDataBase()
@@ -112,7 +126,227 @@ int NetWorkHandle::InitDataBase()
     {
         return callBack_("数据库连接失败！", true);
     }
+
     return 0;
+}
+
+int NetWorkHandle::StartTcp()
+{
+    socketServiceTcp_ = ::socket(AF_INET, SOCK_STREAM, 0);
+    if (socketServiceTcp_ == INVALID_SOCKET)
+    {
+        return callBack_("socket创建失败", true);
+    }
+    else
+    {
+        SOCKADDR_IN addrServiceTcp{ 0 };
+        addrServiceTcp.sin_family = AF_INET;
+        addrServiceTcp.sin_port = htons(info_.GetNetWorkInfo().tcpPort_);
+        addrServiceTcp.sin_addr.S_un.S_addr = INADDR_ANY;
+        if (::bind(socketServiceTcp_, (sockaddr*)&addrServiceTcp, sizeof(addrServiceTcp)) == SOCKET_ERROR)
+        {
+            return callBack_("socket创建失败", true);
+        }
+        if (::listen(socketServiceTcp_, SOMAXCONN) == SOCKET_ERROR)
+        {
+            return callBack_("socket创建失败", true);
+        }
+        threadAcc_ = std::thread(&NetWorkHandle::HandleAcc, this);
+        threadTcp_ = std::thread(&NetWorkHandle::HandleTcp, this);
+        threadHeartBeat_ = std::thread(&NetWorkHandle::HandleHeartBeat, this);
+    }
+
+    return 0;
+}
+
+void NetWorkHandle::ThreadHandler(const unsigned short threadNum)
+{
+    while (true)
+    {
+        if (exitFlag)
+        {
+            break;
+        }
+        std::string taskParam;
+        SOCKET socket;
+        {
+            std::lock_guard<std::mutex> lg(mutexHandle_);
+            if (taskQue_.empty())
+            {
+                Sleep(1);
+                continue;
+            }
+            std::pair<std::string, SOCKET> param = taskQue_.front();
+            taskQue_.pop();
+            taskParam = param.first;
+            socket = param.second;
+        }
+        NetWorkEvent(taskParam, socket);
+        Sleep(1);
+    }
+
+    return;
+}
+
+void NetWorkHandle::HandleAcc()
+{
+    while (true)
+    {
+        if (exitFlag)
+        {
+            break;
+        }
+        SOCKADDR_IN addrClient = { 0 };
+        int len = sizeof(SOCKADDR);
+        SOCKET socket = ::accept(socketServiceTcp_, (SOCKADDR*)&addrClient, &len);
+        if (socket == SOCKET_ERROR)
+        {
+            Sleep(1);
+            continue;
+        }
+        {
+            std::lock_guard<std::mutex> lg(mutexPush_);
+            socketAccept_.emplace_back(socket);
+        }
+        Sleep(1);
+    }
+
+    return;
+}
+
+void NetWorkHandle::HandleTcp()
+{
+    while (true)
+    {
+        if (exitFlag)
+        {
+            break;
+        }
+        char* strRecv = new char[DATA_LENGTH];
+        memset(strRecv, 0, DATA_LENGTH);
+        int ret = 0;
+        unsigned int i = 0;
+        for (; i < socketAccept_.size(); ++i)
+        {
+            ret = ::recv(socketAccept_[i], strRecv, DATA_LENGTH, 0);
+            if (ret > 0)
+                break;
+        }
+        if (ret > 0)
+        {
+            std::lock_guard<std::mutex> lg(mutexHandle_);
+            taskQue_.push(std::make_pair(strRecv, socketAccept_[i]));
+        }
+        delete[]strRecv;
+        strRecv = nullptr;
+        Sleep(1);
+    }
+
+    return;
+}
+
+void NetWorkHandle::HandleHeartBeat()
+{
+    while (true)
+    {
+        if (exitFlag)
+        {
+            break;
+        }
+        Sleep(1);
+    }
+}
+
+void NetWorkHandle::NetWorkEvent(const std::string& taskParam, const SOCKET socket)
+{
+    JudgeCallBack();
+    s_HandleRecv handleRecv, handleSend;
+    handleSend.socket_accept_ = socket;
+    DecodeJson(taskParam, handleRecv);
+    std::string result;
+    std::mutex mutexLogin;
+    std::unique_lock<std::mutex> ul(mutexLogin, std::defer_lock);
+    switch (handleRecv.type_)
+    {
+    case CommunicationType::REGISTER:
+    {
+        result = HandleRegister(handleRecv, handleSend);
+        ::send(socket, result.c_str(), result.length(), 0);
+        break;
+    }
+
+    case CommunicationType::LOGIN:
+    {
+        bool isLoginSucceed = false;
+        std::string customerName;
+        result = HandleLogin(handleRecv, handleSend, isLoginSucceed, customerName);
+        ::send(socket, result.c_str(), result.length(), 0);
+        result = HandleShowLogin();
+        ::send(socket, result.c_str(), result.length(), 0);
+        if (isLoginSucceed)
+        {
+            result = HandleShowLogin(handleRecv.Param.login_.id, 1);
+            for (size_t i = 0; i < socketAccept_.size(); ++i)
+            {
+                if (socketAccept_.at(i) == socket)
+                {
+                    continue;
+                }
+                ::send(socketAccept_.at(i), result.c_str(), result.length(), 0);
+            }
+            ul.lock();
+            ++loginCount_;
+            loginCustomer_.insert(std::make_pair(handleRecv.Param.login_.id, std::make_pair(customerName, socket)));
+            ul.unlock();
+        }
+        break;
+    }
+
+    case CommunicationType::DELETECUSTOMER:
+    {
+        HandleExit(handleRecv.Param.delCustomer_.id);
+        std::string strLogin = HandleShowLogin(handleRecv.Param.delCustomer_.id, -1);
+        for (size_t i = 0; i < socketAccept_.size(); ++i)
+        {
+            if (socketAccept_.at(i) == socket)
+            {
+                continue;
+            }
+            ::send(socketAccept_.at(i), strLogin.c_str(), strLogin.length(), 0);
+        }
+        ul.lock();
+        --loginCount_;
+        auto itor = loginCustomer_.find(handleRecv.Param.delCustomer_.id);
+        if (itor != loginCustomer_.end())
+        {
+            closesocket(itor->second.second);
+            loginCustomer_.erase(handleRecv.Param.delCustomer_.id);
+        }
+        ul.unlock();
+        break;
+    }
+
+    case CommunicationType::CHAT:
+    {
+        bool isOnline = true;
+        auto itor = loginCustomer_.find(handleRecv.Param.chat_.targetid);
+        if (itor == loginCustomer_.end())
+        {
+            isOnline = false;
+        }
+        result = HandleChat(handleRecv, isOnline, handleSend);
+        if (itor != loginCustomer_.end())
+        {
+            ::send(itor->second.second, result.c_str(), result.length(), 0);
+        }
+        break;
+    }
+
+    default:
+        break;
+    }
+    UnregisterSpace(handleRecv.type_, handleRecv);
+    return;
 }
 
 std::string NetWorkHandle::HandleRegister(const s_HandleRecv& handleRecv, s_HandleRecv& handleSend)
@@ -121,8 +355,7 @@ std::string NetWorkHandle::HandleRegister(const s_HandleRecv& handleRecv, s_Hand
     RegisterSpace(&handleSend.Param.registerBack_.register_result, "failed");
     SqlRequest sql("insert into tb_info(ID, Name, Password, IsLogin, LastLoginTime, RegisterMAC, RegisterIp) values");
     sql << dbJoin(std::vector<std::string>{std::to_string(maxRegistered_), handleRecv.Param.register_.customer,
-        Encryption(handleRecv.Param.register_.password), "0", GetSystemTime(), handleRecv.Param.register_.mac,
-        handleRecv.Param.register_.ip});
+        Encryption(handleRecv.Param.register_.password), "0", GetSystemTime()});
     if (dataBase_->execSql(sql) == TRUE)
     {
         RegisterSpace(&handleSend.Param.registerBack_.register_result, "succeed");
@@ -288,221 +521,4 @@ std::string NetWorkHandle::HandleShowLogin(const UINT64 id/* = -1*/, const int t
     std::string result = EncodeJson(handleSend.type_, handleSend);
     UnregisterSpace(handleSend.type_, handleSend);
     return result;
-}
-
-int NetWorkHandle::StartTcp()
-{
-    socketServiceTcp_ = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (socketServiceTcp_ == INVALID_SOCKET)
-    {
-        callBack_("", true);
-    }
-    else
-    {
-        addrServiceTcp_.sin_family = AF_INET;
-        addrServiceTcp_.sin_port = htons(info_.GetNetWorkInfo().tcpPort_);
-        addrServiceTcp_.sin_addr.S_un.S_addr = INADDR_ANY;
-        if (::bind(socketServiceTcp_, (sockaddr*)&addrServiceTcp_, sizeof(addrServiceTcp_)) == SOCKET_ERROR)
-        {
-            callBack_("", true);
-        }
-        if (::listen(socketServiceTcp_, SOMAXCONN) == SOCKET_ERROR)
-        {
-            callBack_("", true);
-        }
-        threadAcc_ = std::thread(&NetWorkHandle::HandleAcc, this);
-        threadTcp_ = std::thread(&NetWorkHandle::HandleTcp, this);
-        threadHeartBeat_ = std::thread(&NetWorkHandle::HandleHeartBeat, this);
-    }
-    return 0;
-}
-
-int NetWorkHandle::GetInfo(const std::string& infoFileName)
-{
-    info_.GetInfoFromFile(infoFileName);
-    return 0;
-}
-
-void NetWorkHandle::ThreadHandler(const unsigned short threadNum)
-{
-    while (true)
-    {
-        if (exitFlag)
-        {
-            break;
-        }
-        std::string taskParam;
-        SOCKET socket;
-        {
-            std::lock_guard<std::mutex> lg(mutexHandle_);
-            if (taskQue_.empty())
-            {
-                Sleep(1);
-                continue;
-            }
-            std::pair<std::string, SOCKET> param = taskQue_.front();
-            taskQue_.pop();
-            taskParam = param.first;
-            socket = param.second;
-        }
-        NetWorkEvent(taskParam, socket);
-        Sleep(1);
-    }
-    return;
-}
-
-void NetWorkHandle::HandleAcc()
-{
-    while (true)
-    {
-        if (exitFlag)
-        {
-            break;
-        }
-        SOCKADDR_IN addrClient = { 0 };
-        int len = sizeof(SOCKADDR);
-        SOCKET socket = ::accept(socketServiceTcp_, (SOCKADDR*)&addrClient, &len);
-        if (socket == SOCKET_ERROR)
-        {
-            Sleep(1);
-            continue;
-        }
-        {
-            std::lock_guard<std::mutex> lg(mutexPush_);
-            socketAccept_.push_back(socket);
-        }
-        Sleep(1);
-    }
-}
-
-void NetWorkHandle::HandleTcp()
-{
-    while (true)
-    {
-        if (exitFlag)
-        {
-            break;
-        }
-        char* strRecv = new char[DATA_LENGTH];
-        memset(strRecv, 0, DATA_LENGTH);
-        int ret = 0;
-        unsigned int i = 0;
-        for (; i < socketAccept_.size(); ++i)
-        {
-            ret = ::recv(socketAccept_[i], strRecv, DATA_LENGTH, 0);
-            if (ret > 0)
-                break;
-        }
-        if (ret > 0)
-        {
-            std::lock_guard<std::mutex> lg(mutexHandle_);
-            taskQue_.push(std::make_pair(strRecv, socketAccept_[i]));
-        }
-        delete[]strRecv;
-        strRecv = nullptr;
-        Sleep(1);
-    }
-}
-
-void NetWorkHandle::HandleHeartBeat()
-{
-    while (true)
-    {
-        if (exitFlag)
-        {
-            break;
-        }
-        Sleep(1);
-    }
-}
-
-void NetWorkHandle::NetWorkEvent(const std::string& taskParam, const SOCKET socket)
-{
-    s_HandleRecv handleRecv, handleSend;
-    handleSend.socket_accept_ = socket;
-    DecodeJson(taskParam, handleRecv);
-    std::string result;
-    std::mutex mutexLogin;
-    std::unique_lock<std::mutex> ul(mutexLogin, std::defer_lock);
-    switch (handleRecv.type_)
-    {
-    case CommunicationType::REGISTER:
-    {
-        result = HandleRegister(handleRecv, handleSend);
-        ::send(socket, result.c_str(), result.length(), 0);
-        break;
-    }
-
-    case CommunicationType::LOGIN:
-    {
-        bool isLoginSucceed = false;
-        std::string customerName;
-        result = HandleLogin(handleRecv, handleSend, isLoginSucceed, customerName);
-        ::send(socket, result.c_str(), result.length(), 0);
-        result = HandleShowLogin();
-        ::send(socket, result.c_str(), result.length(), 0);
-        result = HandleShowLogin(handleRecv.Param.login_.id, 1);
-        if (isLoginSucceed)
-        {
-            for (size_t i = 0; i < socketAccept_.size(); ++i)
-            {
-                if (socketAccept_.at(i) == socket)
-                {
-                    continue;
-                }
-                ::send(socketAccept_.at(i), result.c_str(), result.length(), 0);
-            }
-            ul.lock();
-            ++loginCount_;
-            loginCustomer_.insert(std::make_pair(handleRecv.Param.login_.id, std::make_pair(customerName, socket)));
-            ul.unlock();
-        }
-        break;
-    }
-
-    case CommunicationType::DELETECUSTOMER:
-    {
-        HandleExit(handleRecv.Param.delCustomer_.id);
-        std::string strLogin = HandleShowLogin(handleRecv.Param.delCustomer_.id, -1);
-        for (size_t i = 0; i < socketAccept_.size(); ++i)
-        {
-            if (socketAccept_.at(i) == socket)
-            {
-                continue;
-            }
-            ::send(socketAccept_.at(i), strLogin.c_str(), strLogin.length(), 0);
-        }
-        ul.lock();
-        --loginCount_;
-        auto itor = loginCustomer_.find(handleRecv.Param.delCustomer_.id);
-        if (itor != loginCustomer_.end())
-        {
-            closesocket(itor->second.second);
-            loginCustomer_.erase(handleRecv.Param.delCustomer_.id);
-        }
-        ul.unlock();
-        break;
-    }
-
-    case CommunicationType::CHAT:
-    {
-        bool isOnline = true;
-        auto itor = loginCustomer_.find(handleRecv.Param.chat_.targetid);
-        if (itor == loginCustomer_.end())
-        {
-            isOnline = false;
-        }
-        result = HandleChat(handleRecv, isOnline, handleSend);
-        if (itor != loginCustomer_.end())
-        {
-            ::send(itor->second.second, result.c_str(), result.length(), 0);
-        }
-        break;
-    }
-
-    default:
-        break;
-    }
-    UnregisterSpace(handleRecv.type_, handleRecv);
-    return;
 }

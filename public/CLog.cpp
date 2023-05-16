@@ -2,8 +2,7 @@
 using namespace cwy;
 
 CLog::CLog(const std::string& path) {
-    std::string ss = path;
-    this->filePath = GetPath(ss);
+    this->filePath = path;
     this->logLevel = DEFAULT_LEVEL;
     this->fileSize = 50;
     this->autoFlush = true;
@@ -13,8 +12,7 @@ CLog::~CLog() {
     UnitLog();
 }
 void CLog::InitLog(const std::string& path, const LogLevel log_level, const int file_size, bool auto_flush) {
-    std::string ss = path;
-    this->filePath = GetPath(ss);
+    this->filePath = path;
     this->logLevel = log_level;
     this->fileSize = file_size;
     this->autoFlush = auto_flush;
@@ -118,7 +116,7 @@ std::string CLog::AssembleString(const std::string& file_name, const int file_li
     SYSTEMTIME st;
     GetLocalTime(&st);
     SplitFileName(temp_file_name);
-    sprintf_s(temp, 512, "[%02d:%02d:%02d %03d]: [%5d][%10s][%5d]\t[%s]%s\r\n", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, 
+    sprintf_s(temp, 512, "[%02d:%02d:%02d %03d]: [%d][%s][%d]\t[%s]%s\r\n", st.wHour, st.wMinute, st.wSecond, st.wMilliseconds, 
               GetCurrentThreadId(), temp_file_name.c_str(), file_line, type.c_str(), strReturnOneLine.c_str());
     strReturnOneLine = "";
     return std::string(temp);

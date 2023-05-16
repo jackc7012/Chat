@@ -11,22 +11,21 @@
 #include "CChangePassword.h"
 
 
-#define WM_SOCKET                 (WM_USER + 1000)
-#define WM_TRANSFERFILEPROGRESS   (WM_USER + 1001)
+#define WM_SOCKET                   (WM_USER + 1000)
+#define WM_SOCKET_FILE              (WM_SOCKET + 1)
+#define WM_TRANSFERFILEPROGRESS     (WM_SOCKET_FILE + 1)
 
 struct TransFile {
     TransFile()
-        : mode_(0), id_(0), fileLength_(0), fileBlock_(0)
+        : id_(0), fileLength_(0), fileBlock_(0)
     {
 
     }
-    TransFile(const int mode, const std::string& fileName, const UINT64 id, const UINT64 fileLength = 0,
-        const unsigned long long fileBlock = 0)
-        : mode_(mode), fileName_(fileName), id_(id), fileLength_(fileLength), fileBlock_(fileBlock)
+    TransFile(const std::string& fileName, const UINT64 id, const UINT64 fileLength = 0, const UINT64 fileBlock = 0)
+        : fileName_(fileName), id_(id), fileLength_(fileLength), fileBlock_(fileBlock)
     {
 
     }
-    int mode_; // 0 upload 1 download
     std::string fileName_;
     UINT64 id_;
     UINT64 fileLength_;
@@ -73,14 +72,16 @@ public:
 
 private:
     void InitControl();
+    void InitTransferFileSocket();
     inline void UpdateListBox(int pos, const std::string& newMessage);
 
-    void ThreadHandler(const unsigned short threadNum);
+    void ThreadHandlerUpload(const unsigned short threadNum);
+    void ThreadHandlerDownload(const unsigned short threadNum);
 
 public:
     UINT64 customerId_{ 0 };
     std::string customerName_;
-    SOCKET socketClient_{ 0 };
+    SOCKET socketClient_{ INVALID_SOCKET };
     bool loginFlag_{ true }; // true µÇÂ¼ false ÆäËûipÒÑµÇÂ¼
 
 protected:
@@ -90,13 +91,16 @@ protected:
     CProgressCtrl m_transfer_progress;
 
 private:
+    SOCKET socketTranserFile_{ INVALID_SOCKET };
     std::unordered_map<UINT64, std::string> chatMessage_; // id : chatmessage
     std::unordered_map<UINT64, std::pair<std::string, std::string>> loginInfo_; // id : {nick_name, status}
-    std::unordered_map<UINT64, long> progressNum_;
-    std::vector<std::thread> fileTrans_;
-    std::queue<TransFile> transferFile_;
-    std::mutex quMu_;
+    std::unordered_map<UINT64, int> progressNum_;
+    std::vector<std::thread> fileTransUpload_, fileTransDownload_;
+    std::queue<TransFile> transferFileUpload_, transferFileDownload_;
+    std::mutex quMuUp_, quMuDown_;
     bool threadExit_{ false };
 
     cwy::CLog g_log;
+public:
+    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 };

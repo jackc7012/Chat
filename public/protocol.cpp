@@ -10,6 +10,7 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
         {
             DeleteSpace(&field.Param.register_.customer);
             DeleteSpace(&field.Param.register_.password);
+            DeleteSpace(&field.Param.register_.ip);
         }
         break;
 
@@ -105,13 +106,14 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
     {
         return;
     }
+
+    return;
 }
 
 std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param)
 {
-    Json::Value js_value;
-    Json::StreamWriterBuilder js_write_builder;
-    Json::StreamWriter* js_write(js_write_builder.newStreamWriter());
+    cwy::Json js_value;
+
     std::stringstream str_json("");
     try
     {
@@ -122,6 +124,7 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
             js_value["communication_type"] = "register";
             js_value["customer"] = s_param.Param.register_.customer;
             js_value["password"] = s_param.Param.register_.password;
+            js_value["id"] = s_param.Param.register_.ip;
         }
         break;
 
@@ -196,10 +199,10 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
         {
             js_value["communication_type"] = "transferfileinfo";
             js_value["file_name"] = s_param.Param.transferFileInfo_.file_name;
-            js_value["file_length"] = s_param.Param.transferFileInfo_.file_length;
-            js_value["file_block"] = s_param.Param.transferFileInfo_.file_block;
-            js_value["targetid"] = s_param.Param.transferFileInfo_.targetid;
-            js_value["sourceid"] = s_param.Param.transferFileInfo_.sourceid;
+            js_value["file_length"] = std::to_string(s_param.Param.transferFileInfo_.file_length);
+            js_value["file_block"] = std::to_string(s_param.Param.transferFileInfo_.file_block);
+            js_value["sourceid"] = std::to_string(s_param.Param.chat_.sourceid);
+            js_value["targetid"] = std::to_string(s_param.Param.chat_.targetid);
             js_value["transfer_time"] = s_param.Param.transferFileInfo_.transfer_time;
         }
         break;
@@ -208,7 +211,7 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
         {
             js_value["communication_type"] = "transferfilecontent";
             js_value["file_content"] = s_param.Param.transferFileContent_.file_content;
-            js_value["now_block"] = s_param.Param.transferFileContent_.now_block;
+            js_value["now_block"] = std::to_string(s_param.Param.transferFileContent_.now_block);
         }
         break;
 
@@ -236,149 +239,143 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
         return "";
     }
 
-    js_write->write(js_value, &str_json);
-    delete js_write;
+    js_value.Write(str_json);
 
     return str_json.str();
 }
 
 bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
 {
-    Json::Value js_value;
-    JSONCPP_STRING err;
-    Json::CharReaderBuilder js_reader_build;
-    Json::CharReader* js_reader(js_reader_build.newCharReader());
-    js_reader->parse(&value[0], &value[0] + value.length(), &js_value, &err);
-    try
-    {
-        js_value.isMember("communication_type");
-    } catch (...)
+    cwy::Json js_value;
+    if (!js_value.Parse(value))
     {
         return false;
     }
 
-    if (js_value["communication_type"].asString() == "register")
+    if (js_value["communication_type"] == "register")
     { // register
-        std::string customer = js_value["customer"].asString(), password = js_value["password"].asString();
+        std::string customer = js_value["customer"], password = js_value["password"], ip = js_value["ip"];
         RegisterSpace(&s_return.Param.register_.customer, customer);
         RegisterSpace(&s_return.Param.register_.password, password);
+        RegisterSpace(&s_return.Param.register_.ip, ip);
         s_return.type_ = CommunicationType::REGISTER;
     }
 
-    else if (js_value["communication_type"].asString() == "registerbacksucceed")
+    else if (js_value["communication_type"] == "registerbacksucceed")
     { // register_succeed
-        std::string customer = js_value["customer"].asString(), register_result = js_value["register_result"].asString();
+        std::string customer = js_value["customer"], register_result = js_value["register_result"];
         RegisterSpace(&s_return.Param.registerBack_.customer, customer);
-        s_return.Param.registerBack_.id = strtoull(js_value["id"].asString().c_str(), nullptr, 10);
+        s_return.Param.registerBack_.id = strtoull(js_value["id"].c_str(), nullptr, 10);
         RegisterSpace(&s_return.Param.registerBack_.register_result, register_result);
         s_return.type_ = CommunicationType::REGISTERBACKSUCCEED;
     }
 
-    else if (js_value["communication_type"].asString() == "registerbackfailed")
+    else if (js_value["communication_type"] == "registerbackfailed")
     { // register_failed
-        std::string register_result = js_value["register_result"].asString(), description = js_value["description"].asString();
+        std::string register_result = js_value["register_result"], description = js_value["description"];
         RegisterSpace(&s_return.Param.registerBack_.register_result, register_result);
         RegisterSpace(&s_return.Param.registerBack_.description, description);
         s_return.type_ = CommunicationType::REGISTERBACKFAILED;
     }
 
-    else if (js_value["communication_type"].asString() == "login")
+    else if (js_value["communication_type"] == "login")
     { // login
-        std::string password = js_value["password"].asString();
+        std::string password = js_value["password"];
         RegisterSpace(&s_return.Param.login_.password, password);
-        s_return.Param.login_.id = strtoull(js_value["id"].asString().c_str(), nullptr, 10);
+        s_return.Param.login_.id = strtoull(js_value["id"].c_str(), nullptr, 10);
         s_return.type_ = CommunicationType::LOGIN;
     }
 
-    else if (js_value["communication_type"].asString() == "loginbacksucceed")
+    else if (js_value["communication_type"] == "loginbacksucceed")
     { // login_succeed
-        std::string customer = js_value["customer"].asString(), login_result = js_value["login_result"].asString();
+        std::string customer = js_value["customer"], login_result = js_value["login_result"];
         RegisterSpace(&s_return.Param.loginBack_.customer, customer);
         RegisterSpace(&s_return.Param.loginBack_.login_result, login_result);
         s_return.type_ = CommunicationType::LOGINBACKSUCCEED;
     }
 
-    else if (js_value["communication_type"].asString() == "loginbackfailed")
+    else if (js_value["communication_type"] == "loginbackfailed")
     { // login_failed
-        std::string customer = js_value["customer"].asString(), login_result = js_value["login_result"].asString(),
-            description = js_value["description"].asString();
+        std::string customer = js_value["customer"], login_result = js_value["login_result"],
+            description = js_value["description"];
         RegisterSpace(&s_return.Param.register_.customer, customer);
         RegisterSpace(&s_return.Param.loginBack_.login_result, login_result);
         RegisterSpace(&s_return.Param.loginBack_.description, description);
         s_return.type_ = CommunicationType::LOGINBACKFAILED;
     }
 
-    else if (js_value["communication_type"].asString() == "showlogin")
+    else if (js_value["communication_type"] == "showlogin")
     { // show_login
-        std::string customer = js_value["customer"].asString();
+        std::string customer = js_value["customer"];
         RegisterSpace(&s_return.Param.showLogin_.customer, customer);
-        s_return.Param.showLogin_.show_login_type = atoi(js_value["show_login_type"].asString().c_str());
+        s_return.Param.showLogin_.show_login_type = atoi(js_value["show_login_type"].c_str());
         s_return.type_ = CommunicationType::SHOWLOGIN;
     }
 
-    else if (js_value["communication_type"].asString() == "delcustomer")
+    else if (js_value["communication_type"] == "delcustomer")
     { // delete_customer
-        s_return.Param.delCustomer_.id = strtoull(js_value["id"].asString().c_str(), nullptr, 10);
+        s_return.Param.delCustomer_.id = strtoull(js_value["id"].c_str(), nullptr, 10);
         s_return.type_ = CommunicationType::DELETECUSTOMER;
     }
 
-    else if (js_value["communication_type"].asString() == "forcedelete")
+    else if (js_value["communication_type"] == "forcedelete")
     { // force delete_customer
-        s_return.Param.forceDelete_.id = strtoull(js_value["id"].asString().c_str(), nullptr, 10);
+        s_return.Param.forceDelete_.id = strtoull(js_value["id"].c_str(), nullptr, 10);
         s_return.type_ = CommunicationType::FORCEDELETE;
     }
 
-    else if (js_value["communication_type"].asString() == "chat")
+    else if (js_value["communication_type"] == "chat")
     { // chat
-        std::string content = js_value["content"].asString(), chat_time = js_value["time"].asString();
-        s_return.Param.chat_.sourceid = strtoull(js_value["sourceid"].asString().c_str(), nullptr, 10);
-        s_return.Param.chat_.targetid = strtoull(js_value["targetid"].asString().c_str(), nullptr, 10);
+        std::string content = js_value["content"], chat_time = js_value["time"];
+        s_return.Param.chat_.sourceid = strtoull(js_value["sourceid"].c_str(), nullptr, 10);
+        s_return.Param.chat_.targetid = strtoull(js_value["targetid"].c_str(), nullptr, 10);
         RegisterSpace(&s_return.Param.chat_.content, content);
         RegisterSpace(&s_return.Param.chat_.chat_time, chat_time);
         s_return.type_ = CommunicationType::CHAT;
     }
 
-    else if (js_value["communication_type"].asString() == "changepassword")
+    else if (js_value["communication_type"] == "changepassword")
     { // change_password
-        std::string old_password = js_value["old_password"].asString(), password = js_value["password"].asString();
-        s_return.Param.changePassword_.id = strtoull(js_value["id"].asString().c_str(), nullptr, 10);
+        std::string old_password = js_value["old_password"], password = js_value["password"];
+        s_return.Param.changePassword_.id = strtoull(js_value["id"].c_str(), nullptr, 10);
         RegisterSpace(&s_return.Param.changePassword_.old_password, old_password);
         RegisterSpace(&s_return.Param.changePassword_.password, password);
         s_return.type_ = CommunicationType::CHANGEPASSWORD;
     }
 
-    else if (js_value["communication_type"].asString() == "changepasswordback")
+    else if (js_value["communication_type"] == "changepasswordback")
     { // change_password_back
-        std::string update_result = js_value["update_result"].asString();
-        s_return.Param.changePasswordBack_.id = strtoull(js_value["id"].asString().c_str(), nullptr, 10);
+        std::string update_result = js_value["update_result"];
+        s_return.Param.changePasswordBack_.id = strtoull(js_value["id"].c_str(), nullptr, 10);
         RegisterSpace(&s_return.Param.changePasswordBack_.update_result, update_result);
         s_return.type_ = CommunicationType::CHANGEPASSWORDBACK;
     }
 
-    else if (js_value["communication_type"].asString() == "transferfileinfo")
+    else if (js_value["communication_type"] == "transferfileinfo")
     { // transfer_file_info
-        std::string file_name = js_value["file_name"].asString(), transfer_time = js_value["time"].asString();
-        s_return.Param.transferFileInfo_.sourceid = strtoull(js_value["sourceid"].asString().c_str(), nullptr, 10);
-        s_return.Param.transferFileInfo_.targetid = strtoull(js_value["targetid"].asString().c_str(), nullptr, 10);
-        s_return.Param.transferFileInfo_.file_length = strtoull(js_value["file_length"].asString().c_str(), nullptr, 10);
-        s_return.Param.transferFileInfo_.file_block = strtoull(js_value["file_block"].asString().c_str(), nullptr, 10);
+        std::string file_name = js_value["file_name"], transfer_time = js_value["time"];
+        s_return.Param.transferFileInfo_.sourceid = strtoull(js_value["sourceid"].c_str(), nullptr, 10);
+        s_return.Param.transferFileInfo_.targetid = strtoull(js_value["targetid"].c_str(), nullptr, 10);
+        s_return.Param.transferFileInfo_.file_length = strtoull(js_value["file_length"].c_str(), nullptr, 10);
+        s_return.Param.transferFileInfo_.file_block = strtoull(js_value["file_block"].c_str(), nullptr, 10);
         RegisterSpace(&s_return.Param.transferFileInfo_.file_name, file_name);
         RegisterSpace(&s_return.Param.transferFileInfo_.transfer_time, transfer_time);
         s_return.type_ = CommunicationType::TRANSFERFILEINFO;
     }
 
-    else if (js_value["communication_type"].asString() == "transferfilecontent")
+    else if (js_value["communication_type"] == "transferfilecontent")
     { // transfer_file_content
-        std::string file_content = js_value["file_content"].asString();
+        std::string file_content = js_value["file_content"];
         RegisterSpace(&s_return.Param.transferFileContent_.file_content, file_content);
-        s_return.Param.transferFileContent_.now_block = strtoull(js_value["now_block"].asString().c_str(), nullptr, 10);
+        s_return.Param.transferFileContent_.now_block = strtoull(js_value["now_block"].c_str(), nullptr, 10);
         s_return.type_ = CommunicationType::TRANSFERFILECONTENT;
     }
 
     else
     { // other
         s_return.type_ = CommunicationType::NULLCOMMUNICATION;
+        return false;
     }
-    delete js_reader;
+
     return true;
 }

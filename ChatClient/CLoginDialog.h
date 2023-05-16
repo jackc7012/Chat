@@ -30,5 +30,5 @@ public:
     afx_msg void OnDestroy();
 
 private:
-    SOCKET socketClient_{ 0 };
+    SOCKET socketClient_{ INVALID_SOCKET };
 };

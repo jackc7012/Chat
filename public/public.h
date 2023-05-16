@@ -37,7 +37,7 @@ void SplitString(const std::string& be_converted, const char separator, std::vec
 void SplitString(const char* be_converted, const char separator, char** dest, int& size);
 
 // 获取系统时间
-std::string GetSystemTime();
+std::string GetSystemTime(const int mode = 0);
 
 // 
 std::string toDbString(const std::string& src);

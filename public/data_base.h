@@ -1,5 +1,5 @@
-#ifndef MY_DATA_BASE_H
-#define MY_DATA_BASE_H
+#ifndef __MY_DATA_BASE_H__
+#define __MY_DATA_BASE_H__
 
 #include <Windows.h>
 #include <sstream>
@@ -86,4 +86,4 @@ namespace cwy {
     };
 }
 
-#endif // !MY_DATA_BASE_H
+#endif // !__MY_DATA_BASE_H__

@@ -1,5 +1,5 @@
-#ifndef MY_INFO_H
-#define MY_INFO_H
+#ifndef __MY_INFO_H__
+#define __MY_INFO_H__
 
 #include <string>
 
@@ -54,6 +54,6 @@ namespace cwy {
     };
 
 }
-#endif // !MY_INFO_H
+#endif // !__MY_INFO_H__
 
 

@@ -32,8 +32,8 @@ namespace cwy {
 
         ~CLog();
 
-        void InitLog(const std::string& path, const LogLevel log_level = DEFAULT_LEVEL, const int file_size = 50, 
-                     bool auto_flush = true);
+        void InitLog(const std::string& path, const LogLevel log_level = DEFAULT_LEVEL, const int file_size = 50,
+            bool auto_flush = true);
 
         void UnitLog();
 
@@ -47,13 +47,15 @@ namespace cwy {
 
         void PrintlogFatal(const std::string& file_name, const int file_line);
 
-        friend CLog& operator<<(CLog& log, const std::string& a) {
+        friend CLog& operator<<(CLog& log, const std::string& a)
+        {
             std::lock_guard<std::mutex> mt(log.mtWriteFile);
             log.strReturnOneLine += a;
             return log;
         }
 
-        friend CLog& operator<<(CLog& log, const long long a) {
+        friend CLog& operator<<(CLog& log, const long long a)
+        {
             std::lock_guard<std::mutex> mt(log.mtWriteFile);
             char temp[50] = { 0 };
             sprintf_s(temp, 50, "%lld", (long long)a);
@@ -84,12 +86,12 @@ namespace cwy {
         std::string strReturn;
         std::string strReturnOneLine;
         std::string filePath;
-        LogLevel logLevel{DEFAULT_LEVEL};
-        int fileSize{0};
-        bool autoFlush{false};
-        FILE* logFile{nullptr};
+        LogLevel logLevel{ DEFAULT_LEVEL };
+        int fileSize{ 0 };
+        bool autoFlush{ false };
+        FILE* logFile{ nullptr };
     };
 }
 
-static cwy::CLog logClient;
+static cwy::CLog logClient_, logService_;
 #endif  //__MY_LOG_H__

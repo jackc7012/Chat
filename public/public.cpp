@@ -70,11 +70,11 @@ std::string CombineString(const DataRecords& dataRecords)
         DataRecordLine dataRecordLine = dataRecords.at(i);
         for (size_t j = 0; j < dataRecordLine.size(); ++j)
         {
-            result += dataRecordLine.at(0);
-            result += ":";
-            result += dataRecordLine.at(1);
-            result += ":";
-            result += dataRecordLine.at(2);
+            result += dataRecordLine.at(j);
+            if (j != dataRecordLine.size() - 1)
+            {
+                result += ":";
+            }
         }
         result += "|";
     }
@@ -87,11 +87,13 @@ void SplitString(const std::string& be_converted, const char separator, std::vec
     pos = be_converted.find(separator, pos + 1);
     while (pos != be_converted.npos)
     {
-        dest.emplace_back(be_converted.substr(old_pos + 1, pos - old_pos - 1));
+        std::string temp(trim(be_converted.substr(old_pos + 1, pos - old_pos - 1)));
+        dest.emplace_back(temp);
         old_pos = pos;
         pos = be_converted.find(separator, pos + 1);
     }
-    dest.emplace_back(be_converted.substr(old_pos + 1));
+    std::string temp(trim(be_converted.substr(old_pos + 1)));
+    dest.emplace_back(temp);
 
     return;
 }
@@ -127,13 +129,20 @@ void SplitString(const char* be_converted, const char separator, char** dest, in
     return;
 }
 
-std::string GetSystemTime()
+std::string GetSystemTime(const int mode/* = 0*/)
 {
     SYSTEMTIME sysTime;
     GetLocalTime(&sysTime);
     char res[50] = { 0 };
-    sprintf_s(res, 50, "%04d.%02d.%02d %02d:%02d:%02d", sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour, sysTime.wMinute,
-        sysTime.wSecond);
+    if (mode == 0)
+    {
+        sprintf_s(res, 50, "%04d.%02d.%02d %02d:%02d:%02d", sysTime.wYear, sysTime.wMonth, sysTime.wDay, sysTime.wHour, sysTime.wMinute,
+            sysTime.wSecond);
+    }
+    else if (mode == 1)
+    {
+        sprintf_s(res, 50, "%04d.%02d.%02d", sysTime.wYear, sysTime.wMonth, sysTime.wDay);
+    }
     return std::string(res);
 }
 
