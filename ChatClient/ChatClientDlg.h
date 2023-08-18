@@ -99,8 +99,4 @@ private:
     std::queue<TransFile> transferFileUpload_, transferFileDownload_;
     std::mutex quMuUp_, quMuDown_;
     bool threadExit_{ false };
-
-    cwy::CLog g_log;
-public:
-    afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 };

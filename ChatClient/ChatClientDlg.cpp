@@ -76,7 +76,6 @@ BEGIN_MESSAGE_MAP(CChatClientDlg, CDialogEx)
     ON_STN_CLICKED(IDC_INFO, &CChatClientDlg::OnStnClickedInfo)
     ON_MESSAGE(WM_SOCKET, OnSocket)
     ON_MESSAGE(WM_TRANSFERFILEPROGRESS, OnTransferFileProgress)
-    ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 // CChatClientDlg 消息处理程序
@@ -109,10 +108,11 @@ BOOL CChatClientDlg::OnInitDialog()
     //  执行此操作
     SetIcon(m_hIcon, TRUE);			// 设置大图标
     SetIcon(m_hIcon, FALSE);		// 设置小图标
+    ModifyStyleEx(0, WS_EX_APPWINDOW);
 
     // TODO: 在此添加额外的初始化代码
     InitControl();
-    InitTransferFileSocket();
+    //InitTransferFileSocket();
     ::WSAAsyncSelect(socketClient_, this->m_hWnd, WM_SOCKET, FD_READ);
 
     if (!loginFlag_)
@@ -225,6 +225,10 @@ void CChatClientDlg::OnDestroy()
     CDialogEx::OnDestroy();
 
     // TODO: 在此处添加消息处理程序代码
+    s_HandleRecv toSend;
+    toSend.Param.delCustomer_.id = customerId_;
+    std::string result = EncodeJson(CommunicationType::DELETECUSTOMER, toSend);
+    ::send(socketClient_, result.c_str(), result.length(), 0);
     int uploadThread = GetPrivateProfileInt("CommonInfo", "UploadThread", 2, "./chat.ini");
     int downloadThread = GetPrivateProfileInt("CommonInfo", "DownloadThread", 2, "./chat.ini");
     threadExit_ = true;
@@ -394,9 +398,9 @@ void CChatClientDlg::OnStnClickedInfo()
         UINT64 id = strtoull(strId.GetBuffer(0), nullptr, 10);
         auto itor1 = loginInfo_.find(id);
         int distance = std::distance(loginInfo_.begin(), itor1);
-        char temp[50];
-        memset(temp, 0, 50);
-        sprintf_s(temp, 50, "%llu\t\t%s\t\t\t%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
+        char temp[60];
+        memset(temp, 0, 60);
+        sprintf_s(temp, 60, "%-20llu%-30s%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
         UpdateListBox(distance, temp);
         m_list_login_people.SetCurSel(distance);
         SetDlgItemText(IDC_TEXT, chatMessage_[id].c_str());
@@ -430,11 +434,11 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
             if (handleRecv.Param.showLogin_.show_login_type == 0)
             {
                 std::vector<std::string> peopleList;
-                SplitString(handleRecv.Param.showLogin_.customer, '|', peopleList);
+                SplitString(handleRecv.Param.showLogin_.customer, COMBINE_CUSTOMERS, peopleList);
                 for (size_t i = 0; i < peopleList.size(); ++i)
                 {
                     std::vector<std::string> peopleInfo;
-                    SplitString(peopleList.at(i), ':', peopleInfo);
+                    SplitString(peopleList.at(i), COMBINE_ONE_CUSTOMER, peopleInfo);
                     if (peopleInfo.size() != 3 || (peopleInfo.at(0) == std::to_string(customerId_)))
                     {
                         continue;
@@ -444,9 +448,9 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                 }
                 for (auto itor = loginInfo_.begin(); itor != loginInfo_.end(); ++itor)
                 {
-                    char temp[50];
-                    memset(temp, 0, 50);
-                    sprintf_s(temp, 50, "%llu\t\t%s\t\t\t%s", itor->first, itor->second.first.c_str(), itor->second.second.c_str());
+                    char temp[60];
+                    memset(temp, 0, 60);
+                    sprintf_s(temp, 60, "%-20llu%-30s%s", itor->first, itor->second.first.c_str(), itor->second.second.c_str());
                     m_list_login_people.AddString(temp);
                     chatMessage_.insert(std::make_pair(itor->first, ""));
                 }
@@ -464,9 +468,9 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                     std::make_pair(peopleInfo.at(1), (handleRecv.Param.showLogin_.show_login_type == 1) ? "在线" : "离线");
                 auto itor = loginInfo_.find(id);
                 int pos = std::distance(loginInfo_.begin(), itor);
-                char temp[50];
-                memset(temp, 0, 50);
-                sprintf_s(temp, 50, "%llu\t\t%s\t\t\t%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
+                char temp[60];
+                memset(temp, 0, 60);
+                sprintf_s(temp, 60, "%-20llu%-30s%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
                 UpdateListBox(pos, temp);
             }
         }
@@ -500,12 +504,12 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
                     int pos = m_list_login_people.GetCurSel();
                     if (distance != pos)
                     {
-                        char temp[50];
-                        memset(temp, 0, 50);
-                        sprintf_s(temp, 50, "%llu\t\t%s\t\t\t%s new", itor2->first, itor2->second.first.c_str(), itor2->second.second.c_str());
+                        char temp[70];
+                        memset(temp, 0, 70);
+                        sprintf_s(temp, 70, "%-20llu%-30s%s new", itor2->first, itor2->second.first.c_str(), itor2->second.second.c_str());
                         UpdateListBox(distance, temp);
-                        memset(temp, 0, 50);
-                        sprintf_s(temp, 50, "收到来自 %llu %s的新消息", itor2->first, itor2->second.first.c_str());
+                        memset(temp, 0, 70);
+                        sprintf_s(temp, 70, "收到来自 %llu %s的新消息", itor2->first, itor2->second.first.c_str());
                         SetDlgItemText(IDC_INFO, temp);
                     }
                     else
@@ -553,7 +557,7 @@ LRESULT CChatClientDlg::OnTransferFileProgress(WPARAM wParam, LPARAM lParam)
     UpdateData(TRUE);
     double progress = (double)wParam;
     UINT64 id = (UINT64)lParam;
-    int pos = progress * 100;
+    int pos = static_cast<int>(progress * 100);
     m_transfer_progress.SetPos(pos);
     progressNum_[id] = ((pos == 100) ? 0 : pos);
     UpdateData(FALSE);
@@ -563,11 +567,12 @@ LRESULT CChatClientDlg::OnTransferFileProgress(WPARAM wParam, LPARAM lParam)
 
 void CChatClientDlg::InitControl()
 {
-    CFont font;
+    CFont font, fontLogin;
     font.CreatePointFont(150, _T("宋体"), NULL);
     // 组框
     GetDlgItem(IDC_STATICINFO)->SetFont(&font);
     GetDlgItem(IDC_STATICLOGIN)->SetFont(&font);
+
     // 登录信息
     GetDlgItem(IDC_STATICID_LOGIN)->SetFont(&font);
     GetDlgItem(IDC_ID)->SetFont(&font);
@@ -575,7 +580,7 @@ void CChatClientDlg::InitControl()
     GetDlgItem(IDC_STATICNAME)->SetFont(&font);
     GetDlgItem(IDC_NAME)->SetFont(&font);
     SetDlgItemText(IDC_NAME, customerName_.c_str());
-    GetDlgItem(IDC_LOGIN_PEOPLE)->SetFont(&font);
+
     // 聊天
     GetDlgItem(IDC_TEXT)->SetFont(&font);
     GetDlgItem(IDC_SENDTEXT)->SetFont(&font);
@@ -584,11 +589,17 @@ void CChatClientDlg::InitControl()
     GetDlgItem(IDC_TRANSFERFILE)->SetFont(&font);
     GetDlgItem(IDC_INFO)->SetFont(&font);
 
+    // 消息框 进度条
     SetDlgItemText(IDC_INFO, _T(""));
     GetDlgItem(IDC_TRANSFILEPROGRESS)->ShowWindow(false);
     m_transfer_progress.SetRange(0, 100);
     m_transfer_progress.SetPos(0);
 
+    fontLogin.CreateStockObject(SYSTEM_FIXED_FONT);
+    GetDlgItem(IDC_LOGIN_PEOPLE)->SetFont(&fontLogin);
+    fontLogin.DeleteObject();
+
+    // 状态栏
     m_status.AddString(_T("在线"));
     m_status.AddString(_T("忙碌"));
     m_status.AddString(_T("离开"));
@@ -703,7 +714,7 @@ void CChatClientDlg::ThreadHandlerUpload(const unsigned short threadNum)
 
 void CChatClientDlg::ThreadHandlerDownload(const unsigned short threadNum)
 {
-    while (1)
+    /*while (1)
     {
         if (threadExit_)
         {
@@ -760,16 +771,7 @@ void CChatClientDlg::ThreadHandlerDownload(const unsigned short threadNum)
         file.Close();
         Sleep(1);
         GetDlgItem(IDC_TRANSFILEPROGRESS)->ShowWindow(false);
-    }
+    }*/
 
     return;
-}
-
-
-void CChatClientDlg::OnLButtonDown(UINT nFlags, CPoint point)
-{
-    // TODO: 在此添加消息处理程序代码和/或调用默认值
-
-    CDialogEx::OnLButtonDown(nFlags, point);
-    IDC_TEXT;
 }

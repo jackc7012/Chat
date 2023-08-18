@@ -14,7 +14,7 @@
 #define DEFAULT_LEVEL     Log_Level::ERROR_LEVEL
 #endif
 
-#define FILE_FORMAT                __FILE__ ,__LINE__
+#define FILE_FORMAT                __FILE__, __LINE__
 namespace cwy {
     enum class LogLevel {
         INFO_LEVEL = 0,
@@ -33,7 +33,7 @@ namespace cwy {
         ~CLog();
 
         void InitLog(const std::string& path, const LogLevel log_level = DEFAULT_LEVEL, const int file_size = 50,
-            bool auto_flush = true);
+            const bool auto_flush = true);
 
         void UnitLog();
 
@@ -64,8 +64,10 @@ namespace cwy {
         }
 
     private:
-        CLog(CLog&) = delete;
-        CLog& operator=(CLog&) = delete;
+        CLog(const CLog&) = delete;
+        CLog(CLog&&) = delete;
+        CLog& operator=(const CLog&) = delete;
+        CLog& operator=(CLog&&) = delete;
 
         std::string AssembleFilePath(std::string& file_path);
 

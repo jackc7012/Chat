@@ -41,6 +41,7 @@ BOOL CRegisterDialog::OnInitDialog()
     // TODO:  在此添加额外的初始化
     SetIcon(m_hIcon, TRUE);         // 设置大图标
     SetIcon(m_hIcon, FALSE);        // 设置小图标
+    ModifyStyleEx(0, WS_EX_APPWINDOW);
 
     CFont font;
     font.CreatePointFont(150, _T("宋体"), NULL);
@@ -58,6 +59,7 @@ BOOL CRegisterDialog::OnInitDialog()
 
     srand((unsigned int)time(NULL));
     SetVerify();
+
     return TRUE;
 }
 
@@ -65,6 +67,8 @@ void CRegisterDialog::OnOK()
 {
     // TODO: 在此添加专用代码和/或调用基类
     OnBnClickedRegisterUser();
+
+    return;
 }
 
 void CRegisterDialog::OnBnClickedRegisterUser()
@@ -98,6 +102,8 @@ void CRegisterDialog::OnBnClickedRegisterUser()
     strPasswordConfirm.ReleaseBuffer();
     strVerify.ReleaseBuffer();
     strVerifyCode.ReleaseBuffer();
+
+    return;
 }
 
 void CRegisterDialog::SetVerify()
@@ -111,6 +117,8 @@ void CRegisterDialog::SetVerify()
         verify_code += VERIFY_CODE[code_rand];
     }
     SetDlgItemText(IDC_STATIC_VERIFY_CODE, verify_code.c_str());
+
+    return;
 }
 
 void CRegisterDialog::SendRegisterMessage(s_HandleRecv& toSend)
@@ -134,4 +142,6 @@ void CRegisterDialog::SendRegisterMessage(s_HandleRecv& toSend)
         MessageBox(_T("注册失败,请重试"), _T("错误"), MB_ICONERROR);
         SetVerify();
     }
+
+    return;
 }

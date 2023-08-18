@@ -47,7 +47,7 @@ int main()
             EventHandle("程序初始化失败,请重试!!!", true);
             break;
         }
-    } while (true);
+    } while (0);
     
 
     getchar();

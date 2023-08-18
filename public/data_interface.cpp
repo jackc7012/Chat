@@ -87,7 +87,14 @@ BOOL DataBaseImpl::selectSql(const std::string& sqlRequest, DataRecords& result)
             for (long j = 0; j < fieldCount; ++j)
             {
                 _variant_t tmp = pRecordset->GetFields()->GetItem((long)j)->GetValue();
-                fieldRecord.emplace_back((std::string)(_bstr_t)&tmp);
+                if ((tmp.vt != VT_EMPTY) && (tmp.vt != VT_NULL))
+                {
+                    fieldRecord.emplace_back((std::string)(_bstr_t)&tmp);
+                }
+                else
+                {
+                    fieldRecord.emplace_back("");
+                }
             }
             result.emplace_back(fieldRecord);
             pRecordset->MoveNext();

@@ -25,8 +25,7 @@ enum class CommunicationType {
     /*
         { "communication_type":"register"
         , "customer" : "aaa"
-        , "password" : "******"
-        , "ip" : "192.168.0.1"} // 加密
+        , "password" : "******"} // 加密
     */
     REGISTERBACKSUCCEED,
     /*
@@ -136,7 +135,6 @@ struct s_HandleRecv {
         struct RegisterType {
             char* customer;
             char* password;
-            char* ip;
         };
         // 注册用户应答
         struct RegisterBackType {

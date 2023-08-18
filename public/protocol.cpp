@@ -10,7 +10,6 @@ void UnregisterSpace(CommunicationType type, s_HandleRecv& field)
         {
             DeleteSpace(&field.Param.register_.customer);
             DeleteSpace(&field.Param.register_.password);
-            DeleteSpace(&field.Param.register_.ip);
         }
         break;
 
@@ -124,7 +123,6 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
             js_value["communication_type"] = "register";
             js_value["customer"] = s_param.Param.register_.customer;
             js_value["password"] = s_param.Param.register_.password;
-            js_value["id"] = s_param.Param.register_.ip;
         }
         break;
 
@@ -165,6 +163,7 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
         case CommunicationType::LOGINBACKFAILED:
         {
             js_value["communication_type"] = "loginbackfailed";
+            js_value["customer"] = s_param.Param.loginBack_.customer;
             js_value["login_result"] = s_param.Param.loginBack_.login_result;
             js_value["description"] = s_param.Param.loginBack_.description;
         }
@@ -180,7 +179,7 @@ std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param
 
         case CommunicationType::DELETECUSTOMER:
         {
-            js_value["communication_type"] = "deletecustomer";
+            js_value["communication_type"] = "delcustomer";
             js_value["id"] = std::to_string(s_param.Param.delCustomer_.id);
         }
         break;
@@ -257,7 +256,6 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
         std::string customer = js_value["customer"], password = js_value["password"], ip = js_value["ip"];
         RegisterSpace(&s_return.Param.register_.customer, customer);
         RegisterSpace(&s_return.Param.register_.password, password);
-        RegisterSpace(&s_return.Param.register_.ip, ip);
         s_return.type_ = CommunicationType::REGISTER;
     }
 

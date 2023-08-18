@@ -202,6 +202,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\public\CLog.h" />
+    <ClInclude Include="..\public\json.h" />
     <ClInclude Include="..\public\json\json-forwards.h" />
     <ClInclude Include="..\public\json\json.h" />
     <ClInclude Include="..\public\protocol.h" />
@@ -221,6 +222,7 @@
     <ClCompile Include="..\public\CLog.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\public\json.cpp" />
     <ClCompile Include="..\public\jsoncpp.cpp" />
     <ClCompile Include="..\public\protocol.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>

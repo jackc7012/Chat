@@ -11,6 +11,9 @@ const unsigned int DATA_LENGTH = 1024 * 1;
 // 传送文件网络通信数据量长度
 const unsigned int FILE_DATA_LENGTH = 1024 * 10;
 
+const char COMBINE_ONE_CUSTOMER = '-';
+const char COMBINE_CUSTOMERS = '|';
+
 const std::string VERIFY_CODE = "abcdefghjklmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 
 typedef std::vector<std::string>    DataRecordLine;

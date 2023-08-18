@@ -19,21 +19,31 @@ std::string& Json::operator[](const std::string& value)
 bool Json::Parse(const std::string& src)
 {
     std::string trimSrc = trim(src);
-    size_t len = trimSrc.length();
-    if (trimSrc.empty() || (trimSrc.at(0) != '{') || (trimSrc.at(len - 1) != '}')
-        || (trimSrc.find("communication_type") == std::string::npos))
+
+    if (trimSrc.empty() || (trimSrc.find("communication_type") == std::string::npos))
     {
         return false;
     }
 
-    std::vector<std::string> jsonValueOne;
-    SplitString(trimSrc.substr(1, trimSrc.length() - 2), CHAR_COMMA, jsonValueOne);
-    for (size_t i = 0; i < jsonValueOne.size(); ++i)
+    size_t pos1 = trimSrc.find_first_of('{');
+    size_t pos2 = trimSrc.find_last_of('}');
+    trimSrc = trimSrc.substr(pos1 + 1, pos2 - pos1 - 1);
+    std::string key, value;
+    while (!trimSrc.empty())
     {
-        if (!HandleJsonValue(jsonValueOne.at(i)))
-        {
-            return false;
-        }
+        // find key
+        int keyPos1 = trimSrc.find('\"');
+        int keyPos2 = trimSrc.find('\"', keyPos1 + 1);
+        key = trimSrc.substr(keyPos1 + 1, keyPos2 - keyPos1 - 1);
+
+        // find value
+        int valuePos1 = trimSrc.find('\"', keyPos2 + 1);
+        int valuePos2 = trimSrc.find('\"', valuePos1 + 1);
+        value = trimSrc.substr(valuePos1 + 1, valuePos2 - valuePos1 - 1);
+
+        jsonValue_.insert(std::make_pair(key, value));
+
+        trimSrc = trimSrc.substr(valuePos2 + 1);
     }
 
     return true;
@@ -59,43 +69,4 @@ bool Json::IsMember(const std::string& value)
 {
     auto itor = jsonValue_.find(value);
     return (itor != jsonValue_.end());
-}
-
-bool Json::HandleJsonValue(const std::string& src)
-{
-    std::vector<std::string> jsonValueMap;
-    SplitString(src, CHAR_COLON, jsonValueMap);
-    bool isTime = jsonValueMap.at(0).find("time") != std::string::npos;
-    if ((jsonValueMap.size() != 2) && (isTime && (jsonValueMap.size() != 4)))
-    {
-        return false;
-    }
-
-    size_t lenValue0 = jsonValueMap.at(0).length();
-    if ((jsonValueMap.at(0).at(0) != CHAR_QUOTATION) || (jsonValueMap.at(0).at(lenValue0 - 1) != CHAR_QUOTATION))
-    {
-        return false;
-    }
-
-    std::string mapValue(jsonValueMap.at(0).substr(1, lenValue0 - 2));
-    size_t lenValue1 = jsonValueMap.at(1).length();
-    if (isTime)
-    {
-        jsonValue_[mapValue] = (jsonValueMap.at(1).substr(1) + ":" + jsonValueMap.at(2) + ":" +
-            jsonValueMap.at(3).substr(0, jsonValueMap.at(3).length() - 1));
-    }
-    else if ((jsonValueMap.at(1).at(0) == CHAR_QUOTATION) && (jsonValueMap.at(1).at(lenValue1 - 1) == CHAR_QUOTATION))
-    {
-        jsonValue_[mapValue] = jsonValueMap.at(1).substr(1, lenValue1 - 2);
-    }
-    else if ((jsonValueMap.at(1).at(0) != CHAR_QUOTATION) && (jsonValueMap.at(1).at(lenValue1 - 1) != CHAR_QUOTATION))
-    {
-        jsonValue_[mapValue] = jsonValueMap.at(1);
-    }
-    else
-    {
-        return false;
-    }
-
-    return true;
 }

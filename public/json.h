@@ -27,9 +27,6 @@ namespace cwy {
         bool IsMember(const std::string& value);
 
     private:
-        bool HandleJsonValue(const std::string& src);
-
-    private:
         std::unordered_map<std::string, std::string> jsonValue_;
     };
 }

@@ -47,6 +47,7 @@ BOOL CLoginDialog::OnInitDialog()
 
     SetIcon(m_hIcon, TRUE);			// 设置大图标
     SetIcon(m_hIcon, FALSE);		// 设置小图标
+    ModifyStyleEx(0, WS_EX_APPWINDOW);
 
     CFont font;
     font.CreatePointFont(150, _T("宋体"), NULL);
@@ -58,6 +59,9 @@ BOOL CLoginDialog::OnInitDialog()
     GetDlgItem(IDC_PASSWORD)->SetFont(&font);
     GetDlgItem(IDC_LOGIN)->SetFont(&font);
     GetDlgItem(IDC_REGISTER)->SetFont(&font);
+
+    std::string time = GetSystemTime(1);
+    logClient_.InitLog(std::string("./log/" + time + ".txt"));
 
     socketClient_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (INVALID_SOCKET == socketClient_)

@@ -1,5 +1,4 @@
 #include "data_base.h"
-
 using namespace cwy;
 
 DataBaseHandle::DataBaseHandle()

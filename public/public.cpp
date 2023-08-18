@@ -14,6 +14,7 @@ std::string Encryption(const std::string& pwd)
         str_return += src.at(i % srcLength);
         str_return += pwd.at(len - i - 1);
     }
+
     return str_return;
 }
 
@@ -30,6 +31,7 @@ std::string Decryption(const std::string& pwd)
     {
         str_return += pwd.at(i);
     }
+
     return str_return;
 }
 
@@ -73,11 +75,12 @@ std::string CombineString(const DataRecords& dataRecords)
             result += dataRecordLine.at(j);
             if (j != dataRecordLine.size() - 1)
             {
-                result += ":";
+                result += COMBINE_ONE_CUSTOMER;
             }
         }
-        result += "|";
+        result += COMBINE_CUSTOMERS;
     }
+
     return result;
 }
 
@@ -143,6 +146,7 @@ std::string GetSystemTime(const int mode/* = 0*/)
     {
         sprintf_s(res, 50, "%04d.%02d.%02d", sysTime.wYear, sysTime.wMonth, sysTime.wDay);
     }
+
     return std::string(res);
 }
 
@@ -153,6 +157,7 @@ std::string toDbString(const std::string& src)
     {
         result << "'" << src << "'";
     }
+
     return result.str();
 }
 
@@ -168,6 +173,7 @@ std::string dbJoin(const std::vector<long long>& srcList)
         }
     }
     result += ")";
+
     return result;
 }
 
@@ -183,6 +189,7 @@ std::string dbJoin(const std::vector<std::string>& srcList)
     }
     result = result.substr(0, result.length() - 2);
     result += ")";
+
     return result;
 }
 
@@ -196,6 +203,7 @@ bool checkValid(const std::string& src)
             return false;
         }
     }
+
     return true;
 }
 
@@ -209,6 +217,7 @@ bool checkSqlValid(const std::string& src)
             return false;
         }
     }
+
     return true;
 }
 
@@ -220,5 +229,6 @@ std::string trim(const std::string& src)
         temp.erase(0, temp.find_first_not_of(" "));
         temp.erase(temp.find_last_not_of(" ") + 1);
     }
+
     return temp;
 }

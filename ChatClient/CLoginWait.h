@@ -2,6 +2,7 @@
 
 #include <thread>
 #include "protocol.h"
+#include "CLog.h"
 
 // CLoginWait 对话框
 

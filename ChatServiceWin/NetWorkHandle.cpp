@@ -151,12 +151,86 @@ int NetWorkHandle::StartTcp()
         {
             return callBack_("socket´´½¨Ê§°Ü", true);
         }
+        int nNetTimeout = 100;
+        ::setsockopt(socketServiceTcp_, SOL_SOCKET, SO_RCVTIMEO, (char*)&nNetTimeout, sizeof(int));
         threadAcc_ = std::thread(&NetWorkHandle::HandleAcc, this);
         threadTcp_ = std::thread(&NetWorkHandle::HandleTcp, this);
         threadHeartBeat_ = std::thread(&NetWorkHandle::HandleHeartBeat, this);
     }
 
     return 0;
+}
+
+void NetWorkHandle::HandleAcc()
+{
+    while (true)
+    {
+        if (exitFlag)
+        {
+            break;
+        }
+        SOCKADDR_IN addrClient = { 0 };
+        int len = sizeof(SOCKADDR);
+        SOCKET socket = ::accept(socketServiceTcp_, (SOCKADDR*)&addrClient, &len);
+        if (socket == SOCKET_ERROR)
+        {
+            Sleep(1);
+            continue;
+        }
+        {
+            std::lock_guard<std::mutex> lg(mutexPush_);
+            socketAccept_.insert(std::make_pair(socket, std::string(inet_ntoa(addrClient.sin_addr))));
+        }
+        Sleep(1);
+    }
+
+    return;
+}
+
+void NetWorkHandle::HandleTcp()
+{
+    while (true)
+    {
+        if (exitFlag)
+        {
+            break;
+        }
+        char* strRecv = new char[DATA_LENGTH];
+        memset(strRecv, 0, DATA_LENGTH);
+        int ret = 0;
+        unsigned int i = 0;
+        auto itor = socketAccept_.begin();
+        for (; itor != socketAccept_.end(); ++itor)
+        {
+            ret = ::recv(itor->first, strRecv, DATA_LENGTH, 0);
+            if (ret > 0)
+            {
+                break;
+            }
+        }
+        if (ret > 0)
+        {
+            //std::lock_guard<std::mutex> lg(mutexHandle_);
+            taskQue_.push(std::make_pair(strRecv, itor->first));
+        }
+        delete[]strRecv;
+        strRecv = nullptr;
+        Sleep(1);
+    }
+
+    return;
+}
+
+void NetWorkHandle::HandleHeartBeat()
+{
+    while (true)
+    {
+        if (exitFlag)
+        {
+            break;
+        }
+        Sleep(1);
+    }
 }
 
 void NetWorkHandle::ThreadHandler(const unsigned short threadNum)
@@ -188,75 +262,6 @@ void NetWorkHandle::ThreadHandler(const unsigned short threadNum)
     return;
 }
 
-void NetWorkHandle::HandleAcc()
-{
-    while (true)
-    {
-        if (exitFlag)
-        {
-            break;
-        }
-        SOCKADDR_IN addrClient = { 0 };
-        int len = sizeof(SOCKADDR);
-        SOCKET socket = ::accept(socketServiceTcp_, (SOCKADDR*)&addrClient, &len);
-        if (socket == SOCKET_ERROR)
-        {
-            Sleep(1);
-            continue;
-        }
-        {
-            std::lock_guard<std::mutex> lg(mutexPush_);
-            socketAccept_.emplace_back(socket);
-        }
-        Sleep(1);
-    }
-
-    return;
-}
-
-void NetWorkHandle::HandleTcp()
-{
-    while (true)
-    {
-        if (exitFlag)
-        {
-            break;
-        }
-        char* strRecv = new char[DATA_LENGTH];
-        memset(strRecv, 0, DATA_LENGTH);
-        int ret = 0;
-        unsigned int i = 0;
-        for (; i < socketAccept_.size(); ++i)
-        {
-            ret = ::recv(socketAccept_[i], strRecv, DATA_LENGTH, 0);
-            if (ret > 0)
-                break;
-        }
-        if (ret > 0)
-        {
-            std::lock_guard<std::mutex> lg(mutexHandle_);
-            taskQue_.push(std::make_pair(strRecv, socketAccept_[i]));
-        }
-        delete[]strRecv;
-        strRecv = nullptr;
-        Sleep(1);
-    }
-
-    return;
-}
-
-void NetWorkHandle::HandleHeartBeat()
-{
-    while (true)
-    {
-        if (exitFlag)
-        {
-            break;
-        }
-        Sleep(1);
-    }
-}
-
 void NetWorkHandle::NetWorkEvent(const std::string& taskParam, const SOCKET socket)
 {
     JudgeCallBack();
@@ -266,11 +271,18 @@ void NetWorkHandle::NetWorkEvent(const std::string& taskParam, const SOCKET sock
     std::string result;
     std::mutex mutexLogin;
     std::unique_lock<std::mutex> ul(mutexLogin, std::defer_lock);
+    std::string ip;
+    auto itor = socketAccept_.find(socket);
+    if (itor != socketAccept_.end())
+    {
+        ip = itor->second;
+    }
+    callBack_(std::string("recv from " + ip + " message : " + taskParam), false);
     switch (handleRecv.type_)
     {
     case CommunicationType::REGISTER:
     {
-        result = HandleRegister(handleRecv, handleSend);
+        result = HandleRegister(handleRecv, ip, handleSend);
         ::send(socket, result.c_str(), result.length(), 0);
         break;
     }
@@ -279,20 +291,21 @@ void NetWorkHandle::NetWorkEvent(const std::string& taskParam, const SOCKET sock
     {
         bool isLoginSucceed = false;
         std::string customerName;
-        result = HandleLogin(handleRecv, handleSend, isLoginSucceed, customerName);
-        ::send(socket, result.c_str(), result.length(), 0);
-        result = HandleShowLogin();
+        result = HandleLogin(handleRecv, ip, handleSend, isLoginSucceed, customerName);
         ::send(socket, result.c_str(), result.length(), 0);
         if (isLoginSucceed)
         {
+            result = HandleShowLogin();
+            ::send(socket, result.c_str(), result.length(), 0);
             result = HandleShowLogin(handleRecv.Param.login_.id, 1);
-            for (size_t i = 0; i < socketAccept_.size(); ++i)
+            auto itor = loginCustomer_.begin();
+            for (; itor != loginCustomer_.end(); ++itor)
             {
-                if (socketAccept_.at(i) == socket)
+                if (itor->second.second == socket)
                 {
                     continue;
                 }
-                ::send(socketAccept_.at(i), result.c_str(), result.length(), 0);
+                ::send(itor->second.second, result.c_str(), result.length(), 0);
             }
             ul.lock();
             ++loginCount_;
@@ -305,24 +318,43 @@ void NetWorkHandle::NetWorkEvent(const std::string& taskParam, const SOCKET sock
     case CommunicationType::DELETECUSTOMER:
     {
         HandleExit(handleRecv.Param.delCustomer_.id);
-        std::string strLogin = HandleShowLogin(handleRecv.Param.delCustomer_.id, -1);
-        for (size_t i = 0; i < socketAccept_.size(); ++i)
+        result = HandleShowLogin(handleRecv.Param.delCustomer_.id, -1);
+        auto itor = loginCustomer_.begin();
+        for (; itor != loginCustomer_.end(); ++itor)
         {
-            if (socketAccept_.at(i) == socket)
+            if (itor->second.second == socket)
             {
                 continue;
             }
-            ::send(socketAccept_.at(i), strLogin.c_str(), strLogin.length(), 0);
+            ::send(itor->second.second, result.c_str(), result.length(), 0);
         }
         ul.lock();
         --loginCount_;
-        auto itor = loginCustomer_.find(handleRecv.Param.delCustomer_.id);
-        if (itor != loginCustomer_.end())
+        auto itor1 = loginCustomer_.find(handleRecv.Param.delCustomer_.id);
+        if (itor1 != loginCustomer_.end())
         {
-            closesocket(itor->second.second);
+            closesocket(itor1->second.second);
             loginCustomer_.erase(handleRecv.Param.delCustomer_.id);
         }
         ul.unlock();
+        break;
+    }
+
+    case CommunicationType::FORCEDELETE:
+    {
+        ul.lock();
+        auto itor1 = loginCustomer_.find(handleRecv.Param.forceDelete_.id);
+        if (itor1 != loginCustomer_.end())
+        {
+            ::send(itor1->second.second, taskParam.c_str(), taskParam.length(), 0);
+            closesocket(itor1->second.second);
+            std::string customerName = itor1->second.first;
+            loginCustomer_.erase(handleRecv.Param.forceDelete_.id);
+            loginCustomer_.insert(std::make_pair(handleRecv.Param.forceDelete_.id, std::make_pair(customerName, socket)));
+        }
+        ul.unlock();
+        result = HandleShowLogin();
+        ::send(socket, result.c_str(), result.length(), 0);
         break;
     }
 
@@ -349,40 +381,49 @@ void NetWorkHandle::NetWorkEvent(const std::string& taskParam, const SOCKET sock
     return;
 }
 
-std::string NetWorkHandle::HandleRegister(const s_HandleRecv& handleRecv, s_HandleRecv& handleSend)
+std::string NetWorkHandle::HandleRegister(const s_HandleRecv& handleRecv, const std::string& ip, s_HandleRecv& handleSend)
 {
     RegisterSpace(&handleSend.Param.registerBack_.customer, handleRecv.Param.register_.customer);
-    RegisterSpace(&handleSend.Param.registerBack_.register_result, "failed");
-    SqlRequest sql("insert into tb_info(ID, Name, Password, IsLogin, LastLoginTime, RegisterMAC, RegisterIp) values");
-    sql << dbJoin(std::vector<std::string>{std::to_string(maxRegistered_), handleRecv.Param.register_.customer,
-        Encryption(handleRecv.Param.register_.password), "0", GetSystemTime()});
-    if (dataBase_->execSql(sql) == TRUE)
+    if (strlen(handleRecv.Param.register_.password) > 64)
     {
-        RegisterSpace(&handleSend.Param.registerBack_.register_result, "succeed");
-        handleSend.Param.registerBack_.id = maxRegistered_;
-        sql.clear();
-        sql << "create table [" << maxRegistered_ << "_Src"
-            << "] ( TargetId bigint NOT NULL, Time datetime NOT NULL, ChatContent text NOT NULL)";
-        if (dataBase_->execSql(sql) == FALSE)
-        {
-            callBack_(handleSend.Param.registerBack_.customer + std::string(" create source table failed, failed description : ")
-                + dataBase_->getErrMessage(), true);
-        }
-        sql.clear();
-        sql << "create table [" << maxRegistered_ << "_Trg"
-            << "] ( SourceId bigint NOT NULL, Time datetime NOT NULL, ChatContent text NOT NULL, IsRead bit NOT NULL)";
-        if (dataBase_->execSql(sql) == FALSE)
-        {
-            callBack_(handleSend.Param.registerBack_.customer + std::string(" create target table failed, failed description : ")
-                + dataBase_->getErrMessage(), true);
-        }
-        ++maxRegistered_;
+        callBack_(handleSend.Param.registerBack_.customer + std::string(" register failed, failed description : password to long"), true);
+        RegisterSpace(&handleSend.Param.registerBack_.register_result, "failed");
+        RegisterSpace(&handleSend.Param.registerBack_.description, "password to long");
     }
     else
     {
-        callBack_(handleSend.Param.registerBack_.customer + std::string(" register failed, failed description : ")
-            + dataBase_->getErrMessage(), true);
-        RegisterSpace(&handleSend.Param.registerBack_.description, "unkown error");
+        SqlRequest sql("insert into tb_info(ID, Name, Password, IsLogin, LastLoginTime, RegisterIp) values");
+        sql << dbJoin(std::vector<std::string>{std::to_string(maxRegistered_), handleRecv.Param.register_.customer,
+            handleRecv.Param.register_.password, "0", GetSystemTime(), ip});
+        if (dataBase_->execSql(sql) == TRUE)
+        {
+            RegisterSpace(&handleSend.Param.registerBack_.register_result, "succeed");
+            handleSend.Param.registerBack_.id = maxRegistered_;
+            sql.clear();
+            sql << "create table [" << maxRegistered_ << "_Src"
+                << "] ( TargetId bigint NOT NULL, Time datetime NOT NULL, ChatContent text NOT NULL)";
+            if (dataBase_->execSql(sql) == FALSE)
+            {
+                callBack_(handleSend.Param.registerBack_.customer + std::string(" create source table failed, failed description : ")
+                    + dataBase_->getErrMessage(), true);
+            }
+            sql.clear();
+            sql << "create table [" << maxRegistered_ << "_Trg"
+                << "] ( SourceId bigint NOT NULL, Time datetime NOT NULL, ChatContent text NOT NULL, IsRead bit NOT NULL)";
+            if (dataBase_->execSql(sql) == FALSE)
+            {
+                callBack_(handleSend.Param.registerBack_.customer + std::string(" create target table failed, failed description : ")
+                    + dataBase_->getErrMessage(), true);
+            }
+            ++maxRegistered_;
+        }
+        else
+        {
+            callBack_(handleSend.Param.registerBack_.customer + std::string(" register failed, failed description : ")
+                + dataBase_->getErrMessage(), true);
+            RegisterSpace(&handleSend.Param.registerBack_.register_result, "failed");
+            RegisterSpace(&handleSend.Param.registerBack_.description, "unkown error");
+        }
     }
 
     handleSend.type_ = ((strcmp(handleSend.Param.registerBack_.register_result, "succeed") == 0)
@@ -392,12 +433,12 @@ std::string NetWorkHandle::HandleRegister(const s_HandleRecv& handleRecv, s_Hand
     return result;
 }
 
-std::string NetWorkHandle::HandleLogin(const s_HandleRecv& handleRecv, s_HandleRecv& handleSend, bool& isLoginSucceed,
-    std::string& customerName)
+std::string NetWorkHandle::HandleLogin(const s_HandleRecv& handleRecv, const std::string& ip, s_HandleRecv& handleSend, 
+    bool& isLoginSucceed, std::string& customerName)
 {
     RegisterSpace(&handleSend.Param.loginBack_.login_result, "failed");
     customerName = "";
-    SqlRequest sql("select Name, Password, IsLogin from tb_info where ID = ");
+    SqlRequest sql("select Name, Password, IsLogin, RecentIp from tb_info where ID = ");
     sql << handleRecv.Param.login_.id;
     DataRecords loginInfo;
     bool ret = dataBase_->execSql(sql, &loginInfo);
@@ -409,21 +450,24 @@ std::string NetWorkHandle::HandleLogin(const s_HandleRecv& handleRecv, s_HandleR
     {
         RegisterSpace(&handleSend.Param.loginBack_.description, "there is no such user");
     }
-    else if (loginInfo.size() == 1 && trim(loginInfo.at(0).at(2)) == "1")
-    {
-        RegisterSpace(&handleSend.Param.loginBack_.description,
-            "this user has already login in, please make sure or modify your password");
-    }
     else if (loginInfo.size() == 1 && trim(loginInfo.at(0).at(1)) != handleRecv.Param.login_.password)
     {
         RegisterSpace(&handleSend.Param.loginBack_.description, "password error");
+    }
+    else if (loginInfo.size() == 1 && trim(loginInfo.at(0).at(2)) == "1")
+    {
+        delete[]handleRecv.Param.loginBack_.login_result;
+        RegisterSpace(&handleSend.Param.loginBack_.customer, loginInfo.at(0).at(0));
+        RegisterSpace(&handleSend.Param.loginBack_.login_result, ip);
+        RegisterSpace(&handleSend.Param.loginBack_.description,
+            "this user has already login in, please make sure or modify your password");
     }
     else if (loginInfo.size() == 1)
     {
         RegisterSpace(&handleSend.Param.loginBack_.customer, loginInfo.at(0).at(0));
         RegisterSpace(&handleSend.Param.loginBack_.login_result, "succeed");
         sql.clear();
-        sql << "update tb_info set IsLogin = 1 where ID = " << handleRecv.Param.login_.id;
+        sql << "update tb_info set IsLogin = 1, RecentIp = " << toDbString(ip) << " where ID = " << handleRecv.Param.login_.id;
         if (dataBase_->execSql(sql) == FALSE)
         {
             callBack_(std::to_string(handleRecv.Param.login_.id) + " update login fail, description : " + dataBase_->getErrMessage(),
