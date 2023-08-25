@@ -32,7 +32,7 @@ namespace cwy {
 
         ~CLog();
 
-        void InitLog(const std::string& path, const LogLevel log_level = DEFAULT_LEVEL, const int file_size = 50,
+        void InitLog(const int type, const std::string& path, const LogLevel log_level = DEFAULT_LEVEL, const int file_size = 50,
             const bool auto_flush = true);
 
         void UnitLog();
@@ -64,11 +64,6 @@ namespace cwy {
         }
 
     private:
-        CLog(const CLog&) = delete;
-        CLog(CLog&&) = delete;
-        CLog& operator=(const CLog&) = delete;
-        CLog& operator=(CLog&&) = delete;
-
         std::string AssembleFilePath(std::string& file_path);
 
         std::string AssembleString(const std::string& file_name, const int file_line, const std::string& type);

@@ -35,7 +35,7 @@ BOOL DataBaseHandle::execSql(const SqlRequest& sqlRequest, DataRecords* result/*
     DBTYPE dbType = judgeCommand(sqlRequest.str());
     if ((result != nullptr) && (dbType == DBTYPE::SEARCH))
     {
-        DataBaseImpl::createInstance()->selectSql(sqlRequest.str(), *result);
+        return DataBaseImpl::createInstance()->selectSql(sqlRequest.str(), *result);
     }
     else
     {

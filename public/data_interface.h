@@ -9,16 +9,16 @@
 
 #import "C:\Program Files\Common Files\System\ado\msado15.dll" no_namespace rename("EOF", "adoEOF")
 
-enum class DBTYPE {
-    CREATETABLE,
-    DROPTABLE,
-    INSERT,
-    DEL,
-    MODIFY,
-    SEARCH
-};
-
 namespace cwy {
+    enum class DBTYPE {
+        CREATETABLE,
+        DROPTABLE,
+        INSERT,
+        DEL,
+        MODIFY,
+        SEARCH
+    };
+
     class DataBaseImpl {
     public:
         static DataBaseImpl* createInstance();

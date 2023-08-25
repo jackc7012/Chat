@@ -14,7 +14,7 @@ CLog::~CLog()
     UnitLog();
 }
 
-void CLog::InitLog(const std::string& path, const LogLevel log_level, const int file_size, const bool auto_flush)
+void CLog::InitLog(const int type, const std::string& path, const LogLevel log_level, const int file_size, const bool auto_flush)
 {
     this->filePath = path;
     this->logLevel = log_level;

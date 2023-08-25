@@ -115,103 +115,66 @@ enum class CommunicationType {
     */
 };
 
-struct s_HandleRecv {
+class s_HandleRecv {
+public:
     s_HandleRecv()
         : type_(CommunicationType::NULLCOMMUNICATION)
-        , socket_accept_(0)
+        , socketAccept_(0)
     {
-        memset((void*)&Param, 0, sizeof(Param));
     }
     void Clear()
     {
         type_ = CommunicationType::NULLCOMMUNICATION;
-        socket_accept_ = 0;
-        memset((void*)&Param, 0, sizeof(Param));
+        socketAccept_ = 0;
     }
     CommunicationType type_;
-    SOCKET socket_accept_;
-    union param {
-        // 注册用户
-        struct RegisterType {
-            char* customer;
-            char* password;
-        };
-        // 注册用户应答
-        struct RegisterBackType {
-            char* customer;
-            UINT64 id;
-            char* register_result;
-            char* description;
-        };
-        // 用户登录
-        struct LoginType {
-            UINT64 id;
-            char* password;
-        };
-        // 用户登录应答
-        struct LoginBackType {
-            char* customer;
-            char* login_result;
-            char* description;
-        };
-        // 显示用户
-        struct ShowLoginType {
-            char* customer;
-            int show_login_type;
-        };
-        // 用户退出
-        struct DelCustomerType {
-            UINT64 id;
-        };
-        // 聊天
-        struct ChatType {
-            UINT64 sourceid;
-            UINT64 targetid;
-            char* content;
-            char* chat_time;
-        };
-        // 传送文件信息
-        struct TransferFileInfoType {
-            UINT64 sourceid;
-            UINT64 targetid;
-            char* file_name;
-            UINT64 file_length;
-            UINT64 file_block;
-            char* transfer_time;
-        };
-        // 传送文件内容
-        struct TransferFileContentType {
-            UINT64 now_block;
-            char* file_content;
-        };
-        // 强制下线
-        struct ForceDeleteType {
-            UINT64 id;
-        };
-        // 用户改密
-        struct ChangePassordType {
-            UINT64 id;
-            char* old_password;
-            char* password;
-        };
-        // 用户改密应答
-        struct ChangePassordBackType {
-            UINT64 id;
-            char* update_result;
-        };
-        RegisterType register_;
-        RegisterBackType registerBack_;
-        LoginType login_;
-        LoginBackType loginBack_;
-        ShowLoginType showLogin_;
-        DelCustomerType delCustomer_;
-        ChatType chat_;
-        TransferFileInfoType transferFileInfo_;
-        TransferFileContentType transferFileContent_;
-        ForceDeleteType forceDelete_;
-        ChangePassordType changePassword_;
-        ChangePassordBackType changePasswordBack_;
-    } Param;
+    SOCKET socketAccept_;
+};
+
+class RegisterType : public s_HandleRecv {
+public:
+    std::string customer_;
+    std::string password_;
+};
+
+class RegisterBackType : public s_HandleRecv {
+public:
+    std::string customer_;
+    UINT64 id_;
+    std::string registerResult_;
+    std::string description_;
+};
+
+class LoginType : public s_HandleRecv {
+public:
+    UINT64 id_;
+    std::string password_;
+};
+
+class LoginBackType : public s_HandleRecv {
+public:
+    std::string customer_;
+    std::string registerResult_;
+    std::string description_;
+};
+
+class ShowLoginType : public s_HandleRecv {
+public:
+    std::string customers_;
+    UINT8 showLoginType_;
+};
+
+class DelCustomerType : public s_HandleRecv {
+public:
+    UINT64 id_;
+};
+
+class ChatType : public s_HandleRecv {
+public:
+    UINT64 sourceId_;
+    UINT64 targetId_;
+    std::string content_;
+    std::string time_;
 };
 
 inline void RegisterSpace(char** field, const std::string& message)

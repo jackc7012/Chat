@@ -6,7 +6,6 @@
 #include "ChatService.h"
 #include "ChatServiceDlg.h"
 #include "afxdialogex.h"
-using namespace cwy;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -15,26 +14,28 @@ using namespace cwy;
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx {
-  public:
+public:
     CAboutDlg();
 
-// 对话框数据
+    // 对话框数据
 #ifdef AFX_DESIGN_TIME
     enum { IDD = IDD_ABOUTBOX };
 #endif
 
-  protected:
+protected:
     virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 // 实现
-  protected:
+protected:
     DECLARE_MESSAGE_MAP()
 };
 
-CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX) {
+CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
+{
 }
 
-void CAboutDlg::DoDataExchange(CDataExchange* pDX) {
+void CAboutDlg::DoDataExchange(CDataExchange* pDX)
+{
     CDialogEx::DoDataExchange(pDX);
 }
 
@@ -44,13 +45,15 @@ END_MESSAGE_MAP()
 // CChatServiceDlg 对话框
 
 CChatServiceDlg::CChatServiceDlg(CWnd* pParent /*=NULL*/)
-    : CDialogEx(IDD_CHATSERVICE_DIALOG, pParent) {
+    : CDialogEx(IDD_CHATSERVICE_DIALOG, pParent)
+{
     m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
-void CChatServiceDlg::DoDataExchange(CDataExchange* pDX) {
+void CChatServiceDlg::DoDataExchange(CDataExchange* pDX)
+{
     CDialogEx::DoDataExchange(pDX);
-    DDX_Control(pDX, IDC_LIST1, listLoginPeople);
+    DDX_Control(pDX, IDC_LIST_LOGIN_PEOPLE, m_listLoginPeople);
 }
 
 BEGIN_MESSAGE_MAP(CChatServiceDlg, CDialogEx)
@@ -59,14 +62,13 @@ BEGIN_MESSAGE_MAP(CChatServiceDlg, CDialogEx)
     ON_WM_QUERYDRAGICON()
     ON_BN_CLICKED(IDC_START, &CChatServiceDlg::OnBnClickedStart)
     ON_MESSAGE(WM_SOCKET_TCP, OnSocketTcp)
-    ON_MESSAGE(WM_SOCKET_UDP, OnSocketUdp)
-    ON_MESSAGE(WM_TO_MAIN_MESSAGE, OnMainMessage)
     ON_BN_CLICKED(IDC_KICK, &CChatServiceDlg::OnBnClickedKick)
 END_MESSAGE_MAP()
 
 // CChatServiceDlg 消息处理程序
 
-BOOL CChatServiceDlg::OnInitDialog() {
+BOOL CChatServiceDlg::OnInitDialog()
+{
     CDialogEx::OnInitDialog();
 
     // 将“关于...”菜单项添加到系统菜单中。
@@ -93,6 +95,54 @@ BOOL CChatServiceDlg::OnInitDialog() {
     SetIcon(m_hIcon, FALSE);		// 设置小图标
 
     // TODO: 在此添加额外的初始化代码
+    HANDLE chatServiceMutex = CreateMutex(nullptr, TRUE, INSTANCE_NAME.c_str());
+    if (chatServiceMutex == nullptr) {
+        MessageBox(_T("创建程序句柄失败，程序将退出!!!"));
+        return FALSE;
+    } else if (chatServiceMutex != nullptr && GetLastError() == ERROR_ALREADY_EXISTS) {
+        MessageBox(_T("已经有聊天服务程序在运行，请关闭此程序!!!"));
+        return FALSE;
+    }
+    CloseHandle(chatServiceMutex);
+
+    InitControl();
+
+    service_ = new Service();
+    if (service_ == nullptr) {
+        MessageBox(_T("获取服务运行实例失败....请重试!!!"));
+        return FALSE;
+    }
+    CallBack callBack = std::bind(&CChatServiceDlg::EventHandle, this,
+        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+    int ret = service_->Init(callBack);
+    if (ret == -1) {
+        MessageBox(_T("创建服务失败....请重试!!!"));
+        return FALSE;
+    }
+
+    std::string ip = service_->GetServerIp();
+    SetDlgItemText(IDC_IPLIST, ip.c_str());
+
+    return TRUE;
+}
+
+void CChatServiceDlg::EventHandle(const std::string& callBackType, const std::string& message, bool isError)
+{
+    if (callBackType == "login") {
+        std::vector<std::string> des;
+        SplitString(message, '|', des);
+        if (des.size() == LOGIN_PEOPLE_COL) {
+            int cou = m_listLoginPeople.GetItemCount();
+            m_listLoginPeople.InsertItem(cou, "");
+            for (int i = 0; i < LOGIN_PEOPLE_COL; ++i) {
+                m_listLoginPeople.SetItemText(cou, i, des.at(i).c_str());
+            }
+        }
+    }
+}
+
+void CChatServiceDlg::InitControl()
+{
     CFont font;
     font.CreatePointFont(150, _T("宋体"), NULL);
     GetDlgItem(IDC_STATUS)->SetFont(&font);
@@ -102,24 +152,26 @@ BOOL CChatServiceDlg::OnInitDialog() {
     GetDlgItem(IDC_LIST_LOGIN_PEOPLE)->SetFont(&font);
     GetDlgItem(IDC_IPLIST)->SetFont(&font);
 
-    logService.InitLog("../{time}/service");
-    netWorkHandle = CNetWorkHandle::CreateInstance();
-    std::vector<std::string> ipList = netWorkHandle->InitNetWork(this->m_hWnd);
-    std::string ip = (ipList.size() == 0 ? "未获取到ip地址" : "服务器ip：\t" + ipList[0]);
-    SetDlgItemText(IDC_IPLIST, ip.c_str());
-
-    return TRUE;
+    m_listLoginPeople.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+    CRect rect;
+    m_listLoginPeople.GetWindowRect(rect);
+    int perWidth = (rect.right - rect.left) / LOGIN_PEOPLE_COL;
+    for (int i = 0; i < LOGIN_PEOPLE_COL; ++i) {
+        m_listLoginPeople.InsertColumn(i, LOGIN_PEOPLE_LIST[i].c_str(), LVCFMT_CENTER, perWidth);
+    }
 }
 
 BOOL CChatServiceDlg::DestroyWindow()
 {
-    if (netWorkHandle != nullptr) {
-        delete netWorkHandle;
+    if (service_ != nullptr) {
+        delete service_;
+        service_ = nullptr;
     }
     return CDialogEx::DestroyWindow();
 }
 
-void CChatServiceDlg::OnSysCommand(UINT nID, LPARAM lParam) {
+void CChatServiceDlg::OnSysCommand(UINT nID, LPARAM lParam)
+{
     if ((nID & 0xFFF0) == IDM_ABOUTBOX) {
         CAboutDlg dlgAbout;
         dlgAbout.DoModal();
@@ -132,7 +184,8 @@ void CChatServiceDlg::OnSysCommand(UINT nID, LPARAM lParam) {
 //  来绘制该图标。  对于使用文档/视图模型的 MFC 应用程序，
 //  这将由框架自动完成。
 
-void CChatServiceDlg::OnPaint() {
+void CChatServiceDlg::OnPaint()
+{
     if (IsIconic()) {
         CPaintDC dc(this); // 用于绘制的设备上下文
 
@@ -155,82 +208,52 @@ void CChatServiceDlg::OnPaint() {
 
 //当用户拖动最小化窗口时系统调用此函数取得光标
 //显示。
-HCURSOR CChatServiceDlg::OnQueryDragIcon() {
+HCURSOR CChatServiceDlg::OnQueryDragIcon()
+{
     return static_cast<HCURSOR>(m_hIcon);
 }
 
-void CChatServiceDlg::OnBnClickedStart() {
+void CChatServiceDlg::OnBnClickedStart()
+{
     CString str;
     GetDlgItemText(IDC_START, str);
     if (str == "启动") {
-        if (StartTcp() && StartUdp()) {
+        SOCKET socketServiceTcp = service_->StartTcp();
+        if (socketServiceTcp != INVALID_SOCKET) {
+            ::WSAAsyncSelect(socketServiceTcp, this->m_hWnd, WM_SOCKET_TCP, FD_ACCEPT | FD_READ | FD_CLOSE);
             SetDlgItemText(IDC_STATUS, _T("服务器监听已经启动。。。"));
             SetDlgItemText(IDC_START, _T("停止"));
+        } else {
+            SetDlgItemText(IDC_STATUS, _T("服务器监听无法启动,请检查网络状态并重试。。。"));
         }
     } else if (str == "停止") {
-        ::closesocket(socketServiceTcp);
-        ::closesocket(socketServiceUdp);
+        service_->StopTcp();
         SetDlgItemText(IDC_STATUS, _T("服务器未启动监听。。。"));
         SetDlgItemText(IDC_START, _T("启动"));
-        logService << "服务器监听关闭";
-        logService.PrintlogInfo(FILE_FORMAT);
     }
 }
 
-void CChatServiceDlg::OnBnClickedKick() {
+void CChatServiceDlg::OnBnClickedKick()
+{
     // TODO: 在此添加控件通知处理程序代码
 }
 
-bool CChatServiceDlg::StartTcp()
+LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam)
 {
-    socketServiceTcp = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (socketServiceTcp == INVALID_SOCKET) {
-        MessageBox(_T("创建TCP服务失败"), _T("错误"), MB_ICONERROR);
-        return false;
-    } else {
-        addrServiceTcp.sin_family = AF_INET;
-        addrServiceTcp.sin_port = htons(cwy::TCP_PORT);
-        addrServiceTcp.sin_addr.S_un.S_addr = INADDR_ANY;
-        ::bind(socketServiceTcp, (sockaddr*)&addrServiceTcp, sizeof(addrServiceTcp));
-        ::listen(socketServiceTcp, SOMAXCONN);
-        ::WSAAsyncSelect(socketServiceTcp, this->m_hWnd, WM_SOCKET_TCP, FD_ACCEPT | FD_READ | FD_CLOSE);
-        logService << "服务器TCP开启监听，端口号为：" << cwy::TCP_PORT;
-    }
-    logService.PrintlogInfo(FILE_FORMAT);
-    return true;
-}
-
-bool CChatServiceDlg::StartUdp()
-{
-    socketServiceUdp = ::socket(AF_INET, SOCK_DGRAM, 0);
-    if (socketServiceUdp == INVALID_SOCKET) {
-        MessageBox(_T("创建UDP服务失败"), _T("错误"), MB_ICONERROR);
-        return false;
-    } else {
-        addrServiceUdp.sin_family = AF_INET;
-        addrServiceUdp.sin_port = htons(cwy::UDP_PORT);
-        addrServiceUdp.sin_addr.S_un.S_addr = INADDR_ANY;
-        ::bind(socketServiceUdp, (sockaddr*)&addrServiceUdp, sizeof(addrServiceUdp));
-        ::WSAAsyncSelect(socketServiceUdp, this->m_hWnd, WM_SOCKET_UDP, FD_READ);
-        netWorkHandle->SetUdpSocket(socketServiceUdp);
-        logService << "服务器UDP开启监听，端口号为：" << cwy::UDP_PORT;
-    }
-    logService.PrintlogInfo(FILE_FORMAT);
-    return true;
-}
-
-LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
     CString str_text;
     switch (lParam) {
     case FD_ACCEPT: {
-        netWorkHandle->ClientAccept(socketServiceTcp, addrServiceTcp);
+        SOCKET socketClient = service_->ClientAccept();
+        if (socketClient != INVALID_SOCKET) {
+            ::WSAAsyncSelect(socketClient, this->m_hWnd, WM_SOCKET_TCP, FD_ACCEPT | FD_READ | FD_CLOSE);
+        }
     }
-    break;
+                  break;
 
     case FD_READ: {
-        netWorkHandle->HandleRecvTcp();
+        service_->ClientRecv(static_cast<SOCKET>(wParam));
     }
-    break;
+                break;
 
     case FD_CLOSE: {
         GetDlgItemText(IDC_TEXT, str_text);
@@ -240,43 +263,11 @@ LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam) {
         SetDlgItemText(IDC_TEXT, str_text);
         //m_list_login_people.DeleteString(del_index);
     }
-    break;
+                 break;
 
     default:
         break;
     }
-    return 0;
-}
-
-LRESULT CChatServiceDlg::OnSocketUdp(WPARAM wParam, LPARAM lParam)
-{
-    switch (lParam) {
-    case FD_READ: {
-        netWorkHandle->HandleRecvUdp();
-    }
-    break;
-
-    default:
-        break;
-    }
-    return 0;
-}
-
-LRESULT CChatServiceDlg::OnMainMessage(WPARAM wParam, LPARAM lParam)
-{
-    CommunicationType communicationType = (CommunicationType)wParam;
-    std::string* message = (std::string*)lParam;
-    switch (communicationType)
-    {
-    case CommunicationType::LOGIN: {
-        listLoginPeople.AddString((*message).c_str());
-    }
-    break;
-
-    default:
-        break;
-    }
-    delete message;
     return 0;
 }
 

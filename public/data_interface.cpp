@@ -7,12 +7,9 @@ DataBaseImpl::DataBaseImpl()
 
 DataBaseImpl* DataBaseImpl::createInstance()
 {
-    static DataBaseImpl* ptr = nullptr;
-    if (ptr == nullptr)
-    {
-        ptr = new DataBaseImpl();
-    }
-    return ptr;
+    static DataBaseImpl ptr;
+
+    return &ptr;
 }
 
 DataBaseImpl::~DataBaseImpl()

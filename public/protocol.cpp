@@ -251,8 +251,12 @@ bool DecodeJson(const std::string& value, s_HandleRecv& s_return)
         return false;
     }
 
+    RegisterType a;
+    s_return = (RegisterType*)&s_return;
     if (js_value["communication_type"] == "register")
     { // register
+        ((RegisterType*)s_return)->customer_;
+        s_retur->customer_
         std::string customer = js_value["customer"], password = js_value["password"], ip = js_value["ip"];
         RegisterSpace(&s_return.Param.register_.customer, customer);
         RegisterSpace(&s_return.Param.register_.password, password);
