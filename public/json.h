@@ -1,15 +1,15 @@
-#ifndef __MY_JSON_H__
-#define __MY_JSON_H__
+#ifndef __JSON_H__
+#define __JSON_H__
 
 #include <string>
 #include <sstream>
 #include <unordered_map>
 
-const char CHAR_COMMA = ',';
-const char CHAR_COLON = ':';
-const char CHAR_QUOTATION = '\"';
-
 namespace cwy {
+    const char CHAR_COMMA = ',';
+    const char CHAR_COLON = ':';
+    const char CHAR_QUOTATION = '\"';
+
     class Json {
     public:
         Json();
@@ -19,16 +19,17 @@ namespace cwy {
         Json& operator = (const Json&) = delete;
         Json& operator = (Json&&) = delete;
 
-        std::string& operator [](const std::string& value);
+        std::string& operator [](const std::string& key);
 
     public:
         bool Parse(const std::string& src);
         void Write(std::stringstream& out);
-        bool IsMember(const std::string& value);
+        bool IsMember(const std::string& key);
+        void Clear();
 
     private:
         std::unordered_map<std::string, std::string> jsonValue_;
     };
 }
 
-#endif // !__MY_JSON_H__
+#endif // !__JSON_H__

@@ -33,24 +33,25 @@ void Info::GetInfoFromFile(const std::string& fileName)
 
     // common
     common_.threadNum_ = GetPrivateProfileInt("common", "thread_num", 5, fileName.c_str());
+    GetPrivateProfileString("common", "file_address", "./file", common_.file_address_, 100, fileName.c_str());
 }
 
-const NetWork Info::GetNetWorkInfo() const
+const NetWorkInfo Info::GetNetWorkInfo() const
 {
     return netWork_;
 }
 
-const DataBase Info::GetDataBaseInfo() const
+const DataBaseInfo Info::GetDataBaseInfo() const
 {
     return dataBase_;
 }
 
-const Log Info::GetLogInfo() const
+const LogInfo Info::GetLogInfo() const
 {
     return log_;
 }
 
-const Common Info::GetCommonInfo() const
+const CommonInfo Info::GetCommonInfo() const
 {
     return common_;
 }

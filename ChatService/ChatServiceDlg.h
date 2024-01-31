@@ -8,14 +8,13 @@
 #define WM_SOCKET_UDP               (WM_USER + 1001)
 
 
-#include "Service.h"
+#include "service.h"
 
 using namespace cwy;
 
-static const int LOGIN_PEOPLE_COL = 4;
-static const std::string LOGIN_PEOPLE_LIST[] = {_T("’À∫≈"), _T("Í«≥∆"), _T("IP"), _T("◊¥Ã¨")};
+static const int LOGIN_PEOPLE_COL = 3;
+static const std::string LOGIN_PEOPLE_LIST[] = {_T("’À∫≈"), _T("Í«≥∆"), _T("IP")};
 static const std::string INSTANCE_NAME = _T("ChatService");
-static const std::string infoFileName = "./info.ini";
 
 // CChatServiceDlg ∂‘ª∞øÚ
 class CChatServiceDlg : public CDialogEx {
@@ -54,5 +53,5 @@ public:
 private:
     void InitControl();
     Service* service_{ nullptr };
-    void EventHandle(const std::string& callBackType, const std::string& message, bool isError);
+    void EventHandle(const CallBackType callBackType, const std::string& message, bool isError);
 };

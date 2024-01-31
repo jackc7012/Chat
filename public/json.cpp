@@ -11,9 +11,9 @@ Json::~Json()
     jsonValue_.clear();
 }
 
-std::string& Json::operator[](const std::string& value)
+std::string& Json::operator[](const std::string& key)
 {
-    return jsonValue_[value];
+    return jsonValue_[key];
 }
 
 bool Json::Parse(const std::string& src)
@@ -65,8 +65,13 @@ void Json::Write(std::stringstream& out)
     out << "}";
 }
 
-bool Json::IsMember(const std::string& value)
+bool Json::IsMember(const std::string& key)
 {
-    auto itor = jsonValue_.find(value);
+    auto itor = jsonValue_.find(key);
     return (itor != jsonValue_.end());
+}
+
+void Json::Clear()
+{
+    jsonValue_.clear();
 }

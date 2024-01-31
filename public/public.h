@@ -6,13 +6,14 @@
 #include <sstream>
 
 // 文本网络通信数据量长度
-const unsigned int DATA_LENGTH = 1024 * 1;
+const UINT32 DATA_LENGTH = 1024 * 1;
 
 // 传送文件网络通信数据量长度
-const unsigned int FILE_DATA_LENGTH = 1024 * 10;
+const UINT32 FILE_DATA_LENGTH = 1024 * 10;
 
 const char COMBINE_ONE_CUSTOMER = '-';
 const char COMBINE_CUSTOMERS = '|';
+const char COMBINE_FILE = '_';
 
 const std::string VERIFY_CODE = "abcdefghjklmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789";
 

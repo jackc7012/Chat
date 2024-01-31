@@ -7,194 +7,179 @@
 
 #include "json.h"
 
-enum class LoginResult {
-    SUCCEED,
-    NOUSER,
-    ALREADYLOGININ,
-    PASSWORDERROR,
-    OTHER,
-    UNKNOWNERROR,
-    OUTLIMIT,
-    NULLLOGIN
-};
-
-enum class CommunicationType {
-    NULLCOMMUNICATION = 0,
-    ERRORCOMMUNICATION,
-    REGISTER,
-    /*
-        { "communication_type":"register"
-        , "customer" : "aaa"
-        , "password" : "******"} // 加密
-    */
-    REGISTERBACKSUCCEED,
-    /*
-        { "communication_type":"registerbacksucceed"
-        , "customer" : "aaa"
-        , "id" : 10000
-        , "register_result" : "succeed"}
-    */
-    REGISTERBACKFAILED,
-    /*
-        { "communication_type":"registerbackfailed"
-        , "customer" : "aaa"
-        , "register_result" : "failed"
-        , "description" : "unkown error"}
-    */
-    LOGIN,
-    /*
-        { "communication_type":"login"
-        , "id" : 10000
-        , "password" : "******"} // 加密
-    */
-    LOGINBACKSUCCEED,
-    /*
-        { "communication_type":"loginbacksucceed"
-        , "customer" : "aaa"
-        , "login_result" : "succeed"}
-    */
-    LOGINBACKFAILED,
-    /*
-        { "communication_type":"loginbackfailed"
-        , "customer" : "aaa"
-        , "login_result" : "failed"
-        , "description" : "password error"}
-    */
-    SHOWLOGIN,
-    /*
-        { "communication_type":"showlogin"
-        , "customer" : "10000:aaa:1|10001:bbb:0|10002:ccc:0"
-        . "show_login_type" : 0}
-    */
-    DELETECUSTOMER,
-    /*
-        { "communication_type":"deletecustomer"
-        , "id" : 10000}
-    */
-    CHAT,
-    /*
-        { "communication_type":"chat"
-        , "source" : 10000
-        , "targetid" : 10001
-        , "content" : "hello"
-        , "time" : "2023-5-7 23:08:00"}
-    */
-    TRANSFERFILEINFO,
-    /*
-        { "communication_type":"transferfileupinfo"
-        , "source" : "bbb"
-        , "target" : "aaa"
-        , "file_name" : "a.cpp"
-        , "file_length" : 10
-        , "file_block" : 1
-        , "time" : "2023-5-7 23:08:00"}
-    */
-    TRANSFERFILECONTENT,
-    /*
-        { "communication_type":"transferfilecontent"
-        , "file_content" : "abcdefghijklmn"
-        , "file_length" : 1}
-    */
-    FORCEDELETE,
-    /*
-        { "communication_type":"forcedelete"
-        , "id" : 10000}
-    */
-    CHANGEPASSWORD,
-    /*
-        { "communication_type":"changepassword"
-        , "id" : 10000
-        , "old_password" : "******"
-        , "password" : "******"} // 加密
-    */
-    CHANGEPASSWORDBACK,
-    /*
-        { "communication_type":"changepasswordback"
-        , "id" : 10000
-        , "update_result" : "succeed"}
-    */
-};
-
-class s_HandleRecv {
-public:
-    s_HandleRecv()
-        : type_(CommunicationType::NULLCOMMUNICATION)
-        , socketAccept_(0)
-    {
-    }
-    void Clear()
-    {
-        type_ = CommunicationType::NULLCOMMUNICATION;
-        socketAccept_ = 0;
-    }
-    CommunicationType type_;
-    SOCKET socketAccept_;
-};
-
-class RegisterType : public s_HandleRecv {
-public:
-    std::string customer_;
-    std::string password_;
-};
-
-class RegisterBackType : public s_HandleRecv {
-public:
-    std::string customer_;
-    UINT64 id_;
-    std::string registerResult_;
-    std::string description_;
-};
-
-class LoginType : public s_HandleRecv {
-public:
-    UINT64 id_;
-    std::string password_;
-};
-
-class LoginBackType : public s_HandleRecv {
-public:
-    std::string customer_;
-    std::string registerResult_;
-    std::string description_;
-};
-
-class ShowLoginType : public s_HandleRecv {
-public:
-    std::string customers_;
-    UINT8 showLoginType_;
-};
-
-class DelCustomerType : public s_HandleRecv {
-public:
-    UINT64 id_;
-};
-
-class ChatType : public s_HandleRecv {
-public:
-    UINT64 sourceId_;
-    UINT64 targetId_;
-    std::string content_;
-    std::string time_;
-};
-
-inline void RegisterSpace(char** field, const std::string& message)
+namespace cwy
 {
-    size_t len = message.length();
-    *field = new char[len + 1];
-    memset(*field, 0, len + 1);
-    memcpy_s(*field, len, message.c_str(), len);
+    enum class CommunicationType
+    {
+        NULLCOMMUNICATION,
+        ERRORCOMMUNICATION,
+        /*
+            { "communication_type":"register"
+            , "customer" : "aaa"
+            , "password" : "******"} // 加密
+        */
+        REGISTER,
+        /*
+            { "communication_type":"registerbacksucceed"
+            , "customer" : "aaa"
+            , "id" : "10000"}
+        */
+        REGISTERBACKSUCCEED,
+        /*
+            { "communication_type":"registerbackfailed"
+            , "customer" : "aaa"
+            , "description" : "unkown error"}
+        */
+        REGISTERBACKFAILED,
+        /*
+            { "communication_type":"login"
+            , "id" : "10000"
+            , "password" : "******"} // 加密
+        */
+        LOGIN,
+        /*
+            { "communication_type":"loginbacksucceed"
+            , "customer" : "aaa"}
+        */
+        LOGINBACKSUCCEED,
+        /*
+            { "communication_type":"loginbackfailed"
+            , "id" : "10000"
+            , "description" : "password error"}
+        */
+        LOGINBACKFAILED,
+        /*
+            { "communication_type":"showlogin"
+            , "customer" : "10000:aaa:1|10001:bbb:0|10002:ccc:0"
+            . "show_login_type" : 0}
+        */
+        SHOWLOGIN,
+        /*
+            { "communication_type":"delcustomer"
+            , "id" : "10000"}
+        */
+        DELCUSTOMER,
+        /*
+            { "communication_type":"chat"
+            , "sourceid" : "10000"
+            , "targetid" : "10001"
+            , "content" : "hello"
+            , "time" : "2023-5-7 23:08:00"}
+        */
+        CHAT,
+        /*
+            { "communication_type":"transferfileinfo"
+            , "sourceid" : "10000"
+            , "targetid" : "10001"
+            , "file_info" : "a.cpp_10_1"
+            , "time" : "2023-5-7 23:08:00"}
+        */
+        TRANSFERFILEINFO,
+        /*
+            { "communication_type":"transferfilecontent"
+            , "sourceid" : "10000"
+            , "targetid" : "10001"
+            , "file_content" : "abcdefghijklmn"
+            , "now_block" : 0}
+        */
+        TRANSFERFILECONTENT,
+        /*
+            { "communication_type":"forcedelete"
+            , "id" : 10000}
+        */
+        FORCEDELETE,
+        /*
+            { "communication_type":"changepassword"
+            , "id" : "10000"
+            , "old_password" : "******"
+            , "password" : "******"} // 加密
+        */
+        CHANGEPASSWORD,
+        /*
+            { "communication_type":"changepasswordback"
+            , "id" : "10000"
+            , "update_result" : "failed"
+            , "description" : "old_password error"}
+        */
+        CHANGEPASSWORDBACK
+    };
+
+    static std::unordered_map<std::string, CommunicationType> typeStrToInt = {
+        {"register", CommunicationType::REGISTER}, {"registerbacksucceed", CommunicationType::REGISTERBACKSUCCEED},
+        {"registerbackfailed", CommunicationType::REGISTERBACKFAILED}, {"login", CommunicationType::LOGIN},
+        {"loginbacksucceed", CommunicationType::LOGINBACKSUCCEED}, {"loginbackfailed", CommunicationType::LOGINBACKFAILED},
+        {"showlogin", CommunicationType::SHOWLOGIN}, {"delcustomer", CommunicationType::DELCUSTOMER},
+        {"chat", CommunicationType::CHAT}, {"transferfileinfo", CommunicationType::TRANSFERFILEINFO},
+        {"transferfilecontent", CommunicationType::TRANSFERFILECONTENT}, {"forcedelete", CommunicationType::FORCEDELETE},
+        {"changepassword", CommunicationType::CHANGEPASSWORD}, {"changepasswordback", CommunicationType::CHANGEPASSWORDBACK}
+    };
+
+    static std::unordered_map<CommunicationType, std::string> typeIntToStr = {
+        {CommunicationType::REGISTER, "register"}, {CommunicationType::REGISTERBACKSUCCEED, "registerbacksucceed"},
+        {CommunicationType::REGISTERBACKFAILED, "registerbackfailed"}, {CommunicationType::LOGIN, "login"},
+        {CommunicationType::LOGINBACKSUCCEED, "loginbacksucceed"}, {CommunicationType::LOGINBACKFAILED, "loginbackfailed"},
+        {CommunicationType::SHOWLOGIN, "showlogin"}, {CommunicationType::DELCUSTOMER, "delcustomer"},
+        {CommunicationType::CHAT, "chat"}, {CommunicationType::TRANSFERFILEINFO, "transferfileinfo"},
+        {CommunicationType::TRANSFERFILECONTENT, "transferfilecontent"}, {CommunicationType::FORCEDELETE, "forcedelete"},
+        {CommunicationType::CHANGEPASSWORD, "changepassword"}, {CommunicationType::CHANGEPASSWORDBACK, "changepasswordback"}
+    };
+
+    class HandleRecv
+    {
+    public:
+        HandleRecv(SOCKET socketAccept, const std::string& str)
+            : socketHandle_(socketAccept)
+        {
+            DecodeJson(str);
+        }
+
+        HandleRecv()
+            : type_(CommunicationType::NULLCOMMUNICATION)
+            , socketHandle_(0)
+        {
+        }
+
+        void Clear()
+        {
+            type_ = CommunicationType::NULLCOMMUNICATION;
+            socketHandle_ = 0;
+        }
+
+        void SetSocket(SOCKET socketHandle)
+        {
+            socketHandle_ = socketHandle;
+        }
+
+        CommunicationType GetType() const
+        {
+            return type_;
+        }
+
+        inline const std::string GetContent(const std::string& key)
+        {
+            return jsonHandle_[key];
+        }
+
+        void SetContent(const std::string& key, const std::string& value)
+        {
+            jsonHandle_[key] = value;
+        }
+
+        std::string Write(CommunicationType type)
+        {
+            jsonHandle_["communication_type"] = typeIntToStr[type];
+            return EncodeJson();
+        }
+
+    private:
+        bool DecodeJson(const std::string& value);
+        std::string EncodeJson();
+
+    private:
+        CommunicationType type_;
+        SOCKET socketHandle_;
+        Json jsonHandle_;
+    };
 }
-
-inline void DeleteSpace(char** field)
-{
-    delete[] * field;
-    *field = nullptr;
-}
-
-void UnregisterSpace(CommunicationType type, s_HandleRecv& field);
-
-std::string EncodeJson(const CommunicationType type, const s_HandleRecv& s_param);
-
-bool DecodeJson(const std::string& value, s_HandleRecv& s_return);
 
 #endif // !PROTOCOL

@@ -33,31 +33,25 @@
     <ClInclude Include="Resource.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="service.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
     <ClInclude Include="..\public\public.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\public\data_base.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\public\data_interface.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="..\public\info.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\public\json.h">
+    <ClInclude Include="..\public\log.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\public\NetWorkHandle.h">
+    <ClInclude Include="..\public\database.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="..\public\protocol.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\public\CLog.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="Service.h">
+    <ClInclude Include="..\public\json.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -71,31 +65,25 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="service.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="..\public\public.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="..\public\data_base.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="..\public\data_interface.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\public\info.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\public\json.cpp">
+    <ClCompile Include="..\public\log.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\public\NetWorkHandle.cpp">
+    <ClCompile Include="..\public\database.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="..\public\protocol.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\public\CLog.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
-    <ClCompile Include="Service.cpp">
+    <ClCompile Include="..\public\json.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

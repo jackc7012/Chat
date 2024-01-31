@@ -4,8 +4,8 @@
 #include <string>
 
 namespace cwy {
-    struct NetWork {
-        NetWork()
+    struct NetWorkInfo {
+        NetWorkInfo()
             : tcpPort_(0)
             , udpPort_(0)
         {
@@ -16,8 +16,8 @@ namespace cwy {
         unsigned int udpPort_;
     };
 
-    struct DataBase {
-        DataBase()
+    struct DataBaseInfo {
+        DataBaseInfo()
         {
             memset(ip_, 0, 50);
             memset(name_, 0, 50);
@@ -30,8 +30,8 @@ namespace cwy {
         char pwd_[50];
     };
 
-    struct Log {
-        Log()
+    struct LogInfo {
+        LogInfo()
             : level_(0)
             , size_(0)
             , autoFlush_(0)
@@ -44,12 +44,14 @@ namespace cwy {
         unsigned short autoFlush_;
     };
 
-    struct Common {
-        Common()
+    struct CommonInfo {
+        CommonInfo()
             : threadNum_(0)
         {
+            memset(file_address_, 0, 100);
         }
         unsigned int threadNum_;
+        char file_address_[100];
     };
 
     class Info {
@@ -57,16 +59,16 @@ namespace cwy {
         Info();
         ~Info();
         void GetInfoFromFile(const std::string& fileName);
-        const NetWork GetNetWorkInfo() const;
-        const DataBase GetDataBaseInfo() const;
-        const Log GetLogInfo() const;
-        const Common GetCommonInfo() const;
+        const NetWorkInfo GetNetWorkInfo() const;
+        const DataBaseInfo GetDataBaseInfo() const;
+        const LogInfo GetLogInfo() const;
+        const CommonInfo GetCommonInfo() const;
 
     private:
-        NetWork netWork_;
-        DataBase dataBase_;
-        Log log_;
-        Common common_;
+        NetWorkInfo netWork_;
+        DataBaseInfo dataBase_;
+        LogInfo log_;
+        CommonInfo common_;
     };
 
 }

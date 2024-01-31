@@ -3,36 +3,36 @@
 std::string Encryption(const std::string& pwd)
 {
     const static std::string src = "qmpa2wlz7sg5oef3bngk1yt8ud6cfg0hj";
-    const static unsigned int srcLength = src.length();
-    std::string str_return;
+    const static UINT32 srcLength = src.length();
+    std::string result;
 
-    unsigned int len = pwd.length();
+    UINT32 len = pwd.length();
     for (unsigned int i = 0; i < len; ++i)
     {
-        str_return += src.at((srcLength - i - 1) % srcLength);
-        str_return += pwd.at(i);
-        str_return += src.at(i % srcLength);
-        str_return += pwd.at(len - i - 1);
+        result += src.at((srcLength - i - 1) % srcLength);
+        result += pwd.at(i);
+        result += src.at(i % srcLength);
+        result += pwd.at(len - i - 1);
     }
 
-    return str_return;
+    return result;
 }
 
 std::string Decryption(const std::string& pwd)
 {
-    std::string str_return;
+    std::string result;
 
-    unsigned int len = pwd.length();
+    UINT32 len = pwd.length();
     if (len % 4 != 0)
     {
         return "";
     }
-    for (unsigned int i = 1; i < len; i += 4)
+    for (UINT32 i = 1; i < len; i += 4)
     {
-        str_return += pwd.at(i);
+        result += pwd.at(i);
     }
 
-    return str_return;
+    return result;
 }
 
 bool VerifyCode(const std::string& code, const std::string& code_verify)
@@ -185,6 +185,10 @@ std::string dbJoin(const std::vector<std::string>& srcList)
         if (checkValid(src))
         {
             result += "'" + src + "', ";
+        }
+        else
+        {
+            return "";
         }
     }
     result = result.substr(0, result.length() - 2);
