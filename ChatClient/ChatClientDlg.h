@@ -4,18 +4,32 @@
 
 #pragma once
 #include <vector>
+#include <mutex>
 #include <queue>
 #include <unordered_map>
 
-#include "CLog.h"
 #include "CChangePassword.h"
 
+#include "info.h"
+
+/*
+   * message
+   * sysTime << "  /send(recv)\r\n" << content << "\r\n\r\n";
+ */
 
 #define WM_SOCKET                   (WM_USER + 1000)
 #define WM_SOCKET_FILE              (WM_SOCKET + 1)
 #define WM_TRANSFERFILEPROGRESS     (WM_SOCKET_FILE + 1)
 
-struct TransFile {
+static const int ALL_ITM[] = { IDC_STATICINFO, IDC_STATICLOGIN, // 组框
+                               IDC_STATICID_LOGIN, IDC_ID, IDC_STATICNAME, IDC_NAME, // 登录信息
+                               IDC_TEXT, IDC_SENDTEXT, IDC_SEND, IDC_FILENAME, IDC_TRANSFERFILE, IDC_INFO, //聊天
+                               IDC_TRANSFILEPROGRESS, // 进度条
+                               IDC_LOGIN_PEOPLE // 人员信息
+};
+
+struct TransFile
+{
     TransFile()
         : id_(0), fileLength_(0), fileBlock_(0)
     {
@@ -33,7 +47,8 @@ struct TransFile {
 };
 
 // CChatClientDlg 对话框
-class CChatClientDlg : public CDialogEx {
+class CChatClientDlg : public CDialogEx
+{
     // 构造
 public:
     CChatClientDlg(CWnd* pParent = NULL);	// 标准构造函数
@@ -79,24 +94,28 @@ private:
     void ThreadHandlerDownload(const unsigned short threadNum);
 
 public:
-    UINT64 customerId_{ 0 };
+    std::string customerId_;
     std::string customerName_;
     SOCKET socketClient_{ INVALID_SOCKET };
     bool loginFlag_{ true }; // true 登录 false 其他ip已登录
+    cwy::Info info_;
 
 protected:
     HICON m_hIcon;
     CListBox m_list_login_people;
     CComboBox m_status;
     CProgressCtrl m_transfer_progress;
+    CRect wndRect_;
 
 private:
     SOCKET socketTranserFile_{ INVALID_SOCKET };
-    std::unordered_map<UINT64, std::string> chatMessage_; // id : chatmessage
+    std::unordered_map<UINT64, std::ostringstream> chatMessage_; // id(send : targetid, recv : sourceid) : chatmessage
     std::unordered_map<UINT64, std::pair<std::string, std::string>> loginInfo_; // id : {nick_name, status}
     std::unordered_map<UINT64, int> progressNum_;
     std::vector<std::thread> fileTransUpload_, fileTransDownload_;
     std::queue<TransFile> transferFileUpload_, transferFileDownload_;
     std::mutex quMuUp_, quMuDown_;
     bool threadExit_{ false };
+public:
+    afx_msg void OnSize(UINT nType, int cx, int cy);
 };

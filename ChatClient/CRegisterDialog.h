@@ -1,9 +1,10 @@
 ﻿#pragma once
-#include "CLoginWait.h"
+#include <string>
 
 // CRegisterDialog 对话框
 
-class CRegisterDialog : public CDialogEx {
+class CRegisterDialog : public CDialogEx
+{
     DECLARE_DYNAMIC(CRegisterDialog)
 
 public:
@@ -27,10 +28,10 @@ public:
 public:
     afx_msg void OnBnClickedRegisterUser();
 
-private:
-    void SetVerify();
-    void SendRegisterMessage(s_HandleRecv& toSend);
-
 public:
     SOCKET socketClient_{ INVALID_SOCKET };
+
+private:
+    void SetVerify();
+    void SendRegisterMessage(const std::string& customerName, const std::string& password);
 };

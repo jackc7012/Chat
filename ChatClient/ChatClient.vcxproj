@@ -201,10 +201,9 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\public\CLog.h" />
+    <ClInclude Include="..\public\info.h" />
     <ClInclude Include="..\public\json.h" />
-    <ClInclude Include="..\public\json\json-forwards.h" />
-    <ClInclude Include="..\public\json\json.h" />
+    <ClInclude Include="..\public\log.h" />
     <ClInclude Include="..\public\protocol.h" />
     <ClInclude Include="..\public\public.h" />
     <ClInclude Include="CChangePassword.h" />
@@ -219,11 +218,9 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\public\CLog.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="..\public\info.cpp" />
     <ClCompile Include="..\public\json.cpp" />
-    <ClCompile Include="..\public\jsoncpp.cpp" />
+    <ClCompile Include="..\public\log.cpp" />
     <ClCompile Include="..\public\protocol.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>

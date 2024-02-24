@@ -11,8 +11,8 @@ const UINT32 DATA_LENGTH = 1024 * 1;
 // 传送文件网络通信数据量长度
 const UINT32 FILE_DATA_LENGTH = 1024 * 10;
 
-const char COMBINE_ONE_CUSTOMER = '-';
-const char COMBINE_CUSTOMERS = '|';
+const char COMBINE_ONE_INFO = '&';
+const char COMBINE_INFOS = ';';
 const char COMBINE_FILE = '_';
 
 const std::string VERIFY_CODE = "abcdefghjklmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ123456789";
@@ -33,7 +33,7 @@ bool VerifyCode(const std::string& code, const std::string& code_verify);
 void ToLow(std::string& code);
 
 // 字符串组合
-std::string CombineString(const DataRecords& dataRecords);
+std::string CombineString(const DataRecords& dataRecords, const char sep1 = COMBINE_ONE_INFO, const char sep2 = COMBINE_INFOS);
 
 // 分割字符串
 void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest);
@@ -55,7 +55,7 @@ bool checkValid(const std::string& src);
 
 bool checkSqlValid(const std::string& src);
 
-// 字符串去除收尾空格
+// 字符串去除首尾空格
 std::string trim(const std::string& src);
 
 #endif  //__PUBLIC_H__

@@ -13,8 +13,6 @@
 
 namespace cwy
 {
-    static const std::string INFO_FILE_NAME = "./info.ini";
-
     enum class CallBackType
     {
         INIT,
@@ -80,7 +78,7 @@ namespace cwy
 
         std::string HandleRegister(HandleRecv& handleRecv, const std::string& ip);
 
-        std::string HandleLogin(HandleRecv& handleRecv, const std::string& ip, bool& isLoginSucceed, std::string& customerName);
+        std::string HandleLogin(HandleRecv& handleRecv, const std::string& ip);
 
         /*
         * type: 0  通知该用户 -> 当前所有用户
@@ -89,7 +87,9 @@ namespace cwy
         */
         std::string HandleShowLogin(const UINT64 id = -1, const std::string& customerName = "", const int type = 0);
 
-        void HandleLogOut(const UINT64 id);
+        std::string SelectChatContent(HandleRecv& handleRecv);
+
+        void HandleLogOut(const UINT64 id, const std::string& ip);
 
         /*
         * type: 0 文字
@@ -104,7 +104,7 @@ namespace cwy
     private:
         CallBack callBack_{ nullptr };
         Info info_;
-        INT64 maxRegistered_{ DEFAULT_REGISTER_ID }; // 当前注册id
+        UINT64 maxRegistered_{ DEFAULT_REGISTER_ID }; // 当前注册id
         DataBase* dataBase_{ nullptr }; // 数据表处理
         std::vector<std::thread> threadHandle_; // 线程 : 处理消息
         SOCKET socketServiceTcp_{ INVALID_SOCKET };
@@ -116,6 +116,7 @@ namespace cwy
         std::queue<std::pair<std::string, SOCKET>> taskQue_; // 任务处理队列 消息 : socket号
         bool exitFlag{ false }; // 程序退出标志
         UINT32 loginCount_{ 0 }; // 登录人数
+        UINT32 registerCount_{ 0 }; // 注册人数
         Log log_;
     };
 }

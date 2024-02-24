@@ -1,8 +1,10 @@
 ﻿#pragma once
+#include "info.h"
 
 // CLoginDialog 对话框
 
-class CLoginDialog : public CDialogEx {
+class CLoginDialog : public CDialogEx
+{
     DECLARE_DYNAMIC(CLoginDialog)
 
 public:
@@ -31,4 +33,5 @@ public:
 
 private:
     SOCKET socketClient_{ INVALID_SOCKET };
+    cwy::Info info_;
 };

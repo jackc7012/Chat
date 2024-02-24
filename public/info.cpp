@@ -8,6 +8,11 @@ Info::Info()
 {
 }
 
+Info::Info(const std::string& fileName)
+{
+    GetInfoFromFile(fileName);
+}
+
 Info::~Info()
 {
 }

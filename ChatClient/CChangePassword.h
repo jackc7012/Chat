@@ -1,9 +1,10 @@
 ﻿#pragma once
-#include "CLoginWait.h"
+#include <string>
 
 // CChangePassword 对话框
 
-class CChangePassword : public CDialogEx {
+class CChangePassword : public CDialogEx
+{
     DECLARE_DYNAMIC(CChangePassword)
 
 public:
@@ -22,15 +23,16 @@ protected:
 
 public:
     virtual BOOL OnInitDialog();
+    virtual void OnOK();
 
 public:
     afx_msg void OnBnClickedChangePassword();
 
 public:
-    UINT64 customerId_{ 0 };
+    std::string customerId_;
     SOCKET socketClient_{ INVALID_SOCKET };
 
 private:
     void SetVerify();
-    void SendChangePasswordMessage(s_HandleRecv& toSend);
+    void SendChangePasswordMessage(const std::string& id, const std::string& oldPassword, const std::string& password);
 };

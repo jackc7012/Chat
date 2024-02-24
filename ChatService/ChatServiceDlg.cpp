@@ -147,7 +147,7 @@ void CChatServiceDlg::EventHandle(const CallBackType callBackType, const std::st
         case CallBackType::LOGIN:
         {
             std::vector<std::string> des;
-            SplitString(message, COMBINE_ONE_CUSTOMER, des);
+            SplitString(message, COMBINE_ONE_INFO, des);
             if (des.size() == LOGIN_PEOPLE_COL)
             {
                 int cou = m_listLoginPeople.GetItemCount();
@@ -275,7 +275,7 @@ void CChatServiceDlg::OnBnClickedStart()
         SOCKET socketServiceTcp = service_->StartTcp();
         if (socketServiceTcp != INVALID_SOCKET)
         {
-            ::WSAAsyncSelect(socketServiceTcp, this->m_hWnd, WM_SOCKET_TCP, FD_ACCEPT | FD_READ | FD_CLOSE);
+            ::WSAAsyncSelect(socketServiceTcp, this->m_hWnd, WM_SOCKET_TCP, FD_ACCEPT | FD_READ);
             SetDlgItemText(IDC_STATUS, _T("服务器监听已经启动。。。"));
             SetDlgItemText(IDC_START, _T("停止"));
         }
@@ -322,17 +322,6 @@ LRESULT CChatServiceDlg::OnSocketTcp(WPARAM wParam, LPARAM lParam)
         case FD_READ:
         {
             service_->ClientRecv(static_cast<SOCKET>(wParam));
-            break;
-        }
-
-        case FD_CLOSE:
-        {
-            GetDlgItemText(IDC_TEXT, str_text);
-            str_text += "\r\n";
-            str_text += ::inet_ntoa(addrAccept.sin_addr);
-            str_text += "已断开";
-            SetDlgItemText(IDC_TEXT, str_text);
-            //m_list_login_people.DeleteString(del_index);
             break;
         }
 

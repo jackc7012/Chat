@@ -64,7 +64,7 @@ void ToLow(std::string& code)
     return;
 }
 
-std::string CombineString(const DataRecords& dataRecords)
+std::string CombineString(const DataRecords& dataRecords, const char sep1/* = COMBINE_ONE_INFO*/, const char sep2/* = COMBINE_INFOS*/)
 {
     std::string result;
     for (size_t i = 0; i < dataRecords.size(); ++i)
@@ -75,13 +75,13 @@ std::string CombineString(const DataRecords& dataRecords)
             result += dataRecordLine.at(j);
             if (j != dataRecordLine.size() - 1)
             {
-                result += COMBINE_ONE_CUSTOMER;
+                result += sep1;
             }
         }
-        result += COMBINE_CUSTOMERS;
+        result += sep2;
     }
 
-    return result;
+    return result.substr(0, result.length() - 1);
 }
 
 void SplitString(const std::string& be_converted, const char separator, std::vector<std::string>& dest)

@@ -2,11 +2,31 @@
 
 #include <thread>
 #include "protocol.h"
-#include "CLog.h"
+
+enum class Mode
+{
+    NULLMODE,
+    LOGIN,
+    REGISTER,
+    CHANGEPWD
+};
+
+enum class LoginResult
+{
+    NULLLOGIN,
+    SUCCEED,
+    NOUSER,
+    ALREADYLOGININ,
+    PASSWORDERROR,
+    UNKNOWNERROR,
+    PASSWORD2SHORT,
+    OUTLIMIT
+};
 
 // CLoginWait 对话框
 
-class CLoginWait : public CDialogEx {
+class CLoginWait : public CDialogEx
+{
     DECLARE_DYNAMIC(CLoginWait)
 
 public:
@@ -30,8 +50,9 @@ public:
 
 public:
     SOCKET socketClient_{ INVALID_SOCKET };
-    int mode_{ -1 }; // 0 login, 1 register, 2 change password
+    Mode mode_{ Mode::NULLMODE };
     std::string customerName_;
+    std::string id_;
     std::string ip_;
 
 private:

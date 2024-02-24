@@ -14,6 +14,10 @@ Log::~Log()
     UnitLog();
 }
 
+/*
+* type 0 : 服务器 1 : 客户端
+*/
+
 void Log::InitLog(const int type, const std::string& path, const LogLevel log_level, const int file_size, const bool auto_flush)
 {
     this->filePath = path;

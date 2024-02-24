@@ -3,10 +3,10 @@
 
 #include "ChatClient.h"
 #include "CChangePassword.h"
-#include "afxdialogex.h"
-#include <string>
+#include "CLoginWait.h"
 
-#include "public.h"
+#include "protocol.h"
+using namespace cwy;
 
 // CChangePassword 对话框
 
@@ -27,29 +27,32 @@ void CChangePassword::DoDataExchange(CDataExchange* pDX)
     CDialogEx::DoDataExchange(pDX);
 }
 
-
 BEGIN_MESSAGE_MAP(CChangePassword, CDialogEx)
     ON_BN_CLICKED(IDC_CHANGE_PASSWORD, &CChangePassword::OnBnClickedChangePassword)
 END_MESSAGE_MAP()
 
-
 // CChangePassword 消息处理程序
-
 
 BOOL CChangePassword::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
 
-    // TODO:  在此添加额外的初始化
     ModifyStyleEx(0, WS_EX_APPWINDOW);
-    SetDlgItemText(IDC_CP_ID, std::to_string(customerId_).c_str());
-    return TRUE;  // return TRUE unless you set the focus to a control
-                  // 异常: OCX 属性页应返回 FALSE
+    SetDlgItemText(IDC_CP_ID, customerId_.c_str());
+
+    srand((unsigned int)time(NULL));
+    SetVerify();
+
+    return TRUE;
+}
+
+void CChangePassword::OnOK()
+{
+    OnBnClickedChangePassword();
 }
 
 void CChangePassword::OnBnClickedChangePassword()
 {
-    // TODO: 在此添加控件通知处理程序代码
     CString strId, strOldPassword, strPassword, strPasswordConfirm, strVerify, strVerifyCode;
     GetDlgItemText(IDC_CP_ID, strId);
     GetDlgItemText(IDC_OLD_PASSWORD, strOldPassword);
@@ -62,17 +65,18 @@ void CChangePassword::OnBnClickedChangePassword()
         MessageBox(_T("两次输入密码不一致"), _T("错误"), MB_ICONERROR);
         SetVerify();
     }
+    else if (strlen(strPasswordConfirm) < 6)
+    {
+        MessageBox(_T("密码少于6位"), _T("错误"), MB_ICONERROR);
+        SetVerify();
+    }
     else if (!VerifyCode(strVerify.GetBuffer(0), strVerifyCode.GetBuffer(0)))
     {
         MessageBox(_T("验证码错误"), _T("错误"), MB_ICONERROR);
-        SetVerify();
     }
     else
     {
-        s_HandleRecv toSend;
-        RegisterSpace(&toSend.Param.changePassword_.old_password, Encryption(strOldPassword.GetBuffer(0)));
-        RegisterSpace(&toSend.Param.changePassword_.password, Encryption(strPassword.GetBuffer(0)));
-        SendChangePasswordMessage(toSend);
+        SendChangePasswordMessage(strId.GetBuffer(0), strOldPassword.GetBuffer(0), strPassword.GetBuffer(0));
     }
     strId.ReleaseBuffer();
     strOldPassword.ReleaseBuffer();
@@ -95,22 +99,29 @@ void CChangePassword::SetVerify()
     SetDlgItemText(IDC_STATIC_VERIFY_CODE, verify_code.c_str());
 }
 
-void CChangePassword::SendChangePasswordMessage(s_HandleRecv& toSend)
+void CChangePassword::SendChangePasswordMessage(const std::string& id, const std::string& oldPassword, const std::string& password)
 {
-    std::string rt = EncodeJson(CommunicationType::CHANGEPASSWORD, toSend);
-    UnregisterSpace(CommunicationType::CHANGEPASSWORD, toSend);
+    HandleRecv toSend;
+    toSend.SetContent("id", id);
+    toSend.SetContent("old_password", Encryption(oldPassword));
+    toSend.SetContent("password", Encryption(password));
+    std::string rt = toSend.Write(CommunicationType::CHANGEPASSWORD);
     ::send(socketClient_, rt.c_str(), rt.length(), 0);
-    CLoginWait dlg1;
-    dlg1.socketClient_ = socketClient_;
-    dlg1.customerName_ = std::to_string(customerId_);
-    dlg1.mode_ = 2;
-    int ret = dlg1.DoModal();
-    if (ret == 0)
+    CLoginWait loginWaitDlg;
+    loginWaitDlg.socketClient_ = socketClient_;
+    loginWaitDlg.id_ = id;
+    loginWaitDlg.mode_ = Mode::CHANGEPWD;
+    LoginResult ret = static_cast<LoginResult>(loginWaitDlg.DoModal());
+    if (ret == LoginResult::SUCCEED)
     {
         std::ostringstream tmp;
-        tmp << customerId_ << " 修改密码成功!!!";
+        tmp << id << " 修改密码成功!!!";
         MessageBox(tmp.str().c_str(), _T("成功"), MB_ICONINFORMATION);
         EndDialog(0);
+    }
+    else if (ret == LoginResult::PASSWORDERROR)
+    {
+        MessageBox(_T("原密码错误"), _T("错误"), MB_ICONERROR);
     }
     else
     {

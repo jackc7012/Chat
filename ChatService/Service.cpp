@@ -27,7 +27,7 @@ int Service::Init(CallBack callBack)
         {
             break;
         }
-        std::string sql("select max(ID) from tb_info");
+        std::string sql("select count(*), max(ID) from tb_info");
         DataRecords loginInfo;
         if (!dataBase_->selectSql(sql, loginInfo))
         {
@@ -35,9 +35,8 @@ int Service::Init(CallBack callBack)
         }
         if (loginInfo.size() != 0)
         {
-            std::stringstream ID;
-            ID << loginInfo.at(0).at(0);
-            ID >> maxRegistered_;
+            registerCount_ = strtoul(loginInfo.at(0).at(0).c_str(), nullptr, 10);
+            maxRegistered_ = strtoul(loginInfo.at(0).at(1).c_str(), nullptr, 10);
             if (maxRegistered_ < DEFAULT_REGISTER_ID)
             {
                 maxRegistered_ = DEFAULT_REGISTER_ID;
@@ -259,59 +258,71 @@ void Service::NetWorkEvent(const UINT16 threadNum, const std::string& taskParam,
         return;
     }
 
-    std::string ip = itor->second;
+    std::string ip = itor->second, result;
     HandleRecv handleRecv(socket, taskParam);
-    std::string result;
     std::unique_lock<std::mutex> ul(mutexHandle_, std::defer_lock);
     callBack_(CallBackType::RECV, std::string("threadId : " + std::to_string(threadNum) + " : recv from " + ip +
         " message : " + taskParam), false);
-    switch (handleRecv.GetType())
+    CommunicationType type = handleRecv.GetType();
+    switch (type)
     {
         case CommunicationType::REGISTER:
+        case CommunicationType::LOGIN:
+        case CommunicationType::CHANGEPASSWORD:
+        case CommunicationType::INITCUSTOMERCHAT:
         {
-            result = HandleRegister(handleRecv, ip);
+            if (CommunicationType::REGISTER == type)
+            {
+                result = HandleRegister(handleRecv, ip);
+            }
+            else if (CommunicationType::LOGIN == type)
+            {
+                result = HandleLogin(handleRecv, ip);
+            }
+            else if (CommunicationType::CHANGEPASSWORD == type)
+            {
+                result = HandleChangePassword(handleRecv);
+            }
+            else if (CommunicationType::INITCUSTOMERCHAT == type)
+            {
+                result = SelectChatContent(handleRecv);
+            }
             ::send(socket, result.c_str(), result.length(), 0);
             break;
         }
 
-        case CommunicationType::LOGIN:
+        case CommunicationType::GETANDSHOW:
         {
-            bool isLoginSucceed = false;
-            std::string customerName;
-            result = HandleLogin(handleRecv, ip, isLoginSucceed, customerName);
+            UINT64 id = strtoull(handleRecv.GetContent("id").c_str(), nullptr, 10);
+            // 通知自己
+            result = HandleShowLogin();
             ::send(socket, result.c_str(), result.length(), 0);
-            if (isLoginSucceed)
+            // 通知别人
+            result = HandleShowLogin(id, handleRecv.GetContent("customer"), 1);
+            auto itorEnd = loginCustomer_.end();
+            for (auto itor = loginCustomer_.begin(); itor != itorEnd; ++itor)
             {
-                UINT64 id = strtoull(handleRecv.GetContent("id").c_str(), nullptr, 10);
-                // 通知自己
-                result = HandleShowLogin();
-                ::send(socket, result.c_str(), result.length(), 0);
-                // 通知别人
-                result = HandleShowLogin(id, customerName, 1);
-                auto itorEnd = loginCustomer_.end();
-                for (auto itor = loginCustomer_.begin(); itor != itorEnd; ++itor)
+                if (itor->second.socket_ == socket)
                 {
-                    if (itor->second.socket_ == socket)
-                    {
-                        continue;
-                    }
-                    ::send(itor->second.socket_, result.c_str(), result.length(), 0);
+                    continue;
                 }
-                ul.lock();
-                ++loginCount_;
-                loginCustomer_.insert(std::make_pair(id, LoginPeople(socket, customerName, ip)));
-                ul.unlock();
-                callBack_(CallBackType::LOGIN, handleRecv.GetContent("id") + COMBINE_ONE_CUSTOMER + customerName +
-                    COMBINE_ONE_CUSTOMER + ip, false);
+                ::send(itor->second.socket_, result.c_str(), result.length(), 0);
             }
+            ul.lock();
+            ++loginCount_;
+            loginCustomer_.insert(std::make_pair(id, LoginPeople(socket, handleRecv.GetContent("customer"), ip)));
+            ul.unlock();
+            callBack_(CallBackType::LOGIN, handleRecv.GetContent("id") + COMBINE_ONE_INFO + handleRecv.GetContent("customer") +
+                COMBINE_ONE_INFO + ip, false);
             break;
         }
 
         case CommunicationType::DELCUSTOMER:
         {
             UINT64 id = strtoull(handleRecv.GetContent("id").c_str(), nullptr, 10);
-            HandleLogOut(id);
-            result = HandleShowLogin(id, "", -1);
+            HandleLogOut(id, "");
+            auto loginCustomerItor = loginCustomer_.find(id);
+            result = HandleShowLogin(id, loginCustomerItor->second.name_, -1);
             auto itorEnd = loginCustomer_.end();
             for (auto itor = loginCustomer_.begin(); itor != itorEnd; ++itor)
             {
@@ -334,6 +345,21 @@ void Service::NetWorkEvent(const UINT16 threadNum, const std::string& taskParam,
             break;
         }
 
+        case CommunicationType::FORCEDELETE:
+        {
+            UINT64 id = strtoull(handleRecv.GetContent("id").c_str(), nullptr, 10);
+            HandleLogOut(id, ip);
+            auto itor = loginCustomer_.find(id);
+            if (itor != loginCustomer_.end())
+            {
+                ::send(itor->second.socket_, taskParam.c_str(), taskParam.length(), 0);
+                closesocket(itor->second.socket_);
+                itor->second.ip_ = ip;
+                itor->second.socket_ = socket;
+            }
+            break;
+        }
+
         case CommunicationType::CHAT:
         case CommunicationType::TRANSFERFILEINFO:
         {
@@ -352,13 +378,6 @@ void Service::NetWorkEvent(const UINT16 threadNum, const std::string& taskParam,
             break;
         }
 
-        case CommunicationType::CHANGEPASSWORD:
-        {
-            result = HandleChangePassword(handleRecv);
-            ::send(socket, result.c_str(), result.length(), 0);
-            break;
-        }
-
         case CommunicationType::TRANSFERFILECONTENT:
         {
 
@@ -373,7 +392,7 @@ void Service::NetWorkEvent(const UINT16 threadNum, const std::string& taskParam,
 
 void Service::HandleKick(const UINT64 id)
 {
-    HandleLogOut(id);
+    HandleLogOut(id, "");
     std::string result = HandleShowLogin(id, "", -1);
     auto itorEnd = loginCustomer_.end();
     for (auto itor = loginCustomer_.begin(); itor != itorEnd; ++itor)
@@ -455,9 +474,9 @@ std::string Service::HandleRegister(HandleRecv& handleRecv, const std::string& i
     return result;
 }
 
-std::string Service::HandleLogin(HandleRecv& handleRecv, const std::string& ip, bool& isLoginSucceed, std::string& customerName)
+std::string Service::HandleLogin(HandleRecv& handleRecv, const std::string& ip)
 {
-    customerName = "";
+    bool isLoginSucceed = false;
     std::string result;
     HandleRecv handleSend;
     SqlRequest sql("select Name, Password, IsLogin, RecentIp from tb_info where ID = ");
@@ -488,7 +507,9 @@ std::string Service::HandleLogin(HandleRecv& handleRecv, const std::string& ip, 
         }
         else if (loginInfo.size() == 1 && trim(loginInfo.at(0).at(2)) == "1")
         {
+            handleSend.SetContent("customer", loginInfo.at(0).at(0));
             handleSend.SetContent("description", "this user has already login in, please make sure or modify your password");
+            handleSend.SetContent("ip", loginInfo.at(0).at(3));
         }
         else if (loginInfo.size() == 1)
         {
@@ -500,7 +521,6 @@ std::string Service::HandleLogin(HandleRecv& handleRecv, const std::string& ip, 
                 callBack_(CallBackType::SEND, handleRecv.GetContent("id") + " login failed, failed description : " +
                     dataBase_->getErrMessage(), true);
             }
-            customerName = handleSend.GetContent("customer");
             isLoginSucceed = true;
         }
         else
@@ -514,10 +534,7 @@ std::string Service::HandleLogin(HandleRecv& handleRecv, const std::string& ip, 
                 (handleRecv.GetContent("id") + " login failed, failed description : " + handleSend.GetContent("description")),
                 !isLoginSucceed);
         }
-        if (!isLoginSucceed)
-        {
-            handleSend.SetContent("id", handleRecv.GetContent("id"));
-        }
+        handleSend.SetContent("id", handleRecv.GetContent("id"));
 
         result = handleSend.Write(isLoginSucceed ? CommunicationType::LOGINBACKSUCCEED :
             CommunicationType::LOGINBACKFAILED);
@@ -553,11 +570,56 @@ std::string Service::HandleShowLogin(const UINT64 id/* = -1*/, const std::string
     return result;
 }
 
-void Service::HandleLogOut(const UINT64 id)
+std::string Service::SelectChatContent(HandleRecv& handleRecv)
 {
-    SqlRequest sql;
-    sql << "update tb_info set IsLogin = 0, LastLoginTime = " << toDbString(GetSystemTime())
-        << " where ID = " << toDbString(std::to_string(id));
+    std::string id = handleRecv.GetContent("id");
+    std::string requestId = handleRecv.GetContent("requestid");
+    // [requestId + _Src] table
+    SqlRequest sql("select Time, ChatContent, Type from [");
+    sql << requestId << "_Src] where TargetId = "<< toDbString(id) << " order by Time";
+    DataRecords chatContentSrc;
+    bool ret = dataBase_->selectSql(sql.str(), chatContentSrc);
+    if (!ret)
+    {
+        callBack_(CallBackType::SEND, requestId + " select chat content src failed, failed description : " +
+            dataBase_->getErrMessage(), true);
+    }
+
+    // [requestId + _Trg] table
+    sql.clear();
+    sql << "select Time, ChatContent, IsRead, Type from [" << requestId << "_Trg] where SourceId = " << toDbString(id)
+        << "order by Time";
+    DataRecords chatContentTrg;
+    ret = dataBase_->selectSql(sql.str(), chatContentTrg);
+    if (!ret)
+    {
+        callBack_(CallBackType::SEND, requestId + " select chat content trg failed, failed description : " +
+            dataBase_->getErrMessage(), true);
+    }
+
+    HandleRecv handleSend;
+    handleSend.SetContent("sourcecontent", CombineString(chatContentSrc));
+    handleSend.SetContent("targetcontent", CombineString(chatContentTrg));
+    handleSend.SetContent("id", requestId);
+    handleSend.SetContent("contentid", id);
+    std::string result = handleSend.Write(CommunicationType::INITCUSTOMERCHATBACK);
+
+    return result;
+}
+
+void Service::HandleLogOut(const UINT64 id, const std::string& ip)
+{
+    SqlRequest sql("update tb_info set");
+    if (ip == "")
+    {
+        sql << " IsLogin = 0,";
+    }
+    sql << " LastLoginTime = " << toDbString(GetSystemTime());
+    if (ip != "")
+    {
+        sql << " RecentIp" << toDbString(ip);
+    }
+    sql << " where ID = " << toDbString(std::to_string(id));
     if (!dataBase_->operSql(sql.str()))
     {
         callBack_(CallBackType::SEND, std::to_string(id) + " log out failed, failed description : " +

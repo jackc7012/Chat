@@ -1,10 +1,14 @@
-#ifndef __MY_INFO_H__
-#define __MY_INFO_H__
+#ifndef __INFO_H__
+#define __INFO_H__
 
 #include <string>
 
-namespace cwy {
-    struct NetWorkInfo {
+namespace cwy
+{
+    static const std::string INFO_FILE_NAME = "./info.ini";
+
+    struct NetWorkInfo
+    {
         NetWorkInfo()
             : tcpPort_(0)
             , udpPort_(0)
@@ -13,10 +17,11 @@ namespace cwy {
         }
         char ip_[50];
         unsigned int tcpPort_;
-        unsigned int udpPort_;
+        unsigned int udpPort_; // todo
     };
 
-    struct DataBaseInfo {
+    struct DataBaseInfo
+    {
         DataBaseInfo()
         {
             memset(ip_, 0, 50);
@@ -30,7 +35,8 @@ namespace cwy {
         char pwd_[50];
     };
 
-    struct LogInfo {
+    struct LogInfo
+    {
         LogInfo()
             : level_(0)
             , size_(0)
@@ -44,7 +50,8 @@ namespace cwy {
         unsigned short autoFlush_;
     };
 
-    struct CommonInfo {
+    struct CommonInfo
+    {
         CommonInfo()
             : threadNum_(0)
         {
@@ -54,9 +61,11 @@ namespace cwy {
         char file_address_[100];
     };
 
-    class Info {
+    class Info
+    {
     public:
         Info();
+        Info(const std::string& fileName);
         ~Info();
         void GetInfoFromFile(const std::string& fileName);
         const NetWorkInfo GetNetWorkInfo() const;
@@ -72,6 +81,6 @@ namespace cwy {
     };
 
 }
-#endif // !__MY_INFO_H__
+#endif // !__INFO_H__
 
 

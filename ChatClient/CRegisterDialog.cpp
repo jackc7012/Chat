@@ -1,10 +1,15 @@
 ﻿// CRegisterDialog.cpp: 实现文件
 //
 
-#include "stdafx.h"
+#include "afxdialogex.h"
+
 #include "ChatClient.h"
 #include "CRegisterDialog.h"
-#include "afxdialogex.h"
+#include "CLoginWait.h"
+
+#include "protocol.h"
+
+using namespace cwy;
 
 // CRegisterDialog 对话框
 
@@ -25,7 +30,6 @@ void CRegisterDialog::DoDataExchange(CDataExchange* pDX)
     CDialogEx::DoDataExchange(pDX);
 }
 
-
 BEGIN_MESSAGE_MAP(CRegisterDialog, CDialogEx)
     ON_BN_CLICKED(IDC_REGISTER_USER, &CRegisterDialog::OnBnClickedRegisterUser)
 END_MESSAGE_MAP()
@@ -33,12 +37,10 @@ END_MESSAGE_MAP()
 
 // CRegisterDialog 消息处理程序
 
-
 BOOL CRegisterDialog::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
 
-    // TODO:  在此添加额外的初始化
     SetIcon(m_hIcon, TRUE);         // 设置大图标
     SetIcon(m_hIcon, FALSE);        // 设置小图标
     ModifyStyleEx(0, WS_EX_APPWINDOW);
@@ -65,15 +67,11 @@ BOOL CRegisterDialog::OnInitDialog()
 
 void CRegisterDialog::OnOK()
 {
-    // TODO: 在此添加专用代码和/或调用基类
     OnBnClickedRegisterUser();
-
-    return;
 }
 
 void CRegisterDialog::OnBnClickedRegisterUser()
 {
-    // TODO: 在此添加控件通知处理程序代码
     CString strName, strPassword, strPasswordConfirm, strVerify, strVerifyCode;
     GetDlgItemText(IDC_NICK_NAME, strName);
     GetDlgItemText(IDC_PASSWORD, strPassword);
@@ -85,55 +83,55 @@ void CRegisterDialog::OnBnClickedRegisterUser()
         MessageBox(_T("两次输入密码不一致"), _T("错误"), MB_ICONERROR);
         SetVerify();
     }
+    else if (strlen(strPasswordConfirm) < 6)
+    {
+        MessageBox(_T("密码少于6位"), _T("错误"), MB_ICONERROR);
+        SetVerify();
+    }
     else if (!VerifyCode(strVerify.GetBuffer(0), strVerifyCode.GetBuffer(0)))
     {
         MessageBox(_T("验证码错误"), _T("错误"), MB_ICONERROR);
-        SetVerify();
     }
     else
     {
-        s_HandleRecv toSend;
-        RegisterSpace(&toSend.Param.register_.customer, strName.GetBuffer(0));
-        RegisterSpace(&toSend.Param.register_.password, Encryption(strPassword.GetBuffer(0)));
-        SendRegisterMessage(toSend);
+        SendRegisterMessage(strName.GetBuffer(0), strPassword.GetBuffer(0));
     }
     strName.ReleaseBuffer();
     strPassword.ReleaseBuffer();
     strPasswordConfirm.ReleaseBuffer();
     strVerify.ReleaseBuffer();
     strVerifyCode.ReleaseBuffer();
-
-    return;
 }
 
 void CRegisterDialog::SetVerify()
 {
     SetDlgItemText(IDC_VERIFY, _T(""));
-    int code_rand = 0;
-    std::string verify_code("");
+    int codeRand = 0;
+    std::string verifyCode("");
     for (int i = 0; i < 4; ++i)
     {
-        code_rand = rand() % VERIFY_CODE.length();
-        verify_code += VERIFY_CODE[code_rand];
+        codeRand = rand() % VERIFY_CODE.length();
+        verifyCode += VERIFY_CODE[codeRand];
     }
-    SetDlgItemText(IDC_STATIC_VERIFY_CODE, verify_code.c_str());
-
-    return;
+    SetDlgItemText(IDC_STATIC_VERIFY_CODE, verifyCode.c_str());
 }
 
-void CRegisterDialog::SendRegisterMessage(s_HandleRecv& toSend)
+void CRegisterDialog::SendRegisterMessage(const std::string& customerName, const std::string& password)
 {
-    std::string rt = EncodeJson(CommunicationType::REGISTER, toSend);
-    UnregisterSpace(CommunicationType::REGISTER, toSend);
+    HandleRecv toSend;
+    toSend.SetContent("customer", customerName);
+    toSend.SetContent("password", Encryption(password));
+    std::string rt = toSend.Write(CommunicationType::REGISTER);
     ::send(socketClient_, rt.c_str(), rt.length(), 0);
-    CLoginWait dlg1;
-    dlg1.socketClient_ = socketClient_;
-    dlg1.mode_ = 1;
-    int ret = dlg1.DoModal();
-    if (ret == 0)
+    CLoginWait loginWaitDlg;
+    loginWaitDlg.socketClient_ = socketClient_;
+    loginWaitDlg.customerName_ = customerName;
+    loginWaitDlg.mode_ = Mode::REGISTER;
+    LoginResult ret = static_cast<LoginResult>(loginWaitDlg.DoModal());
+    if (ret == LoginResult::SUCCEED)
     {
         std::ostringstream tmp;
-        tmp << "注册成功，账号为 ：" << dlg1.customerName_;
+        tmp << "注册成功，账号为 ：" << loginWaitDlg.id_;
         MessageBox(tmp.str().c_str(), _T("成功"), MB_ICONINFORMATION);
         EndDialog(0);
     }
@@ -142,6 +140,4 @@ void CRegisterDialog::SendRegisterMessage(s_HandleRecv& toSend)
         MessageBox(_T("注册失败,请重试"), _T("错误"), MB_ICONERROR);
         SetVerify();
     }
-
-    return;
 }

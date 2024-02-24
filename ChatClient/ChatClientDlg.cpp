@@ -2,11 +2,11 @@
 // ChatClientDlg.cpp : 实现文件
 //
 
-#include "stdafx.h"
 #include "ChatClient.h"
 #include "ChatClientDlg.h"
 #include "CMessage.h"
-#include "afxdialogex.h"
+
+#include <map>
 
 #include "protocol.h"
 using namespace cwy;
@@ -17,7 +17,8 @@ using namespace cwy;
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
-class CAboutDlg : public CDialogEx {
+class CAboutDlg : public CDialogEx
+{
 public:
     CAboutDlg();
 
@@ -76,6 +77,7 @@ BEGIN_MESSAGE_MAP(CChatClientDlg, CDialogEx)
     ON_STN_CLICKED(IDC_INFO, &CChatClientDlg::OnStnClickedInfo)
     ON_MESSAGE(WM_SOCKET, OnSocket)
     ON_MESSAGE(WM_TRANSFERFILEPROGRESS, OnTransferFileProgress)
+    ON_WM_SIZE()
 END_MESSAGE_MAP()
 
 // CChatClientDlg 消息处理程序
@@ -108,24 +110,33 @@ BOOL CChatClientDlg::OnInitDialog()
     //  执行此操作
     SetIcon(m_hIcon, TRUE);			// 设置大图标
     SetIcon(m_hIcon, FALSE);		// 设置小图标
+    SetWindowText(customerName_.c_str());
     ModifyStyleEx(0, WS_EX_APPWINDOW);
 
-    // TODO: 在此添加额外的初始化代码
     InitControl();
     //InitTransferFileSocket();
-    ::WSAAsyncSelect(socketClient_, this->m_hWnd, WM_SOCKET, FD_READ);
+    GetClientRect(&wndRect_);
 
     if (!loginFlag_)
     {
         if (MessageBox(_T("你的账号存在密码泄露风险,是否更改密码?"), _T("警告"), MB_YESNO | MB_ICONASTERISK) == IDYES)
         {
-            CChangePassword dlg;
-            dlg.socketClient_ = socketClient_;
-            dlg.customerId_ = customerId_;
-            dlg.DoModal();
+            CChangePassword changePasswordDlg;
+            changePasswordDlg.socketClient_ = socketClient_;
+            changePasswordDlg.customerId_ = customerId_;
+            changePasswordDlg.DoModal();
         }
     }
-    int uploadThread = GetPrivateProfileInt("CommonInfo", "UploadThread", 2, "./chat.ini");
+    ::WSAAsyncSelect(socketClient_, this->m_hWnd, WM_SOCKET, FD_READ);
+
+    // get customer
+    HandleRecv toSend;
+    toSend.SetContent("id", customerId_);
+    toSend.SetContent("customer", customerName_);
+    std::string result = toSend.Write(CommunicationType::GETANDSHOW);
+    ::send(socketClient_, result.c_str(), result.length(), 0);
+
+    /*int uploadThread = GetPrivateProfileInt("CommonInfo", "UploadThread", 2, "./chat.ini");
     int downloadThread = GetPrivateProfileInt("CommonInfo", "DownloadThread", 2, "./chat.ini");
     for (unsigned short i = 0; i < uploadThread; ++i)
     {
@@ -134,13 +145,12 @@ BOOL CChatClientDlg::OnInitDialog()
     for (unsigned short i = 0; i < downloadThread; ++i)
     {
         fileTransDownload_.emplace_back(std::thread(&CChatClientDlg::ThreadHandlerDownload, this, i));
-    }
-    return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
+    }*/
+    return TRUE;
 }
 
 void CChatClientDlg::OnOK()
 {
-    // TODO: 在此添加专用代码和/或调用基类
     OnBnClickedSend();
 }
 
@@ -216,20 +226,17 @@ void CChatClientDlg::OnDropFiles(HDROP hDropInfo)
     SetDlgItemText(IDC_TRANSFERFILE, filePath);
     DragFinish(hDropInfo);
     CDialogEx::OnDropFiles(hDropInfo);
-
-    return;
 }
 
 void CChatClientDlg::OnDestroy()
 {
     CDialogEx::OnDestroy();
 
-    // TODO: 在此处添加消息处理程序代码
-    s_HandleRecv toSend;
-    toSend.Param.delCustomer_.id = customerId_;
-    std::string result = EncodeJson(CommunicationType::DELETECUSTOMER, toSend);
+    HandleRecv toSend;
+    toSend.SetContent("id", customerId_);
+    std::string result = toSend.Write(CommunicationType::DELCUSTOMER);
     ::send(socketClient_, result.c_str(), result.length(), 0);
-    int uploadThread = GetPrivateProfileInt("CommonInfo", "UploadThread", 2, "./chat.ini");
+    /*int uploadThread = GetPrivateProfileInt("CommonInfo", "UploadThread", 2, "./chat.ini");
     int downloadThread = GetPrivateProfileInt("CommonInfo", "DownloadThread", 2, "./chat.ini");
     threadExit_ = true;
     for (int i = 0; i < uploadThread; ++i)
@@ -245,15 +252,12 @@ void CChatClientDlg::OnDestroy()
         {
             fileTransDownload_[i].join();
         }
-    }
-
-    return;
+    }*/
 }
 
 void CChatClientDlg::OnLbnSelchangeLoginPeople()
 {
-    // TODO: 在此添加控件通知处理程序代码
-    UpdateData(TRUE);
+    UpdateData();
     SetDlgItemText(IDC_INFO, _T(""));
     SetDlgItemText(IDC_SENDTEXT, _T(""));
     SetDlgItemText(IDC_FILENAME, _T(""));
@@ -261,33 +265,42 @@ void CChatClientDlg::OnLbnSelchangeLoginPeople()
     CString strTarget;
     int curSel = m_list_login_people.GetCurSel();
     m_list_login_people.GetText(curSel, strTarget);
-    int pos = strTarget.Find('\t', 0);
+    int pos = strTarget.Find(' ', 0);
     if (pos != -1)
     {
         CString newString = strTarget.Right(3);
         if (strcmp(newString, "new") == 0)
         {
             CString newShow = strTarget.Left(strTarget.GetLength() - 3);
-            UpdateListBox(pos, newShow.GetBuffer(0));
+            UpdateListBox(curSel, newShow.GetBuffer(0));
             m_list_login_people.SetCurSel(curSel);
             newShow.ReleaseBuffer();
         }
         UINT64 id = strtoull(strTarget.Left(pos).GetBuffer(0), nullptr, 10);
-        auto itor1 = chatMessage_.find(id);
-        if (itor1 != chatMessage_.end())
+        auto chatMessageItor = chatMessage_.find(id);
+        if (chatMessageItor != chatMessage_.end())
         {
-            SetDlgItemText(IDC_TEXT, itor1->second.c_str());
+            if (chatMessageItor->second.str().empty())
+            {
+                HandleRecv toSend;
+                toSend.SetContent("requestid", customerId_);
+                toSend.SetContent("id", strTarget.Left(pos).GetBuffer(0));
+                std::string jsSend = toSend.Write(CommunicationType::INITCUSTOMERCHAT);
+                ::send(socketClient_, jsSend.c_str(), jsSend.length(), 0);
+            }
+            else
+            {
+                SetDlgItemText(IDC_TEXT, chatMessageItor->second.str().c_str());
+            }
         }
-        auto itor2 = progressNum_.find(id);
-        if (itor2 != progressNum_.end())
+        auto progressNumItor = progressNum_.find(id);
+        if (progressNumItor != progressNum_.end())
         {
-            m_transfer_progress.SetPos(itor2->second);
+            m_transfer_progress.SetPos(progressNumItor->second);
         }
     }
     strTarget.ReleaseBuffer();
     UpdateData(FALSE);
-
-    return;
 }
 
 void CChatClientDlg::OnCbnSelchangeStatus()
@@ -298,7 +311,6 @@ void CChatClientDlg::OnCbnSelchangeStatus()
 
 void CChatClientDlg::OnBnClickedSend()
 {
-    // TODO: 在此添加控件通知处理程序代码
     int curSel = m_list_login_people.GetCurSel();
     if (curSel == CB_ERR)
     {
@@ -306,8 +318,7 @@ void CChatClientDlg::OnBnClickedSend()
     }
     else
     {
-        CString strText, strSend, strSendTarget;
-        s_HandleRecv toSend;
+        CString strSend, strSendTarget;
         m_list_login_people.GetText(curSel, strSendTarget);
         GetDlgItemText(IDC_SENDTEXT, strSend);
         if (strSend == "")
@@ -316,42 +327,34 @@ void CChatClientDlg::OnBnClickedSend()
         }
         else
         {
-            int pos = strSendTarget.Find('\t', 0);
+            int pos = strSendTarget.Find(' ', 0);
             if (pos != -1)
             {
+                HandleRecv toSend;
+                toSend.SetContent("sourceid", customerId_);
+                toSend.SetContent("targetid", strSendTarget.Left(pos).GetBuffer(0));
+                toSend.SetContent("content", strSend.GetBuffer(0));
                 std::string sysTime = GetSystemTime();
-                toSend.Param.chat_.sourceid = customerId_;
-                toSend.Param.chat_.targetid = strtoull(strSendTarget.Left(pos).GetBuffer(0), nullptr, 10);
-                RegisterSpace(&toSend.Param.chat_.content, strSend.GetBuffer(0));
-                RegisterSpace(&toSend.Param.chat_.chat_time, sysTime);
-                std::string jsSend = EncodeJson(CommunicationType::CHAT, toSend);
+                toSend.SetContent("time", sysTime);
+                std::string jsSend = toSend.Write(CommunicationType::CHAT);
                 ::send(socketClient_, jsSend.c_str(), jsSend.length(), 0);
-                auto itor = chatMessage_.find(toSend.Param.chat_.targetid);
-                if (itor != chatMessage_.end())
-                {
-                    std::ostringstream chatResult;
-                    chatResult << itor->second << sysTime << "  /send\r\n" << toSend.Param.chat_.content << "\r\n\r\n";
-                    chatMessage_[toSend.Param.chat_.targetid] = chatResult.str();
-                    SetDlgItemText(IDC_TEXT, chatResult.str().c_str());
-                }
-                UnregisterSpace(CommunicationType::CHAT, toSend);
+                UINT64 targetId = strtoull(toSend.GetContent("targetid").c_str(), nullptr, 10);
+                chatMessage_[targetId] << sysTime << "  /send\r\n" << toSend.GetContent("content") << "\r\n\r\n";
+                SetDlgItemText(IDC_TEXT, chatMessage_[targetId].str().c_str());
             }
             else
             {
                 MessageBox(_T("内部错误,请重试!!!"), _T("错误"), MB_ICONERROR);
             }
         }
-        strText.ReleaseBuffer();
         strSend.ReleaseBuffer();
         strSendTarget.ReleaseBuffer();
+        SetDlgItemText(IDC_SENDTEXT, "");
     }
-
-    return;
 }
 
 void CChatClientDlg::OnBnClickedTransferfile()
 {
-    // TODO: 在此添加控件通知处理程序代码
     int curSel = m_list_login_people.GetCurSel();
     if (curSel == CB_ERR)
     {
@@ -381,13 +384,10 @@ void CChatClientDlg::OnBnClickedTransferfile()
         strFilePath.ReleaseBuffer();
         strSendTarget.ReleaseBuffer();
     }
-
-    return;
 }
 
 void CChatClientDlg::OnStnClickedInfo()
 {
-    // TODO: 在此添加控件通知处理程序代码
     CString strInfo;
     GetDlgItemText(IDC_INFO, strInfo);
     if (strInfo != "")
@@ -398,18 +398,16 @@ void CChatClientDlg::OnStnClickedInfo()
         UINT64 id = strtoull(strId.GetBuffer(0), nullptr, 10);
         auto itor1 = loginInfo_.find(id);
         int distance = std::distance(loginInfo_.begin(), itor1);
-        char temp[60];
-        memset(temp, 0, 60);
-        sprintf_s(temp, 60, "%-20llu%-30s%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
+        char temp[100];
+        memset(temp, 0, 100);
+        sprintf_s(temp, 100, "%-20llu%-30s%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
         UpdateListBox(distance, temp);
         m_list_login_people.SetCurSel(distance);
-        SetDlgItemText(IDC_TEXT, chatMessage_[id].c_str());
+        SetDlgItemText(IDC_TEXT, chatMessage_[id].str().c_str());
         SetDlgItemText(IDC_INFO, _T(""));
         strId.ReleaseBuffer();
     }
     strInfo.ReleaseBuffer();
-
-    return;
 }
 
 LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
@@ -420,130 +418,147 @@ LRESULT CChatClientDlg::OnSocket(WPARAM wParam, LPARAM lParam)
     {
         UpdateData(TRUE);
         ::recv(socketClient_, strRecv, DATA_LENGTH, 0);
-        s_HandleRecv handleRecv, toSend;
-        if (!DecodeJson(strRecv, handleRecv))
+        HandleRecv handleRecv(socketClient_, strRecv);
+        switch (handleRecv.GetType())
         {
-            delete[]strRecv;
-            strRecv = nullptr;
-            return -1;
-        }
-        switch (handleRecv.type_)
-        {
-        case CommunicationType::SHOWLOGIN:
-        {
-            if (handleRecv.Param.showLogin_.show_login_type == 0)
+            case CommunicationType::SHOWLOGIN:
             {
-                std::vector<std::string> peopleList;
-                SplitString(handleRecv.Param.showLogin_.customer, COMBINE_CUSTOMERS, peopleList);
-                for (size_t i = 0; i < peopleList.size(); ++i)
+                if (handleRecv.GetContent("show_login_type") == "0")
+                {
+                    std::vector<std::string> peopleList;
+                    SplitString(handleRecv.GetContent("customer"), COMBINE_INFOS, peopleList);
+                    for (size_t i = 0; i < peopleList.size(); ++i)
+                    {
+                        std::vector<std::string> peopleInfo;
+                        SplitString(peopleList.at(i), COMBINE_ONE_INFO, peopleInfo);
+                        if (peopleInfo.size() != 3 || (peopleInfo.at(0) == customerId_))
+                        {
+                            continue;
+                        }
+                        loginInfo_[strtoull(peopleInfo.at(0).c_str(), nullptr, 10)] =
+                            std::make_pair(peopleInfo.at(1), (peopleInfo.at(2) == "1") ? "在线" : "离线");
+                    }
+                    for (auto itor = loginInfo_.begin(); itor != loginInfo_.end(); ++itor)
+                    {
+                        char temp[100];
+                        memset(temp, 0, 100);
+                        sprintf_s(temp, 100, "%-20llu%-30s%s", itor->first, itor->second.first.c_str(), itor->second.second.c_str());
+                        m_list_login_people.AddString(temp);
+                        chatMessage_.insert(std::make_pair(itor->first, ""));
+                    }
+                }
+                else if ((handleRecv.GetContent("show_login_type") == "1") || (handleRecv.GetContent("show_login_type") == "-1"))
                 {
                     std::vector<std::string> peopleInfo;
-                    SplitString(peopleList.at(i), COMBINE_ONE_CUSTOMER, peopleInfo);
-                    if (peopleInfo.size() != 3 || (peopleInfo.at(0) == std::to_string(customerId_)))
+                    SplitString(handleRecv.GetContent("customer"), COMBINE_ONE_INFO, peopleInfo);
+                    if (peopleInfo.size() != 3 || (peopleInfo.at(0) == customerId_))
                     {
-                        continue;
+                        break;
                     }
-                    loginInfo_[strtoull(peopleInfo.at(0).c_str(), nullptr, 10)] =
-                        std::make_pair(peopleInfo.at(1), (peopleInfo.at(2) == "1") ? "在线" : "离线");
-                }
-                for (auto itor = loginInfo_.begin(); itor != loginInfo_.end(); ++itor)
-                {
-                    char temp[60];
-                    memset(temp, 0, 60);
-                    sprintf_s(temp, 60, "%-20llu%-30s%s", itor->first, itor->second.first.c_str(), itor->second.second.c_str());
-                    m_list_login_people.AddString(temp);
-                    chatMessage_.insert(std::make_pair(itor->first, ""));
+                    UINT64 id = strtoull(peopleInfo.at(0).c_str(), nullptr, 10);
+                    loginInfo_[id] = std::make_pair(peopleInfo.at(1), (handleRecv.GetContent("show_login_type") == "1") ? "在线" : "离线");
+                    auto itor = loginInfo_.find(id);
+                    int pos = std::distance(loginInfo_.begin(), itor);
+                    char temp[100];
+                    memset(temp, 0, 100);
+                    sprintf_s(temp, 100, "%-20llu%-30s%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
+                    UpdateListBox(pos, temp);
                 }
             }
-            else if ((handleRecv.Param.showLogin_.show_login_type == 1) || (handleRecv.Param.showLogin_.show_login_type == -1))
-            {
-                std::vector<std::string> peopleInfo;
-                SplitString(handleRecv.Param.showLogin_.customer, ':', peopleInfo);
-                if (peopleInfo.size() != 3 || (peopleInfo.at(0) == std::to_string(customerId_)))
-                {
-                    break;
-                }
-                UINT64 id = strtoull(peopleInfo.at(0).c_str(), nullptr, 10);
-                loginInfo_[id] =
-                    std::make_pair(peopleInfo.at(1), (handleRecv.Param.showLogin_.show_login_type == 1) ? "在线" : "离线");
-                auto itor = loginInfo_.find(id);
-                int pos = std::distance(loginInfo_.begin(), itor);
-                char temp[60];
-                memset(temp, 0, 60);
-                sprintf_s(temp, 60, "%-20llu%-30s%s", id, loginInfo_[id].first.c_str(), loginInfo_[id].second.c_str());
-                UpdateListBox(pos, temp);
-            }
-        }
-        break;
+            break;
 
-        case CommunicationType::CHAT:
-        {
-            if (handleRecv.Param.chat_.targetid == customerId_)
+            case CommunicationType::CHAT:
             {
-                std::ostringstream chatResult;
-                // 消息添加
-                auto itor1 = chatMessage_.find(handleRecv.Param.chat_.sourceid);
-                if (itor1 != chatMessage_.end())
+                if (handleRecv.GetContent("targetid") == customerId_)
                 {
-                    chatResult << itor1->second;
-                }
-                chatResult << handleRecv.Param.chat_.chat_time << "  /recv\r\n" << handleRecv.Param.chat_.content << "\r\n\r\n";
-                if (itor1 == chatMessage_.end())
-                {
-                    chatMessage_.insert(std::make_pair(handleRecv.Param.chat_.sourceid, chatResult.str()));
-                }
-                else
-                {
-                    chatMessage_[handleRecv.Param.chat_.sourceid] = chatResult.str();
-                }
-                // 新消息显示
-                auto itor2 = loginInfo_.find(handleRecv.Param.chat_.sourceid);
-                if (itor2 != loginInfo_.end())
-                {
-                    int distance = std::distance(loginInfo_.begin(), itor2);
-                    int pos = m_list_login_people.GetCurSel();
-                    if (distance != pos)
+                    std::ostringstream chatResult;
+                    // 消息添加
+                    UINT64 sourceId = strtoull(handleRecv.GetContent("sourceid").c_str(), nullptr, 10);
+                    chatMessage_[sourceId] << handleRecv.GetContent("time") << "  /recv\r\n" << handleRecv.GetContent("content") << "\r\n\r\n";
+                    // 新消息显示
+                    auto loginInfoItor = loginInfo_.find(sourceId);
+                    if (loginInfoItor != loginInfo_.end())
                     {
-                        char temp[70];
-                        memset(temp, 0, 70);
-                        sprintf_s(temp, 70, "%-20llu%-30s%s new", itor2->first, itor2->second.first.c_str(), itor2->second.second.c_str());
-                        UpdateListBox(distance, temp);
-                        memset(temp, 0, 70);
-                        sprintf_s(temp, 70, "收到来自 %llu %s的新消息", itor2->first, itor2->second.first.c_str());
-                        SetDlgItemText(IDC_INFO, temp);
-                    }
-                    else
-                    {
-                        SetDlgItemText(IDC_TEXT, chatMessage_[handleRecv.Param.chat_.sourceid].c_str());
+                        int distance = std::distance(loginInfo_.begin(), loginInfoItor);
+                        int pos = m_list_login_people.GetCurSel();
+                        if (distance != pos)
+                        {
+                            char temp[100];
+                            memset(temp, 0, 100);
+                            sprintf_s(temp, 100, "%-20llu%-30s%s new", loginInfoItor->first, loginInfoItor->second.first.c_str(), loginInfoItor->second.second.c_str());
+                            UpdateListBox(distance, temp);
+                            memset(temp, 0, 100);
+                            sprintf_s(temp, 100, "收到来自 %llu %s的新消息", loginInfoItor->first, loginInfoItor->second.first.c_str());
+                            SetDlgItemText(IDC_INFO, temp);
+                        }
+                        else
+                        {
+                            SetDlgItemText(IDC_TEXT, chatMessage_[sourceId].str().c_str());
+                        }
                     }
                 }
             }
-        }
-        break;
+            break;
 
-        case CommunicationType::FORCEDELETE:
-        {
-            if (handleRecv.Param.forceDelete_.id == customerId_)
+            case CommunicationType::FORCEDELETE:
             {
-                MessageBox(_T("您的账号已在其他地点登录,请确认!!!"), _T("错误"), MB_ICONERROR);
-                EndDialog(-1);
+                if (handleRecv.GetContent("id") == customerId_)
+                {
+                    MessageBox(_T("您的账号已在其他地点登录,请确认!!!"), _T("错误"), MB_ICONERROR);
+                    EndDialog(-1);
+                }
             }
-        }
-        break;
+            break;
 
-        case CommunicationType::TRANSFERFILEINFO:
-        {
-            if (handleRecv.Param.transferFileInfo_.targetid == customerId_)
+            case CommunicationType::TRANSFERFILEINFO:
             {
-                std::lock_guard<std::mutex> lg(quMuDown_);
-                transferFileDownload_.push(TransFile(handleRecv.Param.transferFileInfo_.file_name, handleRecv.Param.transferFileInfo_.sourceid,
-                    handleRecv.Param.transferFileInfo_.file_length, handleRecv.Param.transferFileInfo_.file_block));
+                /*if (handleRecv.Param.transferFileInfo_.targetid == customerId_)
+                {
+                    std::lock_guard<std::mutex> lg(quMuDown_);
+                    transferFileDownload_.push(TransFile(handleRecv.Param.transferFileInfo_.file_name, handleRecv.Param.transferFileInfo_.sourceid,
+                        handleRecv.Param.transferFileInfo_.file_length, handleRecv.Param.transferFileInfo_.file_block));
+                }*/
             }
-        }
-        break;
+            break;
 
+            case CommunicationType::INITCUSTOMERCHATBACK:
+            {
+                if (handleRecv.GetContent("id") == customerId_)
+                {
+                    UINT64 contentId = strtoull(handleRecv.GetContent("contentid").c_str(), nullptr, 10);
+                    std::string sourceContent = handleRecv.GetContent("sourcecontent");
+                    std::string targetContent = handleRecv.GetContent("targetcontent");
+                    if ((sourceContent.length() != 0) || (targetContent.length() != 0))
+                    {
+                        std::vector<std::string> sourceContentVec, targetContentVec, allContentVec;
+                        SplitString(sourceContent, COMBINE_INFOS, sourceContentVec);
+                        SplitString(targetContent, COMBINE_INFOS, targetContentVec);
+                        std::sort(sourceContentVec.begin(), sourceContentVec.end());
+                        std::sort(targetContentVec.begin(), targetContentVec.end());
+                        allContentVec.resize(sourceContentVec.size() + targetContentVec.size());
+                        std::merge(sourceContentVec.begin(), sourceContentVec.end(), targetContentVec.begin(), targetContentVec.end(), allContentVec.begin());
+                        std::ostringstream ss;
+                        for (size_t i = 0; i < allContentVec.size(); ++i)
+                        {
+                            std::vector<std::string> contentVec;
+                            SplitString(allContentVec.at(i), COMBINE_ONE_INFO, contentVec);
+                            if (contentVec.size() == 3) // source : time&content&type
+                            {
+                                ss << contentVec.at(0) << "  /send\r\n" << contentVec.at(1) << "\r\n\r\n";
+                            }
+                            else if (contentVec.size() == 4) // target : time&content&isRead&type
+                            {
+                                ss << contentVec.at(0) << "  /recv\r\n" << contentVec.at(1) << "\r\n\r\n";
+                            }
+                        }
+                        chatMessage_[contentId] << ss.str();
+                        SetDlgItemText(IDC_TEXT, ss.str().c_str());
+                        GetDlgItem(IDC_TEXT)->align
+                    }
+                }
+            }
+            break;
         }
-        UnregisterSpace(handleRecv.type_, handleRecv);
         UpdateData(FALSE);
     }
     delete[]strRecv;
@@ -569,28 +584,20 @@ void CChatClientDlg::InitControl()
 {
     CFont font, fontLogin;
     font.CreatePointFont(150, _T("宋体"), NULL);
-    // 组框
-    GetDlgItem(IDC_STATICINFO)->SetFont(&font);
-    GetDlgItem(IDC_STATICLOGIN)->SetFont(&font);
+    UINT32 itmNum = sizeof(ALL_ITM) / sizeof(int);
+    for (UINT32 i = 0; i < itmNum - 1; ++i)
+    {
+        GetDlgItem(ALL_ITM[i])->SetFont(&font);
+    }
 
     // 登录信息
-    GetDlgItem(IDC_STATICID_LOGIN)->SetFont(&font);
-    GetDlgItem(IDC_ID)->SetFont(&font);
-    SetDlgItemText(IDC_ID, std::to_string(customerId_).c_str());
-    GetDlgItem(IDC_STATICNAME)->SetFont(&font);
-    GetDlgItem(IDC_NAME)->SetFont(&font);
+    SetDlgItemText(IDC_ID, customerId_.c_str());
     SetDlgItemText(IDC_NAME, customerName_.c_str());
 
     // 聊天
-    GetDlgItem(IDC_TEXT)->SetFont(&font);
-    GetDlgItem(IDC_SENDTEXT)->SetFont(&font);
-    GetDlgItem(IDC_SEND)->SetFont(&font);
-    GetDlgItem(IDC_FILENAME)->SetFont(&font);
-    GetDlgItem(IDC_TRANSFERFILE)->SetFont(&font);
-    GetDlgItem(IDC_INFO)->SetFont(&font);
+    SetDlgItemText(IDC_INFO, _T(""));
 
     // 消息框 进度条
-    SetDlgItemText(IDC_INFO, _T(""));
     GetDlgItem(IDC_TRANSFILEPROGRESS)->ShowWindow(false);
     m_transfer_progress.SetRange(0, 100);
     m_transfer_progress.SetPos(0);
@@ -608,8 +615,6 @@ void CChatClientDlg::InitControl()
     m_status.SetCurSel(0);
 
     DragAcceptFiles(TRUE);
-
-    return;
 }
 
 void CChatClientDlg::InitTransferFileSocket()
@@ -637,8 +642,6 @@ void CChatClientDlg::InitTransferFileSocket()
         return;
     }
     ::WSAAsyncSelect(socketTranserFile_, this->m_hWnd, WM_SOCKET_FILE, FD_READ);
-
-    return;
 }
 
 inline void CChatClientDlg::UpdateListBox(int pos, const std::string& newMessage)
@@ -649,7 +652,7 @@ inline void CChatClientDlg::UpdateListBox(int pos, const std::string& newMessage
 
 void CChatClientDlg::ThreadHandlerUpload(const unsigned short threadNum)
 {
-    while (1)
+    /*while (1)
     {
         if (threadExit_)
         {
@@ -707,7 +710,7 @@ void CChatClientDlg::ThreadHandlerUpload(const unsigned short threadNum)
         GetDlgItem(IDC_TRANSFILEPROGRESS)->ShowWindow(false);
 
         Sleep(1);
-    }
+    }*/
 
     return;
 }
@@ -774,4 +777,28 @@ void CChatClientDlg::ThreadHandlerDownload(const unsigned short threadNum)
     }*/
 
     return;
+}
+
+void CChatClientDlg::OnSize(UINT nType, int cx, int cy)
+{
+    CDialogEx::OnSize(nType, cx, cy);
+
+    UINT32 itmNum = sizeof(ALL_ITM) / sizeof(int);
+    for (UINT32 i = 0; i < itmNum; i++)
+    {
+        CWnd* pWnd = GetDlgItem(ALL_ITM[i]);
+
+        if (pWnd && nType != 1 && wndRect_.Width() && wndRect_.Height())
+        {
+            CRect rect;
+            pWnd->GetWindowRect(&rect);
+            ScreenToClient(&rect);
+            rect.left = rect.left * cx / wndRect_.Width();
+            rect.right = rect.right * cx / wndRect_.Width();
+            rect.top = rect.top * cy / wndRect_.Height();
+            rect.bottom = rect.bottom * cy / wndRect_.Height();
+            pWnd->MoveWindow(rect);
+        }
+    }
+    GetClientRect(&wndRect_);
 }

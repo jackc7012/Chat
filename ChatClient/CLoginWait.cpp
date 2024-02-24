@@ -1,10 +1,10 @@
 ﻿// CLoginWait.cpp: 实现文件
 //
 
-#include "stdafx.h"
 #include "ChatClient.h"
 #include "CLoginWait.h"
-#include "afxdialogex.h"
+
+using namespace cwy;
 
 // CLoginWait 对话框
 
@@ -25,34 +25,34 @@ void CLoginWait::DoDataExchange(CDataExchange* pDX)
     CDialogEx::DoDataExchange(pDX);
 }
 
-
 BEGIN_MESSAGE_MAP(CLoginWait, CDialogEx)
     ON_WM_TIMER()
 END_MESSAGE_MAP()
 
-
 // CLoginWait 消息处理程序
-
 
 BOOL CLoginWait::OnInitDialog()
 {
     CDialogEx::OnInitDialog();
 
-    // TODO:  在此添加额外的初始化
     CFont font;
     font.CreatePointFont(150, _T("宋体"), NULL);
     GetDlgItem(IDC_LOGIN_TIME_OUT)->SetFont(&font);
     GetDlgItem(IDC_LOGIN)->SetFont(&font);
 
-    if (mode_ == 1)
+    if (mode_ == Mode::LOGIN)
+    {
+        SetDlgItemText(IDC_LOGIN, _T("登录中..请稍后...."));
+    }
+    else if (mode_ == Mode::REGISTER)
     {
         SetDlgItemText(IDC_LOGIN, _T("申请账号中..请稍后...."));
     }
-    else if (mode_ == 2)
+    else if (mode_ == Mode::CHANGEPWD)
     {
-        char temp[20];
-        memset(temp, 0, 20);
-        sprintf_s(temp, 20, "%s 账号改密中..请稍后....", customerName_.c_str());
+        char temp[50];
+        memset(temp, 0, 50);
+        sprintf_s(temp, 50, "%s 账号改密中..请稍后....", customerName_.c_str());
         SetDlgItemText(IDC_LOGIN, temp);
     }
     threadWait_ = std::thread(&CLoginWait::socketRecvThread, this);
@@ -67,30 +67,32 @@ void CLoginWait::OnTimer(UINT_PTR nIDEvent)
 {
     switch (nIDEvent)
     {
-    case 1: {
-        int time = GetDlgItemInt(IDC_LOGIN_TIME_OUT);
-        if (time > 0)
+        case 1:
         {
-            --time;
-            SetDlgItemInt(IDC_LOGIN_TIME_OUT, time);
-        }
-    }
-          break;
-
-    case 2: {
-        if (flag_ == LoginResult::SUCCEED || flag_ == LoginResult::NOUSER || flag_ == LoginResult::ALREADYLOGININ
-            || flag_ == LoginResult::PASSWORDERROR || flag_ == LoginResult::OTHER || flag_ == LoginResult::UNKNOWNERROR)
-        {
-            if (threadWait_.joinable())
+            int time = GetDlgItemInt(IDC_LOGIN_TIME_OUT);
+            if (time > 0)
             {
-                threadWait_.join();
+                --time;
+                SetDlgItemInt(IDC_LOGIN_TIME_OUT, time);
             }
-            EndDialog(static_cast<int>(flag_));
+            break;
         }
-    }
-          break;
-    default:
-        break;
+
+        case 2:
+        {
+            if (flag_ > LoginResult::NULLLOGIN && flag_ <= LoginResult::OUTLIMIT)
+            {
+                if (threadWait_.joinable())
+                {
+                    threadWait_.join();
+                }
+                EndDialog(static_cast<int>(flag_));
+            }
+            break;
+        }
+
+        default:
+            break;
     }
 
     CDialogEx::OnTimer(nIDEvent);
@@ -105,57 +107,84 @@ void CLoginWait::socketRecvThread()
     ::recv(socketClient_, buf, DATA_LENGTH, 0);
     if (buf[0] != '\0')
     {
-        s_HandleRecv rt;
-        if (!DecodeJson(buf, rt))
+        HandleRecv rt(socketClient_, buf);
+        CommunicationType ct = rt.GetType();
+        switch (mode_)
         {
-            delete[]buf;
-            buf = nullptr;
-            flag_ = LoginResult::UNKNOWNERROR;
-            return;
+            case Mode::LOGIN: // login
+            {
+                if (rt.GetContent("id") != id_)
+                {
+                    // 不处理
+                }
+                else if (ct == CommunicationType::LOGINBACKSUCCEED)
+                {
+                    customerName_ = rt.GetContent("customer");
+                    flag_ = LoginResult::SUCCEED;
+                }
+                else if (rt.GetContent("description") == "there is no such user")
+                {
+                    flag_ = LoginResult::NOUSER;
+                }
+                else if (rt.GetContent("description") == "this user has already login in, please make sure or modify your password")
+                {
+                    ip_ = rt.GetContent("ip");
+                    customerName_ = rt.GetContent("customer");
+                    flag_ = LoginResult::ALREADYLOGININ;
+                }
+                else if (rt.GetContent("description") == "password error")
+                {
+                    flag_ = LoginResult::PASSWORDERROR;
+                }
+                else if (rt.GetContent("description") == "unknown error")
+                {
+                    flag_ = LoginResult::UNKNOWNERROR;
+                }
+                break;
+            }
+
+            case Mode::REGISTER: // register
+            {
+                if (rt.GetContent("customer") != customerName_)
+                {
+                    // 不处理
+                }
+                else if (ct == CommunicationType::REGISTERBACKSUCCEED)
+                {
+                    id_ = rt.GetContent("id");
+                    flag_ = LoginResult::SUCCEED;
+                }
+                else if (rt.GetContent("description") == "password too short")
+                {
+                    flag_ = LoginResult::PASSWORD2SHORT;
+                }
+                break;
+            }
+
+            case Mode::CHANGEPWD: // change password
+            {
+                if (rt.GetContent("id") != id_)
+                {
+                    // 不处理
+                }
+                else if (rt.GetContent("update_result") == "succeed")
+                {
+                    flag_ = LoginResult::SUCCEED;
+                }
+                else if (rt.GetContent("description") == "old_password error")
+                {
+                    flag_ = LoginResult::PASSWORDERROR;
+                }
+                else if (rt.GetContent("description") == "unknown error")
+                {
+                    flag_ = LoginResult::UNKNOWNERROR;
+                }
+                break;
+            }
+
+            default:
+                break;
         }
-        if (mode_ == 0)
-        {
-            if (rt.type_ == CommunicationType::LOGINBACKSUCCEED)
-            {
-                customerName_ = rt.Param.loginBack_.customer;
-                flag_ = LoginResult::SUCCEED;
-            }
-            else if (strcmp(rt.Param.loginBack_.description, "there is no such user") == 0)
-            {
-                flag_ = LoginResult::NOUSER;
-            }
-            else if (strcmp(rt.Param.loginBack_.description,
-                "this user has already login in, please make sure or modify your password") == 0)
-            {
-                customerName_ = rt.Param.loginBack_.customer;
-                ip_ = rt.Param.loginBack_.login_result;
-                flag_ = LoginResult::ALREADYLOGININ;
-            }
-            else if (strcmp(rt.Param.loginBack_.description, "password error") == 0)
-            {
-                flag_ = LoginResult::PASSWORDERROR;
-            }
-        }
-        else if (mode_ == 1)
-        {
-            if (rt.type_ == CommunicationType::REGISTERBACKSUCCEED)
-            {
-                customerName_ = std::to_string(rt.Param.registerBack_.id);
-                flag_ = LoginResult::SUCCEED;
-            }
-            else
-            {
-                flag_ = LoginResult::OTHER;
-            }
-        }
-        else if (mode_ == 2)
-        {
-            if (rt.type_ == CommunicationType::CHANGEPASSWORDBACK)
-            {
-                flag_ = ((rt.Param.changePasswordBack_.update_result == "succeed") ? LoginResult::SUCCEED : LoginResult::OTHER);
-            }
-        }
-        UnregisterSpace(rt.type_, rt);
     }
     else
     {

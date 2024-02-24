@@ -39,18 +39,26 @@ namespace cwy
         LOGIN,
         /*
             { "communication_type":"loginbacksucceed"
+            , "id" : "10000"
             , "customer" : "aaa"}
         */
         LOGINBACKSUCCEED,
         /*
             { "communication_type":"loginbackfailed"
             , "id" : "10000"
+            , "customer" : "aaa" *optional
+            , "ip" : "192.168.0.1"  *optional
             , "description" : "password error"}
         */
         LOGINBACKFAILED,
         /*
+            { "communication_type":"getandshow"
+            , "id" : "10000"}
+        */
+        GETANDSHOW,
+        /*
             { "communication_type":"showlogin"
-            , "customer" : "10000:aaa:1|10001:bbb:0|10002:ccc:0"
+            , "customer" : "10000:aaa:1;10001:bbb:0;10002:ccc:0"
             . "show_login_type" : 0}
         */
         SHOWLOGIN,
@@ -85,7 +93,7 @@ namespace cwy
         TRANSFERFILECONTENT,
         /*
             { "communication_type":"forcedelete"
-            , "id" : 10000}
+            , "id" : "10000"}
         */
         FORCEDELETE,
         /*
@@ -101,27 +109,45 @@ namespace cwy
             , "update_result" : "failed"
             , "description" : "old_password error"}
         */
-        CHANGEPASSWORDBACK
+        CHANGEPASSWORDBACK,
+        /*
+            { "communication_type":"initcustomerchat"
+            , "requestid" : "10001"
+            , "id" : "10000"}
+        */
+        INITCUSTOMERCHAT,
+        /*
+            { "communication_type":"initcustomerchatback"
+            , "sourcecontent" : ""
+            , "targetcontent" : "HelloWorld"
+            , "id" : "10000"
+            , "contentid" : "10001"}
+        */
+        INITCUSTOMERCHATBACK
     };
 
     static std::unordered_map<std::string, CommunicationType> typeStrToInt = {
         {"register", CommunicationType::REGISTER}, {"registerbacksucceed", CommunicationType::REGISTERBACKSUCCEED},
         {"registerbackfailed", CommunicationType::REGISTERBACKFAILED}, {"login", CommunicationType::LOGIN},
         {"loginbacksucceed", CommunicationType::LOGINBACKSUCCEED}, {"loginbackfailed", CommunicationType::LOGINBACKFAILED},
-        {"showlogin", CommunicationType::SHOWLOGIN}, {"delcustomer", CommunicationType::DELCUSTOMER},
-        {"chat", CommunicationType::CHAT}, {"transferfileinfo", CommunicationType::TRANSFERFILEINFO},
-        {"transferfilecontent", CommunicationType::TRANSFERFILECONTENT}, {"forcedelete", CommunicationType::FORCEDELETE},
-        {"changepassword", CommunicationType::CHANGEPASSWORD}, {"changepasswordback", CommunicationType::CHANGEPASSWORDBACK}
+        {"getandshow", CommunicationType::GETANDSHOW}, {"showlogin", CommunicationType::SHOWLOGIN},
+        {"delcustomer", CommunicationType::DELCUSTOMER}, {"chat", CommunicationType::CHAT},
+        {"transferfileinfo", CommunicationType::TRANSFERFILEINFO}, {"transferfilecontent", CommunicationType::TRANSFERFILECONTENT},
+        {"forcedelete", CommunicationType::FORCEDELETE}, {"changepassword", CommunicationType::CHANGEPASSWORD},
+        {"changepasswordback", CommunicationType::CHANGEPASSWORDBACK}, {"initcustomerchat", CommunicationType::INITCUSTOMERCHAT},
+        {"initcustomerchatback", CommunicationType::INITCUSTOMERCHATBACK}
     };
 
     static std::unordered_map<CommunicationType, std::string> typeIntToStr = {
         {CommunicationType::REGISTER, "register"}, {CommunicationType::REGISTERBACKSUCCEED, "registerbacksucceed"},
         {CommunicationType::REGISTERBACKFAILED, "registerbackfailed"}, {CommunicationType::LOGIN, "login"},
         {CommunicationType::LOGINBACKSUCCEED, "loginbacksucceed"}, {CommunicationType::LOGINBACKFAILED, "loginbackfailed"},
-        {CommunicationType::SHOWLOGIN, "showlogin"}, {CommunicationType::DELCUSTOMER, "delcustomer"},
-        {CommunicationType::CHAT, "chat"}, {CommunicationType::TRANSFERFILEINFO, "transferfileinfo"},
-        {CommunicationType::TRANSFERFILECONTENT, "transferfilecontent"}, {CommunicationType::FORCEDELETE, "forcedelete"},
-        {CommunicationType::CHANGEPASSWORD, "changepassword"}, {CommunicationType::CHANGEPASSWORDBACK, "changepasswordback"}
+        {CommunicationType::GETANDSHOW, "getandshow"}, {CommunicationType::SHOWLOGIN, "showlogin"},
+        {CommunicationType::DELCUSTOMER, "delcustomer"}, {CommunicationType::CHAT, "chat"},
+        {CommunicationType::TRANSFERFILEINFO, "transferfileinfo"}, {CommunicationType::TRANSFERFILECONTENT, "transferfilecontent"},
+        {CommunicationType::FORCEDELETE, "forcedelete"}, {CommunicationType::CHANGEPASSWORD, "changepassword"},
+        {CommunicationType::CHANGEPASSWORDBACK, "changepasswordback"}, {CommunicationType::INITCUSTOMERCHAT, "initcustomerchat"},
+        {CommunicationType::INITCUSTOMERCHATBACK, "initcustomerchatback"}
     };
 
     class HandleRecv
@@ -142,6 +168,7 @@ namespace cwy
         void Clear()
         {
             type_ = CommunicationType::NULLCOMMUNICATION;
+            jsonHandle_.Clear();
             socketHandle_ = 0;
         }
 
@@ -150,7 +177,7 @@ namespace cwy
             socketHandle_ = socketHandle;
         }
 
-        CommunicationType GetType() const
+        inline const CommunicationType GetType() const
         {
             return type_;
         }
@@ -165,9 +192,12 @@ namespace cwy
             jsonHandle_[key] = value;
         }
 
-        std::string Write(CommunicationType type)
+        std::string Write(CommunicationType type = CommunicationType::NULLCOMMUNICATION)
         {
-            jsonHandle_["communication_type"] = typeIntToStr[type];
+            if (type != CommunicationType::NULLCOMMUNICATION)
+            {
+                jsonHandle_["communication_type"] = typeIntToStr[type];
+            }
             return EncodeJson();
         }
 
